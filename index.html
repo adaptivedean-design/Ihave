@@ -42,7 +42,13 @@ cursor:pointer;
 
 button:hover{background:#1d4ed8}
 
-#teacherPanel,#studentPanel,#gamePanel{display:none}
+#lobby,#gamePanel{display:none}
+
+#players{
+margin-top:10px;
+font-size:14px;
+color:#cbd5f5;
+}
 
 #grid{
 margin-top:20px;
@@ -57,12 +63,6 @@ border-radius:8px;
 padding:14px;
 text-align:center;
 cursor:pointer;
-border:2px solid transparent;
-}
-
-.cardPile.target{
-border-color:#22c55e;
-box-shadow:0 0 10px #22c55e;
 }
 
 .cardPile.disabled{
@@ -104,25 +104,21 @@ font-size:12px;
 <h1>I Have / Who Has</h1>
 
 <div id="home">
-<button id="teacherBtn">Teacher Host Game</button>
+Enter your name<br>
+<input id="nameInput" placeholder="name">
+<br>
+<button id="enterBtn">Enter</button>
 </div>
 
-<div id="teacherPanel">
-<h2>Teacher Panel</h2>
-Room Name<br>
-<input id="roomInput" placeholder="class1">
+<div id="lobby">
+
+<div id="share"></div>
+
+<div id="players"></div>
+
 <br>
-<button id="createRoomBtn">Create Room</button>
 <button id="startGameBtn">Start Game</button>
-<div id="studentLink"></div>
-</div>
 
-<div id="studentPanel">
-<h2>Join Game</h2>
-Name<br>
-<input id="studentName" placeholder="name">
-<br>
-<button id="joinBtn">Join</button>
 </div>
 
 <div id="gamePanel">
@@ -151,11 +147,9 @@ appId:"1:1041491068804:web:21b0d472c5f2929d04bfd1"
 const app=initializeApp(firebaseConfig);
 const db=getDatabase(app);
 
-const animals=["alligator","elephant","snake","lion","dog","cat","horse","monkey"];
-
 let roomId=null;
-let role="teacher";
 let playerId="p"+Math.floor(Math.random()*999999);
+let myName="";
 
 let myCards=[];
 let cardsDealt=false;
@@ -163,10 +157,15 @@ let cardsDealt=false;
 let currentTarget=null;
 let chainBroken=false;
 
+let gridOrder=[];
+
+const animals=["alligator","elephant","snake","lion","dog","cat","horse","monkey"];
+
 const home=document.getElementById("home");
-const teacherPanel=document.getElementById("teacherPanel");
-const studentPanel=document.getElementById("studentPanel");
+const lobby=document.getElementById("lobby");
 const gamePanel=document.getElementById("gamePanel");
+
+const playersDiv=document.getElementById("players");
 
 const grid=document.getElementById("grid");
 const chainEl=document.getElementById("chain");
@@ -188,13 +187,28 @@ return a;
 }
 
 function generateDeck(){
+
+const shuffledAnimals=shuffle([...animals]);
+
 let deck=[];
-for(let i=0;i<animals.length;i++){
-const have=animals[i];
-const who=animals[(i+1)%animals.length];
-for(let c=0;c<3;c++) deck.push({have,who});
+
+for(let i=0;i<shuffledAnimals.length;i++){
+
+const have=shuffledAnimals[i];
+const who=shuffledAnimals[(i+1)%shuffledAnimals.length];
+
+for(let c=0;c<3;c++){
+
+const pair={have,who};
+
+deck.push(pair);
+
 }
+
+}
+
 return shuffle(deck);
+
 }
 
 function buildGrid(){
@@ -202,65 +216,185 @@ function buildGrid(){
 const groups={};
 
 myCards.forEach(c=>{
+
 if(!groups[c.have]) groups[c.have]=[];
+
 groups[c.have].push(c);
+
 });
+
+if(gridOrder.length===0){
+
+gridOrder=shuffle([...animals]);
+
+}
+
 
 grid.innerHTML="";
 
-animals.forEach(a=>{
+
+for(const a of gridOrder){
 
 const pile=groups[a]||[];
 
 const div=document.createElement("div");
+
 div.className="cardPile";
 
-if(currentTarget===a && !chainBroken) div.classList.add("target");
+if(!chainBroken && currentTarget && a!==currentTarget)
+{
 
-if(!chainBroken && currentTarget && a!==currentTarget) div.classList.add("disabled");
+div.classList.add("disabled");
+
+}
 
 
 div.innerHTML=`<b>${a}</b><div class="count">${pile.length}</div>`;
 
-if(pile.length>0) div.onclick=()=>attemptPlay(a);
+if(pile.length>0)
+{
+
+div.onclick=()=>attemptPlay(a);
+
+}
+
 
 grid.appendChild(div);
+
+}
+
+}
+
+function computeRemaining(data){
+
+const counts={};
+animals.forEach(a=>counts[a]=3);
+
+if(data.played){
+
+for(const c of data.played)
+{
+counts[c.have]--;
+}
+
+}
+
+return counts;
+
+}
+
+function listenRoom(){
+
+onValue(ref(db,"rooms/"+roomId),snap=>{
+
+const data=snap.val();
+if(!data) return;
+
+
+if(data.players){
+
+playersDiv.innerHTML="Connected:<br>";
+
+for(const p in data.players){
+
+const pl=data.players[p];
+
+playersDiv.innerHTML+=pl.name+"<br>";
+
+}
+
+}
+
+
+if(data.state==="playing" && data.gameStarted && !cardsDealt)
+{
+
+const deck=data.deck;
+
+const ids=Object.keys(data.players);
+
+const index=ids.indexOf(playerId);
+
+const half=deck.length/2;
+
+if(index===0)
+{
+myCards=deck.slice(0,half);
+}
+else
+{
+myCards=deck.slice(half);
+}
+
+cardsDealt=true;
+
+buildGrid();
+
+gamePanel.style.display="block";
+
+lobby.style.display="none";
+
+}
+
+
+if(data.chain){
+
+chainEl.textContent="I HAVE "+data.chain.have.toUpperCase()+" — WHO HAS "+data.chain.who.toUpperCase();
+
+currentTarget=data.chain.who;
+
+const remaining=computeRemaining(data);
+
+chainBroken=remaining[currentTarget]<=0;
+
+buildGrid();
+
+}
+
+
+if(data.winner){
+
+chainEl.textContent=data.winner+" wins!";
+
+}
+
 
 });
 
 }
 
-async function createRoom(){
+async function enterGame(){
 
-roomId=document.getElementById("roomInput").value||"room"+Math.floor(Math.random()*999);
+myName=document.getElementById("nameInput").value||"player";
+
+let params=new URLSearchParams(location.search);
+
+roomId=params.get("room");
+
+if(!roomId)
+{
+
+roomId="room"+Math.floor(Math.random()*999999);
 
 await set(ref(db,"rooms/"+roomId),{
 state:"waiting",
 gameStarted:false,
-teacher:playerId,
+players:{},
 played:[]
 });
 
 const link=location.origin+location.pathname+"?room="+roomId;
 
-document.getElementById("studentLink").innerHTML="Student link:<br>"+link;
-
-listenRoom();
+document.getElementById("share").innerHTML="Send this link to student:<br>"+link;
 
 }
 
-async function joinStudent(){
-
-roomId=new URLSearchParams(location.search).get("room");
-role="student";
-
 await update(ref(db,"rooms/"+roomId+"/players"),{
-[playerId]:{name:document.getElementById("studentName").value}
+[playerId]:{name:myName}
 });
 
-studentPanel.style.display="none";
-
-gamePanel.style.display="block";
+home.style.display="none";
+lobby.style.display="block";
 
 listenRoom();
 
@@ -281,73 +415,12 @@ winner:null
 
 }
 
-function computeRemaining(data){
-
-const counts={};
-animals.forEach(a=>counts[a]=3);
-
-if(data.played){
-
-for(const c of data.played){
-counts[c.have]--;
-}
-
-}
-
-return counts;
-
-}
-
-function listenRoom(){
-
-onValue(ref(db,"rooms/"+roomId),snap=>{
-
-const data=snap.val();
-if(!data) return;
-
-if(data.state==="playing" && data.gameStarted && !cardsDealt){
-
-const deck=data.deck;
-
-if(role==="teacher") myCards=deck.slice(0,12);
-else myCards=deck.slice(12);
-
-cardsDealt=true;
-
-buildGrid();
-
-gamePanel.style.display="block";
-
-}
-
-if(data.chain){
-
-chainEl.textContent=
-"I HAVE "+data.chain.have.toUpperCase()+" — WHO HAS "+data.chain.who.toUpperCase();
-
-currentTarget=data.chain.who;
-
-const remaining=computeRemaining(data);
-
-chainBroken = remaining[currentTarget] <= 0;
-
-buildGrid();
-
-}
-
-if(data.winner){
-chainEl.textContent=data.winner.toUpperCase()+" WINS!";
-}
-
-});
-
-}
-
 async function attemptPlay(animal){
 
 if(!chainBroken && currentTarget && animal!==currentTarget) return;
 
 const card=myCards.find(c=>c.have===animal);
+
 if(!card) return;
 
 const roomRef=ref(db,"rooms/"+roomId);
@@ -355,9 +428,9 @@ const roomRef=ref(db,"rooms/"+roomId);
 onValue(roomRef, async snap=>{
 
 const data=snap.val();
-if(!data) return;
 
 const played=data.played||[];
+
 played.push(card);
 
 await update(roomRef,{chain:card,played:played});
@@ -371,28 +444,16 @@ buildGrid();
 if(myCards.length===0){
 
 await update(ref(db,"rooms/"+roomId),{
-winner:role
+winner:myName
 });
 
 }
 
 }
 
-if(new URLSearchParams(location.search).get("room")){
-home.style.display="none";
-studentPanel.style.display="block";
-}
-else{
-home.style.display="block";
-}
 
-document.getElementById("teacherBtn").onclick=()=>{
-home.style.display="none";
-teacherPanel.style.display="block";
-};
+document.getElementById("enterBtn").onclick=enterGame;
 
-document.getElementById("createRoomBtn").onclick=createRoom;
-document.getElementById("joinBtn").onclick=joinStudent;
 document.getElementById("startGameBtn").onclick=startGame;
 
 </script>
