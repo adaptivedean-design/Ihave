@@ -7,27 +7,112 @@
 
 <style>
 body{margin:0;font-family:system-ui;background:#0f172a;color:white;display:flex;justify-content:center;align-items:center;min-height:100vh}
-#app{width:950px;background:#1e293b;padding:22px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+#app{width:1100px;background:#1e293b;padding:18px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+
 h1{margin-top:0}
+
 input,button{padding:8px;border-radius:6px;border:none;margin:6px 0}
 button{background:#2563eb;color:white;cursor:pointer}
 button:hover{background:#1d4ed8}
-#lobby,#gamePanel{display:none}
-#players{margin-top:10px;font-size:14px;color:#cbd5f5}
 
-#tableArea{display:flex;gap:20px;margin-top:20px}
+#lobby,#game{display:none}
 
-#grid{flex:3;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+#players{font-size:14px;margin-top:10px;color:#cbd5f5}
 
-.cardPile{background:#020617;border-radius:8px;padding:14px;text-align:center;cursor:pointer}
-.cardPile.disabled{opacity:0.35;cursor:not-allowed}
-.count{font-size:12px;color:#94a3b8}
+/* BOARD LAYOUT */
 
-#deckArea{flex:1;background:#020617;border-radius:8px;padding:16px;text-align:center;cursor:pointer}
+#board{
+display:grid;
+grid-template-rows:20% 30% 50%;
+height:650px;
+}
 
-#chain{margin-top:18px;padding:12px;background:#020617;border-radius:8px;font-size:20px;text-align:center}
+/* OPPONENT AREA */
 
-#log{margin-top:15px;height:120px;overflow:auto;background:#020617;padding:10px;border-radius:6px;font-size:12px}
+#opponentArea{
+border-bottom:1px solid #334155;
+display:flex;
+justify-content:center;
+align-items:center;
+}
+
+#opponentGrid{
+display:grid;
+grid-template-columns:repeat(auto-fit,50px);
+gap:6px;
+justify-content:center;
+}
+
+.opponentCard{
+background:#020617;
+height:40px;
+width:50px;
+border-radius:6px;
+opacity:.8;
+}
+
+/* CENTER AREA */
+
+#centerArea{
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+}
+
+#deck{
+background:#020617;
+width:200px;
+height:120px;
+border-radius:10px;
+display:flex;
+justify-content:center;
+align-items:center;
+text-align:center;
+cursor:pointer;
+padding:10px;
+}
+
+#chainText{
+margin-top:10px;
+font-size:22px;
+font-weight:600;
+}
+
+/* PLAYER AREA */
+
+#playerArea{
+border-top:1px solid #334155;
+display:flex;
+justify-content:center;
+align-items:center;
+}
+
+#playerGrid{
+display:grid;
+grid-template-columns:repeat(auto-fit,90px);
+gap:10px;
+justify-content:center;
+}
+
+.playerCard{
+background:#020617;
+height:90px;
+width:90px;
+border-radius:8px;
+cursor:pointer;
+display:flex;
+justify-content:center;
+align-items:center;
+font-size:12px;
+text-align:center;
+}
+
+.playerCard.disabled{
+opacity:.35;
+cursor:not-allowed;
+}
+
 </style>
 </head>
 
@@ -45,28 +130,37 @@ Enter your name<br>
 </div>
 
 <div id="lobby">
+
 <div id="share"></div>
+
 <div id="players"></div>
+
 <br>
 <button id="startGameBtn">Start Game</button>
-</div>
-
-<div id="gamePanel">
-
-<div id="chain">Waiting...</div>
-
-<div id="tableArea">
-
-<div id="grid"></div>
-
-<div id="deckArea">
-<b>Deck</b>
-<div id="deckText">Click to flip card</div>
-</div>
 
 </div>
 
-<div id="log"></div>
+<div id="game">
+
+<div id="board">
+
+<div id="opponentArea">
+<div id="opponentGrid"></div>
+</div>
+
+<div id="centerArea">
+
+<div id="deck">Flip Card</div>
+
+<div id="chainText">Waiting...</div>
+
+</div>
+
+<div id="playerArea">
+<div id="playerGrid"></div>
+</div>
+
+</div>
 
 </div>
 
@@ -95,31 +189,26 @@ let playerId="p"+Math.floor(Math.random()*999999);
 let myName="";
 
 let myCards=[];
-let cardsDealt=false;
+let opponentCount=0;
 
-let pendingCard=null;
+let cardsDealt=false;
 let waitingFlip=false;
 
 let currentTarget=null;
-let chainBroken=false;
-
-let gridOrder=[];
 
 const animals=["alligator","elephant","snake","lion","dog","cat","horse","monkey"];
 
 const home=document.getElementById("home");
 const lobby=document.getElementById("lobby");
-const gamePanel=document.getElementById("gamePanel");
+const game=document.getElementById("game");
 
 const playersDiv=document.getElementById("players");
 
-const grid=document.getElementById("grid");
-const chainEl=document.getElementById("chain");
-const logEl=document.getElementById("log");
-const deckArea=document.getElementById("deckArea");
-const deckText=document.getElementById("deckText");
+const playerGrid=document.getElementById("playerGrid");
+const opponentGrid=document.getElementById("opponentGrid");
 
-function log(t){const d=document.createElement("div");d.textContent=t;logEl.appendChild(d);logEl.scrollTop=logEl.scrollHeight}
+const chainText=document.getElementById("chainText");
+const deck=document.getElementById("deck");
 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a}
 
@@ -134,45 +223,49 @@ for(let c=0;c<3;c++) deck.push({have,who});
 return shuffle(deck);
 }
 
-function buildGrid(){
+function buildPlayerGrid(){
 
-const groups={};
-myCards.forEach(c=>{if(!groups[c.have]) groups[c.have]=[];groups[c.have].push(c)});
+playerGrid.innerHTML="";
 
-if(gridOrder.length===0) gridOrder=shuffle([...animals]);
-
-grid.innerHTML="";
-
-for(const a of gridOrder){
-
-const pile=groups[a]||[];
+myCards.forEach(card=>{
 
 const div=document.createElement("div");
 
+div.className="playerCard";
+
+div.textContent=card.have;
+
 let disabled=false;
 
-if(!chainBroken && currentTarget && a!==currentTarget) disabled=true;
 if(waitingFlip) disabled=true;
+
+if(currentTarget && card.have!==currentTarget) disabled=true;
 
 if(disabled) div.classList.add("disabled");
 
+if(!disabled) div.onclick=()=>playCard(card);
 
-div.className+=" cardPile";
+playerGrid.appendChild(div);
 
-div.innerHTML=`<b>${a}</b><div class="count">${pile.length}</div>`;
-
-if(!disabled && pile.length>0) div.onclick=()=>attemptPlay(a);
-
-grid.appendChild(div);
+});
 
 }
 
+function buildOpponentGrid(){
+
+opponentGrid.innerHTML="";
+
+for(let i=0;i<opponentCount;i++){
+
+const div=document.createElement("div");
+
+
+div.className="opponentCard";
+
+opponentGrid.appendChild(div);
+
 }
 
-function computeRemaining(data){
-const counts={};animals.forEach(a=>counts[a]=3);
-if(data.played){for(const c of data.played) counts[c.have]--}
-return counts;
 }
 
 function listenRoom(){
@@ -180,50 +273,64 @@ function listenRoom(){
 onValue(ref(db,"rooms/"+roomId),snap=>{
 
 const data=snap.val();
+
 if(!data) return;
 
 if(data.players){
+
 playersDiv.innerHTML="Connected:<br>";
-for(const p in data.players){playersDiv.innerHTML+=data.players[p].name+"<br>"}
+
+for(const p in data.players){
+
+playersDiv.innerHTML+=data.players[p].name+"<br>";
+
+}
+
 }
 
 if(data.state==="playing" && data.gameStarted && !cardsDealt){
 
 const deck=data.deck;
+
 const ids=Object.keys(data.players);
+
 const index=ids.indexOf(playerId);
+
 const half=deck.length/2;
 
-if(index===0) myCards=deck.slice(0,half);
-else myCards=deck.slice(half);
+if(index===0){
+myCards=deck.slice(0,half);
+opponentCount=half;
+}
+else{
+myCards=deck.slice(half);
+opponentCount=half;
+}
 
 cardsDealt=true;
 
-buildGrid();
+buildPlayerGrid();
+buildOpponentGrid();
 
-gamePanel.style.display="block";
+game.style.display="block";
 lobby.style.display="none";
 
 }
 
-if(data.chain && !waitingFlip){
+if(data.chain){
 
-chainEl.textContent="I HAVE "+data.chain.have.toUpperCase()+" — WHO HAS ?";
+chainText.textContent="I HAVE "+data.chain.have.toUpperCase();
+
 currentTarget=data.chain.who;
 
-const remaining=computeRemaining(data);
-chainBroken=remaining[currentTarget]<=0;
-
 }
 
-if(data.chain && data.revealed){
+if(data.revealed){
 
-chainEl.textContent="I HAVE "+data.chain.have.toUpperCase()+" — WHO HAS "+data.chain.who.toUpperCase();
+chainText.textContent="WHO HAS "+currentTarget.toUpperCase();
 
-}
+buildPlayerGrid();
 
-if(data.winner){
-chainEl.textContent=data.winner+" wins!";
 }
 
 });
@@ -235,9 +342,11 @@ async function enterGame(){
 myName=document.getElementById("nameInput").value||"player";
 
 let params=new URLSearchParams(location.search);
+
 roomId=params.get("room");
 
 if(!roomId){
+
 roomId="room"+Math.floor(Math.random()*999999);
 
 await set(ref(db,"rooms/"+roomId),{
@@ -250,7 +359,9 @@ revealed:false
 
 const link=location.origin+location.pathname+"?room="+roomId;
 
-document.getElementById("share").innerHTML="Send this link to student:<br>"+link;
+
+document.getElementById("share").innerHTML="Send link to student:<br>"+link;
+
 }
 
 await update(ref(db,"rooms/"+roomId+"/players"),{[playerId]:{name:myName}});
@@ -272,37 +383,30 @@ gameStarted:true,
 deck:deck,
 played:[],
 chain:null,
-winner:null,
 revealed:false
 });
 
 }
 
-async function attemptPlay(animal){
+async function playCard(card){
 
 if(waitingFlip) return;
 
-if(!chainBroken && currentTarget && animal!==currentTarget) return;
-
-const card=myCards.find(c=>c.have===animal);
-if(!card) return;
-
-pendingCard=card;
 waitingFlip=true;
 
 myCards=myCards.filter(c=>c!==card);
 
-buildGrid();
+buildPlayerGrid();
 
 const roomRef=ref(db,"rooms/"+roomId);
 
 const snap=await get(roomRef);
+
 const data=snap.val();
 
-const played=data.played||[];
-played.push(card);
+await update(roomRef,{chain:card,revealed:false});
 
-await update(roomRef,{chain:card,played:played,revealed:false});
+chainText.textContent="I HAVE "+card.have.toUpperCase();
 
 }
 
@@ -310,21 +414,18 @@ async function flipDeck(){
 
 if(!waitingFlip) return;
 
-const roomRef=ref(db,"rooms/"+roomId);
-
-await update(roomRef,{revealed:true});
+await update(ref(db,"rooms/"+roomId),{revealed:true});
 
 waitingFlip=false;
-pendingCard=null;
-
-buildGrid();
 
 }
 
 
 document.getElementById("enterBtn").onclick=enterGame;
+
 document.getElementById("startGameBtn").onclick=startGame;
-deckArea.onclick=flipDeck;
+
+deck.onclick=flipDeck;
 
 </script>
 
