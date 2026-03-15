@@ -3,27 +3,60 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>I Have / Who Has – Online</title>
+
+<title>I Have / Who Has</title>
 
 <style>
-body{margin:0;font-family:system-ui;background:#0f172a;color:white;display:flex;justify-content:center;align-items:center;min-height:100vh}
-#app{width:1100px;background:#1e293b;padding:18px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+
+body{
+margin:0;
+font-family:system-ui;
+background:#0f172a;
+color:white;
+display:flex;
+justify-content:center;
+align-items:center;
+min-height:100vh;
+}
+
+#app{
+width:1100px;
+background:#1e293b;
+padding:20px;
+border-radius:12px;
+box-shadow:0 10px 40px rgba(0,0,0,.5);
+}
 
 h1{margin-top:0}
 
-input,button{padding:8px;border-radius:6px;border:none;margin:6px 0}
-button{background:#2563eb;color:white;cursor:pointer}
-button:hover{background:#1d4ed8}
+input,button{
+padding:8px;
+border-radius:6px;
+border:none;
+margin:6px 0;
+}
+
+button{
+background:#2563eb;
+color:white;
+cursor:pointer;
+}
+
+button:hover{
+background:#1d4ed8;
+}
 
 #lobby,#game{display:none}
 
-#players{font-size:14px;margin-top:10px;color:#cbd5f5}
-
-/* BOARD LAYOUT */
+#players{
+font-size:14px;
+margin-top:10px;
+color:#cbd5f5;
+}
 
 #board{
 display:grid;
-grid-template-rows:20% 30% 50%;
+grid-template-rows:160px 200px 1fr;
 height:650px;
 }
 
@@ -38,17 +71,16 @@ align-items:center;
 
 #opponentGrid{
 display:grid;
-grid-template-columns:repeat(auto-fit,50px);
+grid-template-columns:repeat(8,1fr);
 gap:6px;
-justify-content:center;
+width:90%;
 }
 
 .opponentCard{
 background:#020617;
-height:40px;
-width:50px;
+height:45px;
 border-radius:6px;
-opacity:.8;
+opacity:.85;
 }
 
 /* CENTER AREA */
@@ -62,20 +94,18 @@ align-items:center;
 
 #deck{
 background:#020617;
-width:200px;
+width:220px;
 height:120px;
 border-radius:10px;
 display:flex;
 justify-content:center;
 align-items:center;
-text-align:center;
 cursor:pointer;
-padding:10px;
 }
 
 #chainText{
-margin-top:10px;
-font-size:22px;
+margin-top:12px;
+font-size:24px;
 font-weight:600;
 }
 
@@ -90,21 +120,20 @@ align-items:center;
 
 #playerGrid{
 display:grid;
-grid-template-columns:repeat(auto-fit,90px);
+grid-template-columns:repeat(8,1fr);
 gap:10px;
-justify-content:center;
+width:90%;
 }
 
 .playerCard{
 background:#020617;
-height:90px;
-width:90px;
+height:95px;
 border-radius:8px;
 cursor:pointer;
 display:flex;
 justify-content:center;
 align-items:center;
-font-size:12px;
+font-size:13px;
 text-align:center;
 }
 
@@ -123,10 +152,14 @@ cursor:not-allowed;
 <h1>I Have / Who Has</h1>
 
 <div id="home">
+
 Enter your name<br>
 <input id="nameInput" placeholder="name">
+
 <br>
+
 <button id="enterBtn">Enter</button>
+
 </div>
 
 <div id="lobby">
@@ -136,6 +169,7 @@ Enter your name<br>
 <div id="players"></div>
 
 <br>
+
 <button id="startGameBtn">Start Game</button>
 
 </div>
@@ -196,7 +230,10 @@ let waitingFlip=false;
 
 let currentTarget=null;
 
-const animals=["alligator","elephant","snake","lion","dog","cat","horse","monkey"];
+const animals=[
+"alligator","elephant","snake","lion",
+"dog","cat","horse","monkey"
+];
 
 const home=document.getElementById("home");
 const lobby=document.getElementById("lobby");
@@ -210,17 +247,35 @@ const opponentGrid=document.getElementById("opponentGrid");
 const chainText=document.getElementById("chainText");
 const deck=document.getElementById("deck");
 
-function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a}
+function shuffle(a){
+for(let i=a.length-1;i>0;i--){
+const j=Math.floor(Math.random()*(i+1));
+[a[i],a[j]]=[a[j],a[i]];
+}
+return a
+}
 
 function generateDeck(){
-const shuffledAnimals=shuffle([...animals]);
+
+const shuffled=shuffle([...animals]);
+
 let deck=[];
-for(let i=0;i<shuffledAnimals.length;i++){
-const have=shuffledAnimals[i];
-const who=shuffledAnimals[(i+1)%shuffledAnimals.length];
-for(let c=0;c<3;c++) deck.push({have,who});
+
+for(let i=0;i<shuffled.length;i++){
+
+const have=shuffled[i];
+const who=shuffled[(i+1)%shuffled.length];
+
+for(let c=0;c<3;c++){
+
+deck.push({have,who});
+
 }
-return shuffle(deck);
+
+}
+
+return shuffle(deck)
+
 }
 
 function buildPlayerGrid(){
@@ -243,7 +298,11 @@ if(currentTarget && card.have!==currentTarget) disabled=true;
 
 if(disabled) div.classList.add("disabled");
 
-if(!disabled) div.onclick=()=>playCard(card);
+if(!disabled){
+
+div.onclick=()=>playCard(card)
+
+}
 
 playerGrid.appendChild(div);
 
@@ -258,7 +317,6 @@ opponentGrid.innerHTML="";
 for(let i=0;i<opponentCount;i++){
 
 const div=document.createElement("div");
-
 
 div.className="opponentCard";
 
@@ -299,12 +357,15 @@ const index=ids.indexOf(playerId);
 const half=deck.length/2;
 
 if(index===0){
+
 myCards=deck.slice(0,half);
 opponentCount=half;
-}
-else{
+
+}else{
+
 myCards=deck.slice(half);
 opponentCount=half;
+
 }
 
 cardsDealt=true;
@@ -333,7 +394,7 @@ buildPlayerGrid();
 
 }
 
-});
+})
 
 }
 
@@ -353,18 +414,18 @@ await set(ref(db,"rooms/"+roomId),{
 state:"waiting",
 gameStarted:false,
 players:{},
-played:[],
 revealed:false
 });
 
 const link=location.origin+location.pathname+"?room="+roomId;
 
-
 document.getElementById("share").innerHTML="Send link to student:<br>"+link;
 
 }
 
-await update(ref(db,"rooms/"+roomId+"/players"),{[playerId]:{name:myName}});
+await update(ref(db,"rooms/"+roomId+"/players"),{
+[playerId]:{name:myName}
+});
 
 home.style.display="none";
 lobby.style.display="block";
@@ -378,12 +439,13 @@ async function startGame(){
 const deck=generateDeck();
 
 await update(ref(db,"rooms/"+roomId),{
+
 state:"playing",
 gameStarted:true,
 deck:deck,
-played:[],
 chain:null,
 revealed:false
+
 });
 
 }
@@ -398,13 +460,12 @@ myCards=myCards.filter(c=>c!==card);
 
 buildPlayerGrid();
 
-const roomRef=ref(db,"rooms/"+roomId);
+await update(ref(db,"rooms/"+roomId),{
 
-const snap=await get(roomRef);
+chain:card,
+revealed:false
 
-const data=snap.val();
-
-await update(roomRef,{chain:card,revealed:false});
+});
 
 chainText.textContent="I HAVE "+card.have.toUpperCase();
 
@@ -414,17 +475,18 @@ async function flipDeck(){
 
 if(!waitingFlip) return;
 
-await update(ref(db,"rooms/"+roomId),{revealed:true});
+await update(ref(db,"rooms/"+roomId),{
+
+revealed:true
+
+});
 
 waitingFlip=false;
 
 }
 
-
 document.getElementById("enterBtn").onclick=enterGame;
-
 document.getElementById("startGameBtn").onclick=startGame;
-
 deck.onclick=flipDeck;
 
 </script>
