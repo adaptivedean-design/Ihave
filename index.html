@@ -7,30 +7,156 @@
 <title>I Have / Who Has</title>
 
 <style>
-body{margin:0;font-family:system-ui;background:#0f172a;color:white;display:flex;justify-content:center;align-items:center;min-height:100vh;}
-#app{width:1100px;background:#1e293b;padding:20px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);}
+body{
+margin:0;
+font-family:system-ui;
+background:#0f172a;
+color:white;
+display:flex;
+justify-content:center;
+align-items:center;
+min-height:100vh;
+}
+
+#app{
+width:1100px;
+background:#1e293b;
+padding:20px;
+border-radius:12px;
+box-shadow:0 10px 40px rgba(0,0,0,.5);
+}
+
 h1{margin-top:0}
-input,button{padding:8px;border-radius:6px;border:none;margin:6px 0;}
-button{background:#2563eb;color:white;cursor:pointer;}
-button:hover{background:#1d4ed8;}
+
+input,button{
+padding:8px;
+border-radius:6px;
+border:none;
+margin:6px 0;
+}
+
+button{
+background:#2563eb;
+color:white;
+cursor:pointer;
+}
+
+button:hover{background:#1d4ed8}
+
 #lobby,#game{display:none}
-#players{font-size:14px;margin-top:10px;color:#cbd5f5;}
-#board{display:grid;grid-template-rows:160px 200px 1fr;height:650px;}
-#opponentArea{border-bottom:1px solid #334155;display:flex;justify-content:center;align-items:center;}
-#opponentGrid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;width:90%;}
-.opponentCard{background:#020617;height:45px;border-radius:6px;opacity:.85;}
-#centerArea{display:flex;flex-direction:column;justify-content:center;align-items:center;}
-#deck{background:#020617;width:220px;height:120px;border-radius:10px;display:flex;justify-content:center;align-items:center;cursor:pointer;}
-#chainText{margin-top:12px;font-size:24px;font-weight:600;}
-#playerArea{border-top:1px solid #334155;display:flex;justify-content:center;align-items:center;}
-#playerGrid{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;width:90%;}
-.playerCard{background:#020617;height:95px;border-radius:8px;cursor:pointer;display:flex;justify-content:center;align-items:center;font-size:13px;text-align:center;}
-.playerCard.disabled{opacity:.35;cursor:not-allowed;}
+
+#winnerBanner{
+display:none;
+background:#16a34a;
+padding:10px;
+border-radius:8px;
+margin-bottom:10px;
+font-weight:bold;
+}
+
+#board{
+display:grid;
+grid-template-rows:160px 200px 1fr;
+height:650px;
+}
+
+/* OPPONENT */
+
+#opponentArea{
+border-bottom:1px solid #334155;
+display:flex;
+justify-content:center;
+align-items:center;
+}
+
+#opponentGrid{
+display:grid;
+grid-template-columns:repeat(8,1fr);
+gap:6px;
+width:90%;
+}
+
+.opponentCard{
+background:#020617;
+height:45px;
+border-radius:6px;
+opacity:.85;
+}
+
+/* CENTER */
+
+#centerArea{
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+}
+
+#deck{
+background:#020617;
+width:220px;
+height:120px;
+border-radius:10px;
+display:flex;
+justify-content:center;
+align-items:center;
+cursor:pointer;
+}
+
+#chainText{
+margin-top:12px;
+font-size:24px;
+font-weight:600;
+text-align:center;
+min-height:60px;
+}
+
+/* PLAYER */
+
+#playerArea{
+border-top:1px solid #334155;
+display:flex;
+justify-content:center;
+align-items:center;
+}
+
+#playerGrid{
+display:grid;
+grid-template-columns:repeat(8,1fr);
+gap:10px;
+width:90%;
+}
+
+.playerCard{
+background:#020617;
+height:95px;
+border-radius:8px;
+cursor:pointer;
+display:flex;
+justify-content:center;
+align-items:center;
+font-size:13px;
+text-align:center;
+transition:.15s;
+}
+
+.playerCard:hover{background:#0b1220}
+
+.wrongFlash{
+animation:wrong .35s;
+}
+
+@keyframes wrong{
+0%{background:#7f1d1d}
+100%{background:#020617}
+}
 </style>
 </head>
 
 <body>
+
 <div id="app">
+
 <h1>I Have / Who Has</h1>
 
 <div id="home">
@@ -41,29 +167,46 @@ Enter your name<br>
 
 <div id="lobby">
 <div id="share"></div>
-<div id="players"></div><br>
+<div id="players"></div>
 <button id="startGameBtn">Start Game</button>
+<button id="restartBtn" style="display:none;background:#ea580c">Restart Game</button>
 </div>
 
 <div id="game">
+<div id="winnerBanner"></div>
 <div id="board">
-<div id="opponentArea"><div id="opponentGrid"></div></div>
+
+<div id="opponentArea">
+<div id="opponentGrid"></div>
+</div>
 
 <div id="centerArea">
 <div id="deck">Flip Card</div>
 <div id="chainText">Waiting...</div>
 </div>
 
-<div id="playerArea"><div id="playerGrid"></div></div>
+<div id="playerArea">
+<div id="playerGrid"></div>
+</div>
+
 </div>
 </div>
+
 </div>
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getDatabase, ref, set, update, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-const firebaseConfig={apiKey:"AIzaSyCZ4aNmk7xmpRnSe3ZOhOpkgGiCxQxKqSE",authDomain:"i-have-d5728.firebaseapp.com",databaseURL:"https://i-have-d5728-default-rtdb.firebaseio.com",projectId:"i-have-d5728",storageBucket:"i-have-d5728.firebasestorage.app",messagingSenderId:"1041491068804",appId:"1:1041491068804:web:21b0d472c5f2929d04bfd1"};
+const firebaseConfig={
+apiKey:"AIzaSyCZ4aNmk7xmpRnSe3ZOhOpkgGiCxQxKqSE",
+authDomain:"i-have-d5728.firebaseapp.com",
+databaseURL:"https://i-have-d5728-default-rtdb.firebaseio.com",
+projectId:"i-have-d5728",
+storageBucket:"i-have-d5728.firebasestorage.app",
+messagingSenderId:"1041491068804",
+appId:"1:1041491068804:web:21b0d472c5f2929d04bfd1"
+};
 
 const app=initializeApp(firebaseConfig);
 const db=getDatabase(app);
@@ -71,11 +214,14 @@ const db=getDatabase(app);
 let roomId=null;
 let playerId="p"+Math.floor(Math.random()*999999);
 let myName="";
+let isHost=false;
+
 let myCards=[];
 let opponentCount=0;
-let cardsDealt=false;
-let waitingFlip=false;
+let winnerDeclared=false;
+
 let currentTarget=null;
+let chainExists=true;
 
 const animals=["alligator","elephant","snake","lion","dog","cat","horse","monkey"];
 
@@ -87,42 +233,162 @@ const playerGrid=document.getElementById("playerGrid");
 const opponentGrid=document.getElementById("opponentGrid");
 const chainText=document.getElementById("chainText");
 const deck=document.getElementById("deck");
+const winnerBanner=document.getElementById("winnerBanner");
+
+const wrongSound=new Audio("data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=");
 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a}
 
-function generateDeck(){const shuffled=shuffle([...animals]);let deckArr=[];for(let i=0;i<shuffled.length;i++){const have=shuffled[i];const who=shuffled[(i+1)%shuffled.length];for(let c=0;c<3;c++){deckArr.push({have,who});}}return shuffle(deckArr)}
+function generateDeck(){
+const shuffled=shuffle([...animals]);
+let deck=[];
+for(let i=0;i<shuffled.length;i++){
+const have=shuffled[i];
+const who=shuffled[(i+1)%shuffled.length];
+for(let c=0;c<3;c++) deck.push({have,who});
+}
+return shuffle(deck)
+}
 
-function buildPlayerGrid(){playerGrid.innerHTML="";myCards.forEach(card=>{const div=document.createElement("div");div.className="playerCard";div.textContent=card.have;let disabled=false;if(waitingFlip) disabled=true;if(currentTarget && card.have!==currentTarget) disabled=true;if(disabled) div.classList.add("disabled");if(!disabled){div.onclick=()=>playCard(card);}playerGrid.appendChild(div);});}
+function showWrongFeedback(el){
+el.classList.add("wrongFlash");
+wrongSound.currentTime=0;
+wrongSound.play();
+setTimeout(()=>el.classList.remove("wrongFlash"),350);
+}
 
-function buildOpponentGrid(){opponentGrid.innerHTML="";for(let i=0;i<opponentCount;i++){const div=document.createElement("div");div.className="opponentCard";opponentGrid.appendChild(div);}}
+function buildPlayerGrid(){
+playerGrid.innerHTML="";
+myCards.forEach(card=>{
+const div=document.createElement("div");
+div.className="playerCard";
+div.textContent=card.have;
+div.onclick=()=>attemptPlay(card,div);
+playerGrid.appendChild(div);
+});
+}
 
-function listenRoom(){onValue(ref(db,"rooms/"+roomId),snap=>{const data=snap.val();if(!data) return;
+function buildOpponentGrid(){
+opponentGrid.innerHTML="";
+for(let i=0;i<opponentCount;i++){
+const div=document.createElement("div");
+div.className="opponentCard";
+opponentGrid.appendChild(div);
+}
+}
 
-if(data.players){playersDiv.innerHTML="Connected:<br>";for(const p in data.players){playersDiv.innerHTML+=data.players[p].name+"<br>";}}
+function checkWinner(){
+if(!winnerDeclared && myCards.length===0){
+winnerDeclared=true;
+winnerBanner.style.display="block";
+winnerBanner.textContent="🏆 "+myName+" finished first!";
+}
+}
 
-if(data.state==="playing" && data.gameStarted && !cardsDealt){const deckArr=data.deck;const ids=Object.keys(data.players);const index=ids.indexOf(playerId);const half=deckArr.length/2;if(index===0){myCards=deckArr.slice(0,half);opponentCount=half;}else{myCards=deckArr.slice(half);opponentCount=half;}cardsDealt=true;buildPlayerGrid();buildOpponentGrid();game.style.display="block";lobby.style.display="none";}
+async function attemptPlay(card,el){
+if(currentTarget){
+const iHaveTarget = myCards.some(c=>c.have===currentTarget);
+chainExists=iHaveTarget;
+}
 
-if(data.chain){chainText.textContent="I HAVE "+data.chain.have.toUpperCase();currentTarget=data.chain.who;}
+if(currentTarget && chainExists && card.have!==currentTarget){
+showWrongFeedback(el);
+return;
+}
 
-if(data.revealed){chainText.textContent="WHO HAS "+currentTarget.toUpperCase();waitingFlip=false;buildPlayerGrid();}
-});}
+myCards=myCards.filter(c=>c!==card);
+buildPlayerGrid();
+checkWinner();
 
-async function enterGame(){myName=document.getElementById("nameInput").value||"player";let params=new URLSearchParams(location.search);roomId=params.get("room");
+await update(ref(db,"rooms/"+roomId),{chain:card,revealed:false});
+chainText.textContent="I HAVE "+card.have.toUpperCase();
+}
 
-if(!roomId){roomId="room"+Math.floor(Math.random()*999999);await set(ref(db,"rooms/"+roomId),{state:"waiting",gameStarted:false,players:{},revealed:false});const link=location.origin+location.pathname+"?room="+roomId;document.getElementById("share").innerHTML="Send link to student:<br>"+link;}
+async function flipDeck(){
+await update(ref(db,"rooms/"+roomId),{revealed:true});
+}
 
+function listenRoom(){
+onValue(ref(db,"rooms/"+roomId),snap=>{
+const data=snap.val();
+if(!data) return;
+
+if(data.players){
+playersDiv.innerHTML="Connected:<br>";
+for(const p in data.players) playersDiv.innerHTML+=data.players[p].name+"<br>";
+}
+
+if(data.host===playerId) isHost=true;
+
+document.getElementById("startGameBtn").style.display=isHost?"inline-block":"none";
+document.getElementById("restartBtn").style.display=isHost&&data.gameStarted?"inline-block":"none";
+
+if(data.state==="playing" && data.gameStarted && data.deck){
+const ids=Object.keys(data.players);
+const index=ids.indexOf(playerId);
+const half=data.deck.length/2;
+myCards=index===0?data.deck.slice(0,half):data.deck.slice(half);
+opponentCount=half;
+buildPlayerGrid();
+buildOpponentGrid();
+game.style.display="block";
+lobby.style.display="none";
+}
+
+if(data.chain){
+chainText.textContent="I HAVE "+data.chain.have.toUpperCase();
+currentTarget=data.chain.who;
+}
+
+if(data.revealed && currentTarget){
+chainText.textContent="WHO HAS "+currentTarget.toUpperCase();
+}
+})
+}
+
+async function createRoom(){
+roomId="room"+Math.floor(Math.random()*999999);
+await set(ref(db,"rooms/"+roomId),{
+state:"waiting",
+gameStarted:false,
+players:{},
+revealed:false,
+host:playerId
+});
+const link=location.origin+location.pathname+"?room="+roomId;
+document.getElementById("share").innerHTML="Send link to student:<br>"+link;
+}
+
+async function enterGame(){
+myName=document.getElementById("nameInput").value||"player";
+let params=new URLSearchParams(location.search);
+roomId=params.get("room");
+if(!roomId) await createRoom();
 await update(ref(db,"rooms/"+roomId+"/players"),{[playerId]:{name:myName}});
-home.style.display="none";lobby.style.display="block";listenRoom();}
+home.style.display="none";
+lobby.style.display="block";
+listenRoom();
+}
 
-async function startGame(){const deckArr=generateDeck();await update(ref(db,"rooms/"+roomId),{state:"playing",gameStarted:true,deck:deckArr,chain:null,revealed:false});}
+async function startGame(){
+winnerDeclared=false;
+winnerBanner.style.display="none";
+await update(ref(db,"rooms/"+roomId),{
+state:"playing",
+gameStarted:true,
+deck:generateDeck(),
+chain:null,
+revealed:false
+});
+}
 
-async function playCard(card){if(waitingFlip) return;if(currentTarget && card.have!==currentTarget) return;waitingFlip=true;myCards=myCards.filter(c=>c!==card);buildPlayerGrid();await update(ref(db,"rooms/"+roomId),{chain:card,revealed:false});chainText.textContent="I HAVE "+card.have.toUpperCase();}
-
-async function flipDeck(){if(!waitingFlip) return;await update(ref(db,"rooms/"+roomId),{revealed:true});}
+async function restartGame(){ startGame(); }
 
 document.getElementById("enterBtn").onclick=enterGame;
 document.getElementById("startGameBtn").onclick=startGame;
+document.getElementById("restartBtn").onclick=restartGame;
 deck.onclick=flipDeck;
 </script>
+
 </body>
 </html>
