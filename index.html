@@ -1,178 +1,128 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Oppos Game</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #e4e09a;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin: 0;
-      padding: 0;
-    }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    h1 {
-      text-align: center;
-      margin-top: 20px;
-    }
+<title>I Have / Who Has</title>
 
-    #game-container {
-      display: flex;
-      flex-direction: row;
-      gap: 20px;
-      margin-top: 20px;
-      flex-wrap: wrap;
-      justify-content: center;
-      width: 100%;
-      max-width: 1200px;
-    }
-
-    .deck {
-      border: 2px solid #004870;
-      border-radius: 10px;
-      padding: 10px;
-      background-color: #bdf6e0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-width: 250px;
-      max-width: 300px;
-    }
-
-    .deck h2 {
-      margin: 0 0 10px 0;
-      color: #004870;
-    }
-
-    .cards-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-      gap: 8px;
-      justify-items: center;
-    }
-
-    .card {
-      width: 60px;
-      height: 90px;
-      border: 2px solid #004870;
-      border-radius: 5px;
-      background-color: #50d3df;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      cursor: pointer;
-      user-select: none;
-      font-weight: bold;
-      color: #004870;
-      transition: transform 0.2s, background-color 0.2s;
-    }
-
-    .card:hover {
-      transform: scale(1.05);
-    }
-
-    .card.incorrect {
-      background-color: #ff6b6b !important;
-      animation: flash 0.5s;
-    }
-
-    @keyframes flash {
-      0% { background-color: #ff6b6b; }
-      50% { background-color: #50d3df; }
-      100% { background-color: #ff6b6b; }
-    }
-
-    #reaction-chain {
-      margin-top: 20px;
-      font-size: 18px;
-      color: #004870;
-    }
-  </style>
+<style>
+body{margin:0;font-family:system-ui;background:#0f172a;color:white;display:flex;justify-content:center;align-items:center;min-height:100vh;}
+#app{width:1100px;background:#1e293b;padding:20px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);}
+h1{margin-top:0}
+input,button{padding:8px;border-radius:6px;border:none;margin:6px 0;}
+button{background:#2563eb;color:white;cursor:pointer;}
+button:hover{background:#1d4ed8;}
+#lobby,#game{display:none}
+#players{font-size:14px;margin-top:10px;color:#cbd5f5;}
+#board{display:grid;grid-template-rows:160px 200px 1fr;height:650px;}
+#opponentArea{border-bottom:1px solid #334155;display:flex;justify-content:center;align-items:center;}
+#opponentGrid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;width:90%;}
+.opponentCard{background:#020617;height:45px;border-radius:6px;opacity:.85;}
+#centerArea{display:flex;flex-direction:column;justify-content:center;align-items:center;}
+#deck{background:#020617;width:220px;height:120px;border-radius:10px;display:flex;justify-content:center;align-items:center;cursor:pointer;}
+#chainText{margin-top:12px;font-size:24px;font-weight:600;}
+#playerArea{border-top:1px solid #334155;display:flex;justify-content:center;align-items:center;}
+#playerGrid{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;width:90%;}
+.playerCard{background:#020617;height:95px;border-radius:8px;cursor:pointer;display:flex;justify-content:center;align-items:center;font-size:13px;text-align:center;}
+.playerCard.disabled{opacity:.35;cursor:not-allowed;}
+</style>
 </head>
+
 <body>
-  <h1>Oppos Game</h1>
+<div id="app">
+<h1>I Have / Who Has</h1>
 
-  <div id="game-container">
-    <div class="deck" id="player1-deck">
-      <h2>Player 1</h2>
-      <div class="cards-grid"></div>
-    </div>
-    <div class="deck" id="player2-deck">
-      <h2>Player 2</h2>
-      <div class="cards-grid"></div>
-    </div>
-  </div>
+<div id="home">
+Enter your name<br>
+<input id="nameInput" placeholder="name"><br>
+<button id="enterBtn">Enter</button>
+</div>
 
-  <div id="reaction-chain">Next required card: ANY</div>
+<div id="lobby">
+<div id="share"></div>
+<div id="players"></div><br>
+<button id="startGameBtn">Start Game</button>
+</div>
 
-  <script>
-    // Sample decks (replace with images/words later)
-    const deck1 = ['big','dirty','easy','fast','full','happy','hard','hot','light','loud','old','open','tall','thick'];
-    const deck2 = ['small','clean','difficult','slow','empty','sad','soft','cold','heavy','quiet','new','closed','short','thin'];
+<div id="game">
+<div id="board">
+<div id="opponentArea"><div id="opponentGrid"></div></div>
 
-    let currentPlayer = 1;
-    let chainRequired = null; // null means ANY card allowed
+<div id="centerArea">
+<div id="deck">Flip Card</div>
+<div id="chainText">Waiting...</div>
+</div>
 
-    const player1Grid = document.querySelector('#player1-deck .cards-grid');
-    const player2Grid = document.querySelector('#player2-deck .cards-grid');
-    const reactionChainEl = document.getElementById('reaction-chain');
+<div id="playerArea"><div id="playerGrid"></div></div>
+</div>
+</div>
+</div>
 
-    function renderDeck(deck, grid, player) {
-      grid.innerHTML = '';
-      deck.forEach((card, index) => {
-        const cardEl = document.createElement('div');
-        cardEl.classList.add('card');
-        cardEl.textContent = card;
-        cardEl.dataset.player = player;
-        cardEl.dataset.index = index;
-        cardEl.addEventListener('click', playCard);
-        grid.appendChild(cardEl);
-      });
-    }
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getDatabase, ref, set, update, onValue } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-    function playCard(e) {
-      const cardEl = e.currentTarget;
-      const player = parseInt(cardEl.dataset.player);
-      const index = parseInt(cardEl.dataset.index);
+const firebaseConfig={apiKey:"AIzaSyCZ4aNmk7xmpRnSe3ZOhOpkgGiCxQxKqSE",authDomain:"i-have-d5728.firebaseapp.com",databaseURL:"https://i-have-d5728-default-rtdb.firebaseio.com",projectId:"i-have-d5728",storageBucket:"i-have-d5728.firebasestorage.app",messagingSenderId:"1041491068804",appId:"1:1041491068804:web:21b0d472c5f2929d04bfd1"};
 
-      if (player !== currentPlayer) {
-        cardEl.classList.add('incorrect');
-        setTimeout(() => cardEl.classList.remove('incorrect'), 500);
-        return;
-      }
+const app=initializeApp(firebaseConfig);
+const db=getDatabase(app);
 
-      const playerDeck = player === 1 ? deck1 : deck2;
+let roomId=null;
+let playerId="p"+Math.floor(Math.random()*999999);
+let myName="";
+let myCards=[];
+let opponentCount=0;
+let cardsDealt=false;
+let waitingFlip=false;
+let currentTarget=null;
 
-      // Enforce reaction chain if it exists
-      if (chainRequired && cardEl.textContent !== chainRequired) {
-        cardEl.classList.add('incorrect');
-        setTimeout(() => cardEl.classList.remove('incorrect'), 500);
-        return;
-      }
+const animals=["alligator","elephant","snake","lion","dog","cat","horse","monkey"];
 
-      // Remove card from deck
-      playerDeck.splice(index, 1);
+const home=document.getElementById("home");
+const lobby=document.getElementById("lobby");
+const game=document.getElementById("game");
+const playersDiv=document.getElementById("players");
+const playerGrid=document.getElementById("playerGrid");
+const opponentGrid=document.getElementById("opponentGrid");
+const chainText=document.getElementById("chainText");
+const deck=document.getElementById("deck");
 
-      // Update chain: next chainRequired can be set here
-      // For simplicity, alternating: next card same as previous (could be expanded)
-      chainRequired = null; // Example: reset chain, can customize
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a}
 
-      // Update display
-      renderDeck(deck1, player1Grid, 1);
-      renderDeck(deck2, player2Grid, 2);
+function generateDeck(){const shuffled=shuffle([...animals]);let deckArr=[];for(let i=0;i<shuffled.length;i++){const have=shuffled[i];const who=shuffled[(i+1)%shuffled.length];for(let c=0;c<3;c++){deckArr.push({have,who});}}return shuffle(deckArr)}
 
-      // Switch player
-      currentPlayer = currentPlayer === 1 ? 2 : 1;
-      reactionChainEl.textContent = 'Next required card: ' + (chainRequired || 'ANY');
-    }
+function buildPlayerGrid(){playerGrid.innerHTML="";myCards.forEach(card=>{const div=document.createElement("div");div.className="playerCard";div.textContent=card.have;let disabled=false;if(waitingFlip) disabled=true;if(currentTarget && card.have!==currentTarget) disabled=true;if(disabled) div.classList.add("disabled");if(!disabled){div.onclick=()=>playCard(card);}playerGrid.appendChild(div);});}
 
-    // Initial render
-    renderDeck(deck1, player1Grid, 1);
-    renderDeck(deck2, player2Grid, 2);
-  </script>
+function buildOpponentGrid(){opponentGrid.innerHTML="";for(let i=0;i<opponentCount;i++){const div=document.createElement("div");div.className="opponentCard";opponentGrid.appendChild(div);}}
+
+function listenRoom(){onValue(ref(db,"rooms/"+roomId),snap=>{const data=snap.val();if(!data) return;
+
+if(data.players){playersDiv.innerHTML="Connected:<br>";for(const p in data.players){playersDiv.innerHTML+=data.players[p].name+"<br>";}}
+
+if(data.state==="playing" && data.gameStarted && !cardsDealt){const deckArr=data.deck;const ids=Object.keys(data.players);const index=ids.indexOf(playerId);const half=deckArr.length/2;if(index===0){myCards=deckArr.slice(0,half);opponentCount=half;}else{myCards=deckArr.slice(half);opponentCount=half;}cardsDealt=true;buildPlayerGrid();buildOpponentGrid();game.style.display="block";lobby.style.display="none";}
+
+if(data.chain){chainText.textContent="I HAVE "+data.chain.have.toUpperCase();currentTarget=data.chain.who;}
+
+if(data.revealed){chainText.textContent="WHO HAS "+currentTarget.toUpperCase();waitingFlip=false;buildPlayerGrid();}
+});}
+
+async function enterGame(){myName=document.getElementById("nameInput").value||"player";let params=new URLSearchParams(location.search);roomId=params.get("room");
+
+if(!roomId){roomId="room"+Math.floor(Math.random()*999999);await set(ref(db,"rooms/"+roomId),{state:"waiting",gameStarted:false,players:{},revealed:false});const link=location.origin+location.pathname+"?room="+roomId;document.getElementById("share").innerHTML="Send link to student:<br>"+link;}
+
+await update(ref(db,"rooms/"+roomId+"/players"),{[playerId]:{name:myName}});
+home.style.display="none";lobby.style.display="block";listenRoom();}
+
+async function startGame(){const deckArr=generateDeck();await update(ref(db,"rooms/"+roomId),{state:"playing",gameStarted:true,deck:deckArr,chain:null,revealed:false});}
+
+async function playCard(card){if(waitingFlip) return;if(currentTarget && card.have!==currentTarget) return;waitingFlip=true;myCards=myCards.filter(c=>c!==card);buildPlayerGrid();await update(ref(db,"rooms/"+roomId),{chain:card,revealed:false});chainText.textContent="I HAVE "+card.have.toUpperCase();}
+
+async function flipDeck(){if(!waitingFlip) return;await update(ref(db,"rooms/"+roomId),{revealed:true});}
+
+document.getElementById("enterBtn").onclick=enterGame;
+document.getElementById("startGameBtn").onclick=startGame;
+deck.onclick=flipDeck;
+</script>
 </body>
 </html>
