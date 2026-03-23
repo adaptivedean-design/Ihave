@@ -34,82 +34,22 @@ background:#2563eb;
 color:white;
 cursor:pointer;
 }
-button:hover{
-background:#1d4ed8;
-}
+button:hover{ background:#1d4ed8; }
 #lobby,#game{display:none}
-#players{
-font-size:14px;
-margin-top:10px;
-color:#cbd5f5;
-}
-#board{
-display:grid;
-grid-template-rows:160px 200px 1fr;
-height:650px;
-}
-#opponentArea{
-border-bottom:1px solid #334155;
-display:flex;
-justify-content:center;
-align-items:center;
-}
-#opponentGrid{
-display:grid;
-grid-template-columns:repeat(8,1fr);
-gap:6px;
-width:90%;
-}
-.opponentCard{
-background:#020617;
-height:45px;
-border-radius:6px;
-opacity:.85;
-}
-#centerArea{
-display:flex;
-flex-direction:column;
-justify-content:center;
-align-items:center;
-}
-#deck{
-background:#020617;
-width:220px;
-height:120px;
-border-radius:10px;
-display:flex;
-justify-content:center;
-align-items:center;
-cursor:pointer;
-}
-#chainText{
-margin-top:12px;
-font-size:24px;
-font-weight:600;
-}
-#playerArea{
-border-top:1px solid #334155;
-display:flex;
-justify-content:center;
-align-items:center;
-}
-#playerGrid{
-display:grid;
-grid-template-columns:repeat(8,1fr);
-gap:10px;
-width:90%;
-}
+#players{font-size:14px;margin-top:10px;color:#cbd5f5;}
+#board{display:grid;grid-template-rows:160px 200px 1fr;height:650px;}
+#opponentArea{border-bottom:1px solid #334155;display:flex;justify-content:center;align-items:center;}
+#opponentGrid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;width:90%;}
+.opponentCard{background:#020617;height:45px;border-radius:6px;opacity:.85;}
+#centerArea{display:flex;flex-direction:column;justify-content:center;align-items:center;}
+#deck{background:#020617;width:220px;height:120px;border-radius:10px;display:flex;justify-content:center;align-items:center;cursor:pointer;text-align:center;padding:10px;}
+#chainText{margin-top:12px;font-size:24px;font-weight:600;text-align:center;}
+#playerArea{border-top:1px solid #334155;display:flex;justify-content:center;align-items:center;}
+#playerGrid{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;width:90%;}
 .playerCard{
-background:#020617;
-height:95px;
-border-radius:8px;
-cursor:pointer;
-display:flex;
-justify-content:center;
-align-items:center;
-font-size:13px;
-text-align:center;
-transition:transform .08s;
+background:#020617;height:95px;border-radius:8px;cursor:pointer;
+display:flex;justify-content:center;align-items:center;
+font-size:13px;text-align:center;transition:transform .08s;
 }
 .playerCard:hover{ transform:scale(1.05); }
 </style>
@@ -168,6 +108,7 @@ let isHost=false;
 let myCards=[];
 let opponentCount=0;
 let cardsDealt=false;
+let currentChain=null;
 
 const animals=["alligator","elephant","snake","lion","dog","cat","horse","monkey"];
 
@@ -178,6 +119,7 @@ const playersDiv=document.getElementById("players");
 const playerGrid=document.getElementById("playerGrid");
 const opponentGrid=document.getElementById("opponentGrid");
 const chainText=document.getElementById("chainText");
+const deckDiv=document.getElementById("deck");
 const startBtn=document.getElementById("startGameBtn");
 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a}
@@ -198,7 +140,7 @@ playerGrid.innerHTML="";
 myCards.forEach(card=>{
 const div=document.createElement("div");
 div.className="playerCard";
-div.textContent=card.have.toUpperCase();
+div.textContent="I HAVE "+card.have.toUpperCase();
 div.onclick=()=>playCard(card);
 playerGrid.appendChild(div);
 });
@@ -210,6 +152,15 @@ for(let i=0;i<opponentCount;i++){
 const div=document.createElement("div");
 div.className="opponentCard";
 opponentGrid.appendChild(div);
+}
+}
+
+function updateCenter(){
+if(!currentChain){ chainText.textContent="Waiting..."; return; }
+if(!currentChain.revealed){
+chainText.textContent="I HAVE "+currentChain.have.toUpperCase();
+}else{
+chainText.textContent="WHO HAS "+currentChain.who.toUpperCase()+"?";
 }
 }
 
@@ -225,19 +176,59 @@ playersDiv.innerHTML+=data.players[p].name+"<br>";
 }
 }
 
-if(data.state==="playing" && data.players && data.players[playerId] && !cardsDealt){
-myCards=data.players[playerId].cards || [];
+if(data.chain){ currentChain=data.chain; updateCenter(); }
+
+if(data.state==="playing" && data.players && data.players[playerId]){
+const fresh=data.players[playerId].cards || [];
+if(JSON.stringify(fresh)!==JSON.stringify(myCards)){
+myCards=fresh;
+buildPlayerGrid();
+}
 const otherId=Object.keys(data.players).find(id=>id!==playerId);
 opponentCount=data.players[otherId]?.cards?.length || 0;
-
-cardsDealt=true;
-buildPlayerGrid();
 buildOpponentGrid();
+
+if(!cardsDealt){
+cardsDealt=true;
 game.style.display="block";
 lobby.style.display="none";
 }
+}
+
+if(data.winner){
+chainText.textContent=data.winner===playerId?"YOU WIN! 🎉":"You Lose";
+}
 })
 }
+
+async function playCard(card){
+if(currentChain){
+if(!currentChain.revealed) return;
+if(card.have!==currentChain.who) return;
+}
+
+const newHand=myCards.filter(c=>c.id!==card.id);
+myCards=newHand;
+buildPlayerGrid();
+
+await update(ref(db,"rooms/"+roomId+"/players/"+playerId),{cards:newHand});
+
+await update(ref(db,"rooms/"+roomId+"/chain"],{
+have:card.have,
+who:card.who,
+revealed:false
+});
+
+if(newHand.length===0){
+await update(ref(db,"rooms/"+roomId),{winner:playerId});
+}
+}
+
+deckDiv.onclick=async ()=>{
+if(!currentChain) return;
+if(currentChain.revealed) return;
+await update(ref(db,"rooms/"+roomId+"/chain/revealed"),true);
+};
 
 async function enterGame(){
 myName=document.getElementById("nameInput").value||"player";
@@ -275,13 +266,11 @@ const deck=generateDeck();
 const half=deck.length/2;
 const updates={};
 updates[`rooms/${roomId}/state`]="playing";
+updates[`rooms/${roomId}/chain`]=null;
+updates[`rooms/${roomId}/winner`]=null;
 updates[`rooms/${roomId}/players/${ids[0]}/cards`]=deck.slice(0,half);
 updates[`rooms/${roomId}/players/${ids[1]}/cards`]=deck.slice(half);
 await update(ref(db),updates);
-}
-
-async function playCard(card){
-alert("Played: "+card.have+" → Who has "+card.who);
 }
 
 document.getElementById("enterBtn").onclick=enterGame;
