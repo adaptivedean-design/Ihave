@@ -48,8 +48,6 @@ display:grid;
 grid-template-rows:160px 200px 1fr;
 height:650px;
 }
-
-/* OPPONENT AREA */
 #opponentArea{
 border-bottom:1px solid #334155;
 display:flex;
@@ -68,8 +66,6 @@ height:45px;
 border-radius:6px;
 opacity:.85;
 }
-
-/* CENTER AREA */
 #centerArea{
 display:flex;
 flex-direction:column;
@@ -91,8 +87,6 @@ margin-top:12px;
 font-size:24px;
 font-weight:600;
 }
-
-/* PLAYER AREA */
 #playerArea{
 border-top:1px solid #334155;
 display:flex;
@@ -137,20 +131,12 @@ Enter your name<br>
 
 <div id="game">
 <div id="board">
-
-<div id="opponentArea">
-<div id="opponentGrid"></div>
-</div>
-
+<div id="opponentArea"><div id="opponentGrid"></div></div>
 <div id="centerArea">
 <div id="deck">Flip Card</div>
 <div id="chainText">Waiting...</div>
 </div>
-
-<div id="playerArea">
-<div id="playerGrid"></div>
-</div>
-
+<div id="playerArea"><div id="playerGrid"></div></div>
 </div>
 </div>
 </div>
@@ -160,13 +146,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getDatabase, ref, set, update, onValue, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const firebaseConfig={
-apiKey:"API_KEY",
-authDomain:"AUTH_DOMAIN",
-databaseURL:"DB_URL",
-projectId:"PROJECT_ID",
-storageBucket:"BUCKET",
-messagingSenderId:"SENDER_ID",
-appId:"APP_ID"
+apiKey:"AIzaSyCZ4aNmk7xmpRnSe3ZOhOpkgGiCxQxKqSE",
+authDomain:"i-have-d5728.firebaseapp.com",
+databaseURL:"https://i-have-d5728-default-rtdb.firebaseio.com",
+projectId:"i-have-d5728",
+storageBucket:"i-have-d5728.firebasestorage.app",
+messagingSenderId:"1041491068804",
+appId:"1:1041491068804:web:21b0d472c5f2929d04bfd1"
 };
 
 const app=initializeApp(firebaseConfig);
@@ -181,29 +167,18 @@ let myCards=[];
 let opponentCount=0;
 let cardsDealt=false;
 
-const animals=[
-"alligator","elephant","snake","lion",
-"dog","cat","horse","monkey"
-];
+const animals=["alligator","elephant","snake","lion","dog","cat","horse","monkey"];
 
 const home=document.getElementById("home");
 const lobby=document.getElementById("lobby");
 const game=document.getElementById("game");
-
 const playersDiv=document.getElementById("players");
 const playerGrid=document.getElementById("playerGrid");
 const opponentGrid=document.getElementById("opponentGrid");
 const chainText=document.getElementById("chainText");
-const deck=document.getElementById("deck");
 const startBtn=document.getElementById("startGameBtn");
 
-function shuffle(a){
-for(let i=a.length-1;i>0;i--){
-const j=Math.floor(Math.random()*(i+1));
-[a[i],a[j]]=[a[j],a[i]];
-}
-return a
-}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a}
 
 function generateDeck(){
 const shuffled=shuffle([...animals]);
@@ -258,10 +233,6 @@ buildOpponentGrid();
 game.style.display="block";
 lobby.style.display="none";
 }
-
-if(data.chain){
-chainText.textContent="I HAVE "+data.chain.have.toUpperCase();
-}
 })
 }
 
@@ -272,10 +243,7 @@ roomId=params.get("room");
 
 if(!roomId){
 roomId="room"+Math.floor(Math.random()*999999);
-await set(ref(db,"rooms/"+roomId),{
-state:"waiting",
-players:{}
-});
+await set(ref(db,"rooms/"+roomId),{state:"waiting",players:{}});
 isHost=true;
 startBtn.style.display="inline-block";
 }else{
@@ -286,9 +254,7 @@ startBtn.style.display="none";
 const link=location.origin+location.pathname+"?room="+roomId;
 document.getElementById("share").innerHTML="Send link to student:<br>"+link;
 
-await update(ref(db,"rooms/"+roomId+"/players/"+playerId),{
-name:myName
-});
+await update(ref(db,"rooms/"+roomId+"/players/"+playerId),{name:myName});
 
 home.style.display="none";
 lobby.style.display="block";
@@ -298,30 +264,21 @@ listenRoom();
 
 async function startGame(){
 if(!isHost) return;
-
 const snap=await get(ref(db,"rooms/"+roomId+"/players"));
 const players=snap.val();
 const ids=Object.keys(players);
-if(ids.length<2){
-alert("Waiting for second player");
-return;
-}
-
+if(ids.length<2){alert("Waiting for second player");return;}
 const deck=generateDeck();
 const half=deck.length/2;
-
 const updates={};
 updates[`rooms/${roomId}/state`]="playing";
-updates[`rooms/${roomId}/chain`]=null;
 updates[`rooms/${roomId}/players/${ids[0]}/cards`]=deck.slice(0,half);
 updates[`rooms/${roomId}/players/${ids[1]}/cards`]=deck.slice(half);
-
 await update(ref(db),updates);
 }
 
 document.getElementById("enterBtn").onclick=enterGame;
 startBtn.onclick=startGame;
-
 </script>
 </body>
 </html>
