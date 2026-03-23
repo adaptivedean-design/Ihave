@@ -105,35 +105,11 @@ let playerId="p"+Math.floor(Math.random()*999999);
 let myName="";
 let isHost=false;
 
-let myCards=[];
-let opponentCount=0;
-let cardsDealt=false;
-let currentChain=null;
-
-const animals=["alligator","elephant","snake","lion","dog","cat","horse","monkey"];
-
 const home=document.getElementById("home");
 const lobby=document.getElementById("lobby");
 const game=document.getElementById("game");
 const playersDiv=document.getElementById("players");
-const playerGrid=document.getElementById("playerGrid");
-const opponentGrid=document.getElementById("opponentGrid");
-const chainText=document.getElementById("chainText");
-const deckDiv=document.getElementById("deck");
 const startBtn=document.getElementById("startGameBtn");
-
-function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a}
-
-function generateDeck(){
-const shuffled=shuffle([...animals]);
-let deck=[];
-for(let i=0;i<shuffled.length;i++){
-const have=shuffled[i];
-const who=shuffled[(i+1)%shuffled.length];
-for(let c=0;c<3;c++) deck.push({have,who,id:Math.random()});
-}
-return shuffle(deck)
-}
 
 function listenRoom(){
 onValue(ref(db,"rooms/"+roomId),snap=>{
@@ -145,6 +121,11 @@ playersDiv.innerHTML="Connected:<br>";
 for(const p in data.players){
 playersDiv.innerHTML+=data.players[p].name+"<br>";
 }
+}
+
+if(data.state==="playing"){
+lobby.style.display="none";
+game.style.display="block";
 }
 })
 }
@@ -175,7 +156,12 @@ lobby.style.display="block";
 listenRoom();
 }
 
-async function startGame(){}
+async function startGame(){
+if(!isHost) return;
+startBtn.disabled=true;
+startBtn.innerText="Starting...";
+await update(ref(db,"rooms/"+roomId),{state:"playing"});
+}
 
 document.getElementById("enterBtn").onclick=enterGame;
 startBtn.onclick=startGame;
