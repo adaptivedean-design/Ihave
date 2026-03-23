@@ -18,7 +18,7 @@ button:hover{ background:#1d4ed8; }
 #opponentGrid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;width:90%;}
 .opponentCard{background:#020617;height:45px;border-radius:6px;opacity:.85;}
 #centerArea{display:flex;flex-direction:column;justify-content:center;align-items:center;}
-#deck{background:#020617;width:220px;height:120px;border-radius:10px;display:flex;justify-content:center;align-items:center;cursor:pointer;text-align:center;padding:10px;}
+#deck{background:#020617;width:220px;height:120px;border-radius:10px;display:flex;justify-content:center;align-items:center;text-align:center;padding:10px;}
 #chainText{margin-top:12px;font-size:24px;font-weight:600;text-align:center;}
 #playerArea{border-top:1px solid #334155;display:flex;justify-content:center;align-items:center;}
 #playerGrid{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;width:90%;}
@@ -47,7 +47,7 @@ Enter your name<br>
 <div id="board">
 <div id="opponentArea"><div id="opponentGrid"></div></div>
 <div id="centerArea">
-<div id="deck">Center Deck</div>
+<div id="deck">Center</div>
 <div id="chainText">Waiting...</div>
 </div>
 <div id="playerArea"><div id="playerGrid"></div></div>
@@ -59,7 +59,15 @@ Enter your name<br>
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getDatabase, ref, set, update, onValue, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-const firebaseConfig={apiKey:"AIzaSyCZ4aNmk7xmpRnSe3ZOhOpkgGiCxQxKqSE",authDomain:"i-have-d5728.firebaseapp.com",databaseURL:"https://i-have-d5728-default-rtdb.firebaseio.com",projectId:"i-have-d5728",storageBucket:"i-have-d5728.firebasestorage.app",messagingSenderId:"1041491068804",appId:"1:1041491068804:web:21b0d472c5f2929d04bfd1"};
+const firebaseConfig={
+apiKey:"AIzaSyCZ4aNmk7xmpRnSe3ZOhOpkgGiCxQxKqSE",
+authDomain:"i-have-d5728.firebaseapp.com",
+databaseURL:"https://i-have-d5728-default-rtdb.firebaseio.com",
+projectId:"i-have-d5728",
+storageBucket:"i-have-d5728.firebasestorage.app",
+messagingSenderId:"1041491068804",
+appId:"1:1041491068804:web:21b0d472c5f2929d04bfd1"
+};
 
 const app=initializeApp(firebaseConfig);
 const db=getDatabase(app);
@@ -68,10 +76,11 @@ let roomId=null;
 let playerId="p"+Math.floor(Math.random()*999999);
 let myName="";
 let isHost=false;
-let myCards=[];
+let myHand=[];
 let currentChain=null;
+let winner=null;
 
-const animals=["alligator","elephant","snake","lion","dog","cat","horse","monkey"];
+const animals=["lion","tiger","bear","wolf","fox","eagle","shark","whale","snake","zebra","rhino","panda"];
 
 const home=document.getElementById("home");
 const lobby=document.getElementById("lobby");
@@ -84,75 +93,83 @@ const chainText=document.getElementById("chainText");
 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a}
 
-function generateDeck(){
-const shuffled=shuffle([...animals]);
+function makeDeck(){
 let deck=[];
+let shuffled=shuffle([...animals]);
 for(let i=0;i<shuffled.length;i++){
-const have=shuffled[i];
-const who=shuffled[(i+1)%shuffled.length];
-deck.push({have,who,id:"c"+i});
+let have=shuffled[i];
+let who=shuffled[(i+1)%shuffled.length];
+deck.push({id:"c"+i,have,who});
 }
-return deck;
+return shuffle(deck);
 }
 
 function renderHand(){
 playerGrid.innerHTML="";
-myCards.forEach(card=>{
-const div=document.createElement("div");
+myHand.forEach(card=>{
+let div=document.createElement("div");
 div.className="playerCard";
-div.innerHTML=`<b>I have</b><br>${card.have}<br><b>Who has</b><br>${card.who}`;
-div.onclick=()=>playCard(card);
+div.innerHTML=`<b>I HAVE</b><br>${card.have}<br><b>WHO HAS</b><br>${card.who}`;
+div.onclick=()=>tryPlay(card);
 playerGrid.appendChild(div);
-})
+});
 }
 
 function renderOpponent(count){
 opponentGrid.innerHTML="";
 for(let i=0;i<count;i++){
-const d=document.createElement("div");
+let d=document.createElement("div");
 d.className="opponentCard";
 opponentGrid.appendChild(d);
 }
 }
 
-async function playCard(card){
-if(!currentChain || card.have!==currentChain.who) return;
-myCards=myCards.filter(c=>c.id!==card.id);
-await update(ref(db,"rooms/"+roomId+"/plays"),{
-chain:{have:card.have,who:card.who},
-lastPlayer:playerId
-});
-await set(ref(db,"rooms/"+roomId+"/hands/"+playerId),myCards);
+async function tryPlay(card){
+if(winner) return;
+if(currentChain && card.have!==currentChain.who) return;
+
+let newHand=myHand.filter(c=>c.id!==card.id);
+await update(ref(db,"rooms/"+roomId+"/hands/"+playerId),newHand);
+await update(ref(db,"rooms/"+roomId+"/chain"),{have:card.have,who:card.who});
+
+if(newHand.length===0){
+await update(ref(db,"rooms/"+roomId),{winner:playerId});
+}
 }
 
 function listenRoom(){
 onValue(ref(db,"rooms/"+roomId),snap=>{
-const data=snap.val();
+let data=snap.val();
 if(!data) return;
-
-if(data.state==="playing"){ lobby.style.display="none"; game.style.display="block"; }
 
 if(data.players){
 playersDiv.innerHTML="Connected:<br>";
 for(const p in data.players){ playersDiv.innerHTML+=data.players[p].name+"<br>"; }
 }
 
+if(data.state==="playing"){ lobby.style.display="none"; game.style.display="block"; }
+
 if(data.hands && data.hands[playerId]){
-myCards=data.hands[playerId];
+myHand=data.hands[playerId];
 renderHand();
 }
 
 if(data.hands){
-let oppCount=0;
-for(const p in data.hands){ if(p!==playerId) oppCount=data.hands[p].length; }
-renderOpponent(oppCount);
+let opp=0;
+for(const p in data.hands) if(p!==playerId) opp=data.hands[p].length;
+renderOpponent(opp);
 }
 
-if(data.plays?.chain){
-currentChain=data.plays.chain;
-chainText.innerHTML=`<b>I have</b> ${currentChain.have}<br><b>Who has</b> ${currentChain.who}?`;
+if(data.chain){
+currentChain=data.chain;
+chainText.innerHTML=`<b>I HAVE</b> ${data.chain.have}<br><b>WHO HAS</b> ${data.chain.who}?`;
 }
-})
+
+if(data.winner){
+winner=data.winner;
+chainText.innerHTML=(winner===playerId)?"YOU WIN 🎉":"You Lose";
+}
+});
 }
 
 async function enterGame(){
@@ -164,7 +181,11 @@ if(!roomId){
 roomId="room"+Math.floor(Math.random()*999999);
 await set(ref(db,"rooms/"+roomId),{state:"waiting",players:{}});
 isHost=true;
-}else isHost=false;
+startBtn.style.display="inline-block";
+}else{isHost=false;startBtn.style.display="none";}
+
+const link=location.origin+location.pathname+"?room="+roomId;
+document.getElementById("share").innerHTML="Send link to student:<br>"+link;
 
 await update(ref(db,"rooms/"+roomId+"/players/"+playerId),{name:myName});
 home.style.display="none";
@@ -174,15 +195,16 @@ listenRoom();
 
 async function startGame(){
 if(!isHost) return;
-const deck=shuffle(generateDeck());
-const playersSnap=await get(ref(db,"rooms/"+roomId+"/players"));
-const players=Object.keys(playersSnap.val());
+let deck=makeDeck();
+let playersSnap=await get(ref(db,"rooms/"+roomId+"/players"));
+let ids=Object.keys(playersSnap.val());
 let hands={};
-players.forEach((p,i)=>hands[p]=deck.filter((_,idx)=>idx%players.length===i));
+ids.forEach((id,i)=>hands[id]=deck.filter((_,idx)=>idx%ids.length===i));
 await update(ref(db,"rooms/"+roomId),{
 state:"playing",
 hands:hands,
-plays:{chain:hands[players[0]][0]}
+chain:hands[ids[0]][0],
+winner:null
 });
 }
 
