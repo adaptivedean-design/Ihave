@@ -48,6 +48,7 @@ display:grid;
 grid-template-rows:160px 200px 1fr;
 height:650px;
 }
+
 /* OPPONENT AREA */
 #opponentArea{
 border-bottom:1px solid #334155;
@@ -67,6 +68,7 @@ height:45px;
 border-radius:6px;
 opacity:.85;
 }
+
 /* CENTER AREA */
 #centerArea{
 display:flex;
@@ -89,6 +91,7 @@ margin-top:12px;
 font-size:24px;
 font-weight:600;
 }
+
 /* PLAYER AREA */
 #playerArea{
 border-top:1px solid #334155;
@@ -113,53 +116,57 @@ align-items:center;
 font-size:13px;
 text-align:center;
 }
-.playerCard.disabled{
-opacity:.35;
-cursor:not-allowed;
-}
 </style>
 </head>
 <body>
 <div id="app">
 <h1>I Have / Who Has</h1>
+
 <div id="home">
 Enter your name<br>
 <input id="nameInput" placeholder="name"><br>
 <button id="enterBtn">Enter</button>
 </div>
+
 <div id="lobby">
 <div id="share"></div>
 <div id="players"></div>
 <br>
 <button id="startGameBtn">Start Game</button>
 </div>
+
 <div id="game">
 <div id="board">
+
 <div id="opponentArea">
 <div id="opponentGrid"></div>
 </div>
+
 <div id="centerArea">
 <div id="deck">Flip Card</div>
 <div id="chainText">Waiting...</div>
 </div>
+
 <div id="playerArea">
 <div id="playerGrid"></div>
 </div>
+
 </div>
 </div>
 </div>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getDatabase, ref, set, update, onValue, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 const firebaseConfig={
-apiKey:"AIzaSyCZ4aNmk7xmpRnSe3ZOhOpkgGiCxQxKqSE",
-authDomain:"i-have-d5728.firebaseapp.com",
-databaseURL:"https://i-have-d5728-default-rtdb.firebaseio.com",
-projectId:"i-have-d5728",
-storageBucket:"i-have-d5728.firebasestorage.app",
-messagingSenderId:"1041491068804",
-appId:"1:1041491068804:web:21b0d472c5f2929d04bfd1"
+apiKey:"API_KEY",
+authDomain:"AUTH_DOMAIN",
+databaseURL:"DB_URL",
+projectId:"PROJECT_ID",
+storageBucket:"BUCKET",
+messagingSenderId:"SENDER_ID",
+appId:"APP_ID"
 };
 
 const app=initializeApp(firebaseConfig);
@@ -173,8 +180,6 @@ let isHost=false;
 let myCards=[];
 let opponentCount=0;
 let cardsDealt=false;
-let waitingFlip=false;
-let currentTarget=null;
 
 const animals=[
 "alligator","elephant","snake","lion",
@@ -206,9 +211,7 @@ let deck=[];
 for(let i=0;i<shuffled.length;i++){
 const have=shuffled[i];
 const who=shuffled[(i+1)%shuffled.length];
-for(let c=0;c<3;c++){
-deck.push({have,who});
-}
+for(let c=0;c<3;c++) deck.push({have,who});
 }
 return shuffle(deck)
 }
@@ -219,7 +222,6 @@ myCards.forEach(card=>{
 const div=document.createElement("div");
 div.className="playerCard";
 div.textContent=card.have;
-div.onclick=()=>playCard(card);
 playerGrid.appendChild(div);
 });
 }
@@ -238,7 +240,6 @@ onValue(ref(db,"rooms/"+roomId),snap=>{
 const data=snap.val();
 if(!data) return;
 
-// Player list
 if(data.players){
 playersDiv.innerHTML="Connected:<br>";
 for(const p in data.players){
@@ -246,23 +247,20 @@ playersDiv.innerHTML+=data.players[p].name+"<br>";
 }
 }
 
-// Game start
-if(data.state==="playing" && data.players[playerId] && !cardsDealt){
-if(data.players[playerId].cards){
-myCards=data.players[playerId].cards;
-opponentCount=data.players[p].cards ? data.players[p].cards.length : data.players[Object.keys(data.players).find(k=>k!==playerId)].cards.length;
+if(data.state==="playing" && data.players && data.players[playerId] && !cardsDealt){
+myCards=data.players[playerId].cards || [];
+const otherId=Object.keys(data.players).find(id=>id!==playerId);
+opponentCount=data.players[otherId]?.cards?.length || 0;
+
 cardsDealt=true;
 buildPlayerGrid();
 buildOpponentGrid();
 game.style.display="block";
 lobby.style.display="none";
 }
-}
 
-// Chain info
 if(data.chain){
 chainText.textContent="I HAVE "+data.chain.have.toUpperCase();
-currentTarget=data.chain.who;
 }
 })
 }
@@ -271,13 +269,12 @@ async function enterGame(){
 myName=document.getElementById("nameInput").value||"player";
 let params=new URLSearchParams(location.search);
 roomId=params.get("room");
+
 if(!roomId){
 roomId="room"+Math.floor(Math.random()*999999);
 await set(ref(db,"rooms/"+roomId),{
 state:"waiting",
-gameStarted:false,
-players:{},
-revealed:false
+players:{}
 });
 isHost=true;
 startBtn.style.display="inline-block";
@@ -285,11 +282,12 @@ startBtn.style.display="inline-block";
 isHost=false;
 startBtn.style.display="none";
 }
+
 const link=location.origin+location.pathname+"?room="+roomId;
 document.getElementById("share").innerHTML="Send link to student:<br>"+link;
 
-await update(ref(db,"rooms/"+roomId+"/players"),{
-[playerId]:{name:myName}
+await update(ref(db,"rooms/"+roomId+"/players/"+playerId),{
+name:myName
 });
 
 home.style.display="none";
@@ -300,39 +298,29 @@ listenRoom();
 
 async function startGame(){
 if(!isHost) return;
-const fullDeck=generateDeck();
-const half=Math.floor(fullDeck.length/2);
-const ids=Object.keys((await get(ref(db,"rooms/"+roomId+"/players"))).val());
-const player1=ids[0];
-const player2=ids[1];
+
+const snap=await get(ref(db,"rooms/"+roomId+"/players"));
+const players=snap.val();
+const ids=Object.keys(players);
+if(ids.length<2){
+alert("Waiting for second player");
+return;
+}
+
+const deck=generateDeck();
+const half=deck.length/2;
+
 const updates={};
 updates[`rooms/${roomId}/state`]="playing";
 updates[`rooms/${roomId}/chain`]=null;
-updates[`rooms/${roomId}/players/${player1}/cards`]=fullDeck.slice(0,half);
-updates[`rooms/${roomId}/players/${player2}/cards`]=fullDeck.slice(half);
+updates[`rooms/${roomId}/players/${ids[0]}/cards`]=deck.slice(0,half);
+updates[`rooms/${roomId}/players/${ids[1]}/cards`]=deck.slice(half);
+
 await update(ref(db),updates);
-}
-
-async function playCard(card){
-if(waitingFlip) return;
-waitingFlip=true;
-myCards=myCards.filter(c=>c!==card);
-buildPlayerGrid();
-await update(ref(db,"rooms/"+roomId+"/players/"+playerId+"/cards"),myCards);
-await update(ref(db,"rooms/"+roomId),{chain:card});
-chainText.textContent="I HAVE "+card.have.toUpperCase();
-waitingFlip=false;
-}
-
-async function flipDeck(){
-if(!waitingFlip) return;
-await update(ref(db,"rooms/"+roomId),{revealed:true});
-waitingFlip=false;
 }
 
 document.getElementById("enterBtn").onclick=enterGame;
 startBtn.onclick=startGame;
-deck.onclick=flipDeck;
 
 </script>
 </body>
