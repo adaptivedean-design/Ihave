@@ -91,7 +91,40 @@ let myHand=[];
 let currentChain=null;
 let winner=null;
 
-const animals=["lion","tiger","bear","wolf","fox","eagle","shark","whale","snake","zebra","rhino","panda"];
+// DECK CONFIGURATION
+// This structure allows easy theming - just swap out the theme object
+// Each card has: id, iHave (what this card shows), whoHas (what it asks for)
+// Future: add imageUrl or themeId to each card for custom graphics
+
+const DECK_THEME = {
+  name: "Animals",
+  cards: [
+    {id: 0, iHave: "Dog", whoHas: "Cat"},
+    {id: 1, iHave: "Cat", whoHas: "Shark"},
+    {id: 2, iHave: "Shark", whoHas: "Pig"},
+    {id: 3, iHave: "Pig", whoHas: "Alligator"},
+    {id: 4, iHave: "Alligator", whoHas: "Snake"},
+    {id: 5, iHave: "Snake", whoHas: "Horse"},
+    {id: 6, iHave: "Horse", whoHas: "Elephant"},
+    {id: 7, iHave: "Elephant", whoHas: "Pig"},
+    {id: 8, iHave: "Pig", whoHas: "Snake"},
+    {id: 9, iHave: "Snake", whoHas: "Dog"},
+    {id: 10, iHave: "Dog", whoHas: "Pig"},
+    {id: 11, iHave: "Pig", whoHas: "Horse"},
+    {id: 12, iHave: "Horse", whoHas: "Shark"},
+    {id: 13, iHave: "Shark", whoHas: "Dog"},
+    {id: 14, iHave: "Dog", whoHas: "Alligator"},
+    {id: 15, iHave: "Alligator", whoHas: "Elephant"},
+    {id: 16, iHave: "Elephant", whoHas: "Snake"},
+    {id: 17, iHave: "Snake", whoHas: "Cat"},
+    {id: 18, iHave: "Cat", whoHas: "Elephant"},
+    {id: 19, iHave: "Elephant", whoHas: "Shark"},
+    {id: 20, iHave: "Shark", whoHas: "Alligator"},
+    {id: 21, iHave: "Alligator", whoHas: "Cat"},
+    {id: 22, iHave: "Cat", whoHas: "Horse"},
+    {id: 23, iHave: "Horse", whoHas: "Dog"}
+  ]
+};
 
 const home=document.getElementById("home");
 const lobby=document.getElementById("lobby");
@@ -106,14 +139,8 @@ const deck=document.getElementById("deck");
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a}
 
 function makeDeck(){
-let deck=[];
-let shuffled=shuffle([...animals]);
-for(let i=0;i<shuffled.length;i++){
-let have=shuffled[i];
-let who=shuffled[(i+1)%shuffled.length];
-deck.push({id:"c"+i,have,who});
-}
-return shuffle(deck);
+  // Return a shuffled copy of the predefined deck
+  return shuffle([...DECK_THEME.cards]);
 }
 
 function renderHand(){
@@ -121,7 +148,7 @@ playerGrid.innerHTML="";
 myHand.forEach(card=>{
 let div=document.createElement("div");
 div.className="playerCard";
-div.innerHTML=`<b>I HAVE</b><br>${card.have}<br><b>WHO HAS</b><br>${card.who}`;
+div.innerHTML=`<b>I HAVE</b><br>${card.iHave}`;
 div.onclick=()=>tryPlay(card);
 playerGrid.appendChild(div);
 });
@@ -138,13 +165,13 @@ opponentGrid.appendChild(d);
 
 async function tryPlay(card){
 if(winner) return;
-if(currentChain && currentChain.flipped && card.have!==currentChain.who) return;
+if(currentChain && currentChain.flipped && card.iHave!==currentChain.whoHas) return;
 
 let newHand=myHand.filter(c=>c.id!==card.id);
 await update(ref(db,"rooms/"+roomId+"/hands/"+playerId),newHand);
 await update(ref(db,"rooms/"+roomId+"/chain"),{
-have:card.have,
-who:card.who,
+iHave:card.iHave,
+whoHas:card.whoHas,
 flipped:false,
 playedBy:playerId
 });
@@ -191,13 +218,13 @@ const deckBack=document.querySelector(".deckBack");
 if(data.chain.flipped){
 deck.classList.add("flipped");
 deck.classList.remove("canFlip");
-deckFront.innerHTML=`<b>I HAVE</b><br>${data.chain.have}`;
-deckBack.innerHTML=`<b>WHO HAS</b><br>${data.chain.who}?`;
+deckFront.innerHTML=`<b>I HAVE</b><br>${data.chain.iHave}`;
+deckBack.innerHTML=`<b>WHO HAS</b><br>${data.chain.whoHas}?`;
 chainText.innerHTML="Find and play your card!";
 } else {
 deck.classList.remove("flipped");
-deckFront.innerHTML=`<b>I HAVE</b><br>${data.chain.have}`;
-deckBack.innerHTML=`<b>WHO HAS</b><br>${data.chain.who}?`;
+deckFront.innerHTML=`<b>I HAVE</b><br>${data.chain.iHave}`;
+deckBack.innerHTML=`<b>WHO HAS</b><br>${data.chain.whoHas}?`;
 if(data.chain.playedBy===playerId){
 deck.classList.add("canFlip");
 chainText.innerHTML="Click the center card to flip it!";
@@ -247,8 +274,8 @@ await update(ref(db,"rooms/"+roomId),{
 state:"playing",
 hands:hands,
 chain:{
-have:hands[ids[0]][0].have,
-who:hands[ids[0]][0].who,
+iHave:hands[ids[0]][0].iHave,
+whoHas:hands[ids[0]][0].whoHas,
 flipped:false,
 playedBy:ids[0]
 },
