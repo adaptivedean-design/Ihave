@@ -144,14 +144,19 @@ function makeDeck(){
 }
 
 function renderHand(){
+console.log("renderHand called, myHand:", myHand);
 playerGrid.innerHTML="";
 myHand.forEach(card=>{
 let div=document.createElement("div");
 div.className="playerCard";
 div.innerHTML=`<b>I HAVE</b><br>${card.iHave}`;
-div.onclick=()=>tryPlay(card);
+div.onclick=()=>{
+console.log("Card clicked:", card);
+tryPlay(card);
+};
 playerGrid.appendChild(div);
 });
+console.log("Cards rendered:", playerGrid.children.length);
 }
 
 function renderOpponent(count){
@@ -164,14 +169,28 @@ opponentGrid.appendChild(d);
 }
 
 async function tryPlay(card){
-if(winner) return;
+console.log("tryPlay called with card:", card);
+console.log("winner:", winner);
+console.log("currentChain:", currentChain);
+
+if(winner) {
+console.log("Game over, winner exists");
+return;
+}
 
 // If chain exists and is flipped, check if this card matches
-if(currentChain && currentChain.flipped && card.iHave!==currentChain.whoHas) return;
+if(currentChain && currentChain.flipped && card.iHave!==currentChain.whoHas) {
+console.log("Card doesn't match chain");
+return;
+}
 
 // If chain exists but is not flipped, player must flip first
-if(currentChain && !currentChain.flipped) return;
+if(currentChain && !currentChain.flipped) {
+console.log("Chain not flipped yet, must flip first");
+return;
+}
 
+console.log("Playing card...");
 let newHand=myHand.filter(c=>c.id!==card.id);
 await update(ref(db,"rooms/"+roomId+"/hands/"+playerId),newHand);
 await update(ref(db,"rooms/"+roomId+"/chain"),{
