@@ -211,9 +211,18 @@ await update(ref(db,"rooms/"+roomId),{winner:playerId});
 }
 
 async function flipCard(){
-if(!currentChain || currentChain.flipped) return;
-if(currentChain.playedBy!==playerId) return;
-await update(ref(db,"rooms/"+roomId+"/chain/flipped"),true);
+console.log("flipCard called");
+console.log("currentChain:", currentChain);
+if(!currentChain || currentChain.flipped) {
+console.log("Can't flip - no chain or already flipped");
+return;
+}
+if(currentChain.playedBy!==playerId) {
+console.log("Can't flip - not your card");
+return;
+}
+console.log("Flipping card...");
+await update(ref(db,"rooms/"+roomId+"/chain"),{flipped:true});
 }
 
 function listenRoom(){
