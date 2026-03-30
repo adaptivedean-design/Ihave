@@ -192,7 +192,12 @@ return;
 
 console.log("Playing card...");
 let newHand=myHand.filter(c=>c.id!==card.id);
-await update(ref(db,"rooms/"+roomId+"/hands/"+playerId),newHand);
+
+// Convert array to object for Firebase (Firebase doesn't accept raw arrays in update)
+let handObj = {};
+newHand.forEach((c, idx) => handObj[idx] = c);
+
+await update(ref(db,"rooms/"+roomId+"/hands/"+playerId), handObj);
 await update(ref(db,"rooms/"+roomId+"/chain"),{
 iHave:card.iHave,
 whoHas:card.whoHas,
@@ -224,13 +229,19 @@ for(const p in data.players){ playersDiv.innerHTML+=data.players[p].name+"<br>";
 if(data.state==="playing"){ lobby.style.display="none"; game.style.display="block"; }
 
 if(data.hands && data.hands[playerId]){
-myHand=data.hands[playerId];
+// Convert Firebase object back to array
+myHand = Object.values(data.hands[playerId]);
 renderHand();
 }
 
 if(data.hands){
 let opp=0;
-for(const p in data.hands) if(p!==playerId) opp=data.hands[p].length;
+for(const p in data.hands){
+if(p!==playerId){
+// Count cards in opponent's hand (convert object to array)
+opp = Object.keys(data.hands[p]).length;
+}
+}
 renderOpponent(opp);
 }
 
@@ -300,7 +311,15 @@ let deck=makeDeck();
 let playersSnap=await get(ref(db,"rooms/"+roomId+"/players"));
 let ids=Object.keys(playersSnap.val());
 let hands={};
-ids.forEach((id,i)=>hands[id]=deck.filter((_,idx)=>idx%ids.length===i));
+
+// Deal cards and convert arrays to objects for Firebase
+ids.forEach((id,i)=>{
+let playerCards = deck.filter((_,idx)=>idx%ids.length===i);
+let handObj = {};
+playerCards.forEach((c, idx) => handObj[idx] = c);
+hands[id] = handObj;
+});
+
 await update(ref(db,"rooms/"+roomId),{
 state:"playing",
 hands:hands,
