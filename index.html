@@ -165,7 +165,12 @@ opponentGrid.appendChild(d);
 
 async function tryPlay(card){
 if(winner) return;
+
+// If chain exists and is flipped, check if this card matches
 if(currentChain && currentChain.flipped && card.iHave!==currentChain.whoHas) return;
+
+// If chain exists but is not flipped, player must flip first
+if(currentChain && !currentChain.flipped) return;
 
 let newHand=myHand.filter(c=>c.id!==card.id);
 await update(ref(db,"rooms/"+roomId+"/hands/"+playerId),newHand);
@@ -233,6 +238,13 @@ deck.classList.remove("canFlip");
 chainText.innerHTML="Waiting for flip...";
 }
 }
+} else {
+// No chain yet - game just started
+currentChain=null;
+deck.classList.remove("flipped");
+deck.classList.remove("canFlip");
+document.querySelector(".deckFront").innerHTML="Ready to start!";
+chainText.innerHTML="Play any card to begin!";
 }
 
 if(data.winner){
@@ -273,12 +285,7 @@ ids.forEach((id,i)=>hands[id]=deck.filter((_,idx)=>idx%ids.length===i));
 await update(ref(db,"rooms/"+roomId),{
 state:"playing",
 hands:hands,
-chain:{
-iHave:hands[ids[0]][0].iHave,
-whoHas:hands[ids[0]][0].whoHas,
-flipped:false,
-playedBy:ids[0]
-},
+chain:null,
 winner:null
 });
 }
