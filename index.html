@@ -60,6 +60,8 @@ Enter your name<br>
 </div>
 </div>
 <div id="chainText"></div>
+<div id="scoreBoard" style="margin-top:20px;font-size:16px;"></div>
+<button id="restartBtn" style="display:none;margin-top:10px;">Start New Round</button>
 </div>
 <div id="playerArea"><div id="playerGrid"></div></div>
 </div>
@@ -131,6 +133,7 @@ const lobby=document.getElementById("lobby");
 const game=document.getElementById("game");
 const playersDiv=document.getElementById("players");
 const startBtn=document.getElementById("startGameBtn");
+const restartBtn=document.getElementById("restartBtn");
 const playerGrid=document.getElementById("playerGrid");
 const opponentGrid=document.getElementById("opponentGrid");
 const chainText=document.getElementById("chainText");
@@ -209,7 +212,29 @@ playedBy:playerId
 
 if(newHand.length===0){
 console.log("Hand is empty! Player wins!");
-await update(ref(db,"rooms/"+roomId),{winner:playerId});
+// Don't end game immediately - let both players finish
+// Just mark this player as finished
+await update(ref(db,"rooms/"+roomId+"/finished/"+playerId),true);
+
+// Check if both players are finished
+let finishedSnap = await get(ref(db,"rooms/"+roomId+"/finished"));
+let finished = finishedSnap.val() || {};
+let playersSnap = await get(ref(db,"rooms/"+roomId+"/players"));
+let allPlayers = Object.keys(playersSnap.val());
+
+if(Object.keys(finished).length === allPlayers.length){
+// Both finished - first to finish wins
+// Update score
+let scoresSnap = await get(ref(db,"rooms/"+roomId+"/scores"));
+let scores = scoresSnap.val() || {};
+if(!scores[playerId]) scores[playerId] = 0;
+scores[playerId]++;
+
+await update(ref(db,"rooms/"+roomId),{
+winner:playerId,
+scores:scores
+});
+}
 }
 }
 
@@ -289,9 +314,30 @@ document.querySelector(".deckFront").innerHTML="Ready to start!";
 chainText.innerHTML="Play any card to begin!";
 }
 
+// Display scores
+if(data.scores){
+const scoreBoard=document.getElementById("scoreBoard");
+let scoreHTML = "<b>Scores:</b><br>";
+for(const p in data.players){
+const playerName = data.players[p].name;
+const playerScore = data.scores[p] || 0;
+scoreHTML += `${playerName}: ${playerScore}<br>`;
+}
+scoreBoard.innerHTML = scoreHTML;
+}
+
 if(data.winner){
 winner=data.winner;
-chainText.innerHTML=(winner===playerId)?"YOU WIN 🎉":"You Lose";
+const winnerName = data.players[winner]?.name || "Someone";
+chainText.innerHTML=(winner===playerId)?`YOU WIN 🎉`:`${winnerName} wins!`;
+
+// Show restart button for host
+const restartBtn = document.getElementById("restartBtn");
+if(isHost){
+restartBtn.style.display="inline-block";
+} else {
+restartBtn.style.display="none";
+}
 }
 });
 }
@@ -332,17 +378,27 @@ playerCards.forEach((c, idx) => handObj[idx] = c);
 hands[id] = handObj;
 });
 
+// Get existing scores or initialize
+let scoresSnap = await get(ref(db,"rooms/"+roomId+"/scores"));
+let scores = scoresSnap.val() || {};
+ids.forEach(id => {
+if(!scores[id]) scores[id] = 0;
+});
+
 await update(ref(db,"rooms/"+roomId),{
 state:"playing",
 hands:hands,
 chain:null,
-winner:null
+winner:null,
+finished:null,
+scores:scores
 });
 }
 
 deck.onclick=flipCard;
 document.getElementById("enterBtn").onclick=enterGame;
 startBtn.onclick=startGame;
+restartBtn.onclick=startGame; // Reuse startGame function for restart
 </script>
 </body>
 </html>
