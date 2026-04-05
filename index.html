@@ -271,6 +271,16 @@ document.getElementById("restartBtn").style.display="inline-block";
 }
 }
 
+// Check winner status BEFORE rendering hands
+if(data.winner){
+winner=data.winner;
+const winnerName = data.players[winner]?.name || "Someone";
+chainText.innerHTML=(winner===playerId)?`YOU WIN 🎉`:`${winnerName} wins!`;
+} else {
+// Reset winner when game restarts
+winner=null;
+}
+
 if(data.hands && data.hands[playerId]){
 // Convert Firebase object back to array
 myHand = Object.values(data.hands[playerId]);
@@ -330,15 +340,6 @@ const playerScore = data.scores[p] || 0;
 scoreHTML += `${playerName}: ${playerScore}<br>`;
 }
 scoreBoard.innerHTML = scoreHTML;
-}
-
-if(data.winner){
-winner=data.winner;
-const winnerName = data.players[winner]?.name || "Someone";
-chainText.innerHTML=(winner===playerId)?`YOU WIN 🎉`:`${winnerName} wins!`;
-} else {
-// Reset winner when game restarts
-winner=null;
 }
 });
 }
