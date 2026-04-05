@@ -153,10 +153,16 @@ myHand.forEach(card=>{
 let div=document.createElement("div");
 div.className="playerCard";
 div.innerHTML=`<b>I HAVE</b><br>${card.iHave}`;
+// Only make clickable if no winner
+if(!winner){
 div.onclick=()=>{
 console.log("Card clicked:", card);
 tryPlay(card);
 };
+} else {
+div.style.opacity="0.5";
+div.style.cursor="not-allowed";
+}
 playerGrid.appendChild(div);
 });
 console.log("Cards rendered:", playerGrid.children.length);
@@ -212,29 +218,18 @@ playedBy:playerId
 
 if(newHand.length===0){
 console.log("Hand is empty! Player wins!");
-// Don't end game immediately - let both players finish
-// Just mark this player as finished
-await update(ref(db,"rooms/"+roomId+"/finished/"+playerId),true);
 
-// Check if both players are finished
-let finishedSnap = await get(ref(db,"rooms/"+roomId+"/finished"));
-let finished = finishedSnap.val() || {};
-let playersSnap = await get(ref(db,"rooms/"+roomId+"/players"));
-let allPlayers = Object.keys(playersSnap.val());
-
-if(Object.keys(finished).length === allPlayers.length){
-// Both finished - first to finish wins
 // Update score
 let scoresSnap = await get(ref(db,"rooms/"+roomId+"/scores"));
 let scores = scoresSnap.val() || {};
 if(!scores[playerId]) scores[playerId] = 0;
 scores[playerId]++;
 
+// Set winner immediately - first to finish wins
 await update(ref(db,"rooms/"+roomId),{
 winner:playerId,
 scores:scores
 });
-}
 }
 }
 
@@ -389,7 +384,6 @@ state:"playing",
 hands:hands,
 chain:null,
 winner:null,
-finished:null,
 scores:scores
 });
 }
