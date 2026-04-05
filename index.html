@@ -61,7 +61,7 @@ Enter your name<br>
 </div>
 <div id="chainText"></div>
 <div id="scoreBoard" style="margin-top:20px;font-size:16px;"></div>
-<button id="restartBtn" style="display:none;margin-top:10px;">Start New Round</button>
+<button id="restartBtn" style="display:none;margin-top:10px;">Restart Game (New Round)</button>
 </div>
 <div id="playerArea"><div id="playerGrid"></div></div>
 </div>
@@ -263,7 +263,14 @@ playersDiv.innerHTML="Connected:<br>";
 for(const p in data.players){ playersDiv.innerHTML+=data.players[p].name+"<br>"; }
 }
 
-if(data.state==="playing"){ lobby.style.display="none"; game.style.display="block"; }
+if(data.state==="playing"){ 
+lobby.style.display="none"; 
+game.style.display="block";
+// Show restart button for host when in game
+if(isHost){
+document.getElementById("restartBtn").style.display="inline-block";
+}
+}
 
 if(data.hands && data.hands[playerId]){
 // Convert Firebase object back to array
@@ -330,14 +337,6 @@ if(data.winner){
 winner=data.winner;
 const winnerName = data.players[winner]?.name || "Someone";
 chainText.innerHTML=(winner===playerId)?`YOU WIN 🎉`:`${winnerName} wins!`;
-
-// Show restart button for host
-const restartBtn = document.getElementById("restartBtn");
-if(isHost){
-restartBtn.style.display="inline-block";
-} else {
-restartBtn.style.display="none";
-}
 }
 });
 }
