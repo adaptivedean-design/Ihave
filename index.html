@@ -203,6 +203,10 @@ console.log("Playing card...");
 let newHand=myHand.filter(c=>c.id!==card.id);
 console.log("newHand length:", newHand.length);
 
+// Update local hand immediately for instant UI feedback
+myHand = newHand;
+renderHand();
+
 // Convert array to object for Firebase (Firebase doesn't accept raw arrays in update)
 let handObj = {};
 newHand.forEach((c, idx) => handObj[idx] = c);
@@ -332,6 +336,9 @@ if(data.winner){
 winner=data.winner;
 const winnerName = data.players[winner]?.name || "Someone";
 chainText.innerHTML=(winner===playerId)?`YOU WIN 🎉`:`${winnerName} wins!`;
+} else {
+// Reset winner when game restarts
+winner=null;
 }
 });
 }
