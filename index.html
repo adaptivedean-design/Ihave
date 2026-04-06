@@ -188,9 +188,35 @@ return;
 }
 
 // If chain exists and is flipped, check if this card matches
-if(currentChain && currentChain.flipped && card.iHave!==currentChain.whoHas) {
-console.log("Card doesn't match chain");
-return;
+if(currentChain && currentChain.flipped){
+// Check if card matches the target
+const matchesTarget = card.iHave === currentChain.whoHas;
+  
+if(!matchesTarget){
+// Card doesn't match - check if chain is broken (no cards with target animal left)
+const targetAnimal = currentChain.whoHas;
+    
+// Get all hands from Firebase to check if target animal still exists
+let handsSnap = await get(ref(db,"rooms/"+roomId+"/hands"));
+let allHands = handsSnap.val() || {};
+    
+let targetExists = false;
+for(const playerId in allHands){
+const hand = Object.values(allHands[playerId]);
+if(hand.some(c => c.iHave === targetAnimal)){
+targetExists = true;
+break;
+}
+}
+    
+if(targetExists){
+console.log("Card doesn't match chain and target still exists in play");
+return; // Wrong card, can't play
+} else {
+console.log("Chain broken! Target animal depleted, allowing any card to restart chain");
+// Chain is broken - allow this card to restart the chain
+}
+}
 }
 
 // If chain exists but is not flipped, player must flip first
