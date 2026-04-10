@@ -66,6 +66,31 @@ Enter your name<br>
 <div id="playerArea"><div id="playerGrid"></div></div>
 </div>
 </div>
+
+<!-- Battle Screen -->
+<div id="battleScreen" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(15,23,42,0.95);z-index:1000;display:flex;flex-direction:column;justify-content:center;align-items:center;">
+<div id="battleText" style="font-size:120px;font-weight:900;color:#ef4444;text-shadow:0 0 40px rgba(239,68,68,0.8);margin-bottom:60px;opacity:0;">BATTLE!</div>
+<div style="display:flex;align-items:center;gap:80px;width:80%;">
+<div style="display:flex;flex-direction:column;align-items:center;gap:20px;">
+<div id="leftHand" style="font-size:100px;cursor:pointer;user-select:none;">👆</div>
+<div id="leftButton" style="width:120px;height:120px;background:#ef4444;border-radius:50%;box-shadow:0 10px 30px rgba(239,68,68,0.6);cursor:pointer;"></div>
+<div id="leftName" style="font-size:24px;font-weight:600;"></div>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:20px;">
+<div id="battleTimer" style="font-size:48px;font-weight:700;color:#94a3b8;">5</div>
+<div style="width:100%;height:40px;background:#1e293b;border-radius:20px;overflow:hidden;position:relative;">
+<div id="progressBar" style="position:absolute;left:50%;width:0%;height:100%;background:linear-gradient(90deg, #3b82f6, #ef4444);transition:all 0.1s;transform:translateX(-50%);"></div>
+<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:4px;height:100%;background:white;z-index:10;"></div>
+</div>
+<div id="clickCounts" style="font-size:20px;color:#94a3b8;"></div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:20px;">
+<div id="rightHand" style="font-size:100px;cursor:pointer;user-select:none;">👆</div>
+<div id="rightButton" style="width:120px;height:120px;background:#ef4444;border-radius:50%;box-shadow:0 10px 30px rgba(239,68,68,0.6);cursor:pointer;"></div>
+<div id="rightName" style="font-size:24px;font-weight:600;"></div>
+</div>
+</div>
+</div>
 </div>
 
 <script type="module">
@@ -333,6 +358,113 @@ console.log("Flipping card...");
 await update(ref(db,"rooms/"+roomId+"/chain"),{flipped:true});
 }
 
+let battleAnimationShown = false;
+
+async function handleBattle(battle, players){
+const battleScreen = document.getElementById("battleScreen");
+battleScreen.style.display = "flex";
+
+// Show BATTLE! animation once
+if(!battleAnimationShown){
+battleAnimationShown = true;
+const battleText = document.getElementById("battleText");
+battleText.style.opacity = "0";
+battleText.style.transform = "translateY(100px)";
+battleText.style.transition = "all 1s ease-out";
+setTimeout(() => {
+battleText.style.opacity = "1";
+battleText.style.transform = "translateY(0)";
+}, 50);
+}
+
+// Set player names
+const player1Name = players[battle.player1]?.name || "Player 1";
+const player2Name = players[battle.player2]?.name || "Player 2";
+const isPlayer1 = battle.player1 === playerId;
+const isPlayer2 = battle.player2 === playerId;
+
+document.getElementById("leftName").textContent = player1Name;
+document.getElementById("rightName").textContent = player2Name;
+
+// Update timer
+const elapsed = Date.now() - battle.startTime;
+const remaining = Math.max(0, 5 - Math.floor(elapsed / 1000));
+document.getElementById("battleTimer").textContent = remaining;
+
+// Update progress bar
+const clicks1 = battle.clicks1 || 0;
+const clicks2 = battle.clicks2 || 0;
+const total = clicks1 + clicks2;
+const percentage = total > 0 ? ((clicks1 / total) * 100 - 50) : 0;
+document.getElementById("progressBar").style.width = Math.abs(percentage) + "%";
+document.getElementById("progressBar").style.left = percentage < 0 ? "50%" : (50 - percentage) + "%";
+document.getElementById("clickCounts").textContent = `${clicks1} vs ${clicks2}`;
+
+// Handle clicking
+const leftButton = document.getElementById("leftButton");
+const rightButton = document.getElementById("rightButton");
+const leftHand = document.getElementById("leftHand");
+const rightHand = document.getElementById("rightHand");
+
+const clickHandler = async () => {
+if(remaining <= 0) return;
+if(isPlayer1){
+await update(ref(db,"rooms/"+roomId+"/battle/clicks1"), clicks1 + 1);
+} else if(isPlayer2){
+await update(ref(db,"rooms/"+roomId+"/battle/clicks2"), clicks2 + 1);
+}
+};
+
+leftButton.onclick = isPlayer1 ? clickHandler : null;
+rightButton.onclick = isPlayer2 ? clickHandler : null;
+leftHand.onclick = isPlayer1 ? clickHandler : null;
+rightHand.onclick = isPlayer2 ? clickHandler : null;
+
+// Check if battle is over
+if(remaining === 0 && !battle.winner){
+// Determine winner
+const winner = clicks1 > clicks2 ? battle.player1 : battle.player2;
+const winnerCard = clicks1 > clicks2 ? battle.card1 : battle.card2;
+const loser = clicks1 > clicks2 ? battle.player2 : battle.player1;
+
+console.log("Battle over! Winner:", winner);
+
+// Play winner's card
+let newHand = myHand;
+if(winner === playerId){
+newHand = myHand.filter(c => c.id !== winnerCard.id);
+}
+
+// Update hands
+let handObj = {};
+newHand.forEach((c, idx) => handObj[idx] = c);
+await set(ref(db,"rooms/"+roomId+"/hands/"+playerId), handObj);
+
+// Only winner updates the chain
+if(winner === playerId){
+await update(ref(db,"rooms/"+roomId+"/chain"),{
+iHave: winnerCard.iHave,
+whoHas: winnerCard.whoHas,
+flipped: false,
+playedBy: winner
+});
+
+// Check for win
+if(newHand.length === 0){
+let scoresSnap = await get(ref(db,"rooms/"+roomId+"/scores"));
+let scores = scoresSnap.val() || {};
+if(!scores[playerId]) scores[playerId] = 0;
+scores[playerId]++;
+await update(ref(db,"rooms/"+roomId),{winner: playerId, scores: scores});
+}
+}
+
+// Clear battle
+await update(ref(db,"rooms/"+roomId+"/battle"),{active: false, winner: winner});
+battleAnimationShown = false;
+}
+}
+
 function listenRoom(){
 onValue(ref(db,"rooms/"+roomId),snap=>{
 let data=snap.val();
@@ -421,6 +553,14 @@ const playerScore = data.scores[p] || 0;
 scoreHTML += `${playerName}: ${playerScore}<br>`;
 }
 scoreBoard.innerHTML = scoreHTML;
+}
+
+// Battle system
+if(data.battle && data.battle.active){
+handleBattle(data.battle, data.players);
+} else {
+// Hide battle screen if not active
+document.getElementById("battleScreen").style.display="none";
 }
 });
 }
