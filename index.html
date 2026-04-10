@@ -226,6 +226,60 @@ return;
 }
 
 console.log("Playing card...");
+
+// BATTLE DETECTION: Check for simultaneous plays
+const now = Date.now();
+let battleSnap = await get(ref(db,"rooms/"+roomId+"/pendingPlay"));
+let pendingPlay = battleSnap.val();
+
+if(pendingPlay && pendingPlay.playerId !== playerId && (now - pendingPlay.timestamp) < 300){
+// Simultaneous play detected! Trigger battle
+console.log("BATTLE! Two cards played within 300ms");
+  
+// Randomly give student (non-host) a hidden bonus (50/50 chance)
+const player1IsHost = pendingPlay.playerId === playerId ? isHost : !isHost;
+const player2IsHost = isHost;
+const bonus1 = !player1IsHost && Math.random() < 0.5 ? 10 : 0;
+const bonus2 = !player2IsHost && Math.random() < 0.5 ? 10 : 0;
+  
+await update(ref(db,"rooms/"+roomId+"/battle"),{
+player1: pendingPlay.playerId,
+player2: playerId,
+card1: pendingPlay.card,
+card2: card,
+clicks1: bonus1,
+clicks2: bonus2,
+startTime: now,
+active: true
+});
+  
+// Clear pending play
+await set(ref(db,"rooms/"+roomId+"/pendingPlay"), null);
+return; // Don't play card yet - wait for battle resolution
+}
+
+// No battle detected yet - register this as a pending play
+await set(ref(db,"rooms/"+roomId+"/pendingPlay"),{
+playerId: playerId,
+card: card,
+timestamp: now
+});
+
+// Wait a moment to see if opponent plays
+await new Promise(resolve => setTimeout(resolve, 350));
+
+// Check if battle was triggered by opponent
+let battleCheck = await get(ref(db,"rooms/"+roomId+"/battle"));
+if(battleCheck.val()?.active){
+console.log("Battle triggered by opponent");
+// Clear pending play
+await set(ref(db,"rooms/"+roomId+"/pendingPlay"), null);
+return; // Battle started, don't continue
+}
+
+// No battle - clear pending and play normally
+await set(ref(db,"rooms/"+roomId+"/pendingPlay"), null);
+
 let newHand=myHand.filter(c=>c.id!==card.id);
 console.log("newHand length:", newHand.length);
 
