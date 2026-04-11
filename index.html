@@ -359,8 +359,10 @@ await update(ref(db,"rooms/"+roomId+"/chain"),{flipped:true});
 }
 
 let battleAnimationShown = false;
+let battleInterval = null;
 
 async function handleBattle(battle, players){
+console.log("handleBattle called", battle);
 const battleScreen = document.getElementById("battleScreen");
 battleScreen.style.display = "flex";
 
@@ -383,10 +385,13 @@ const player2Name = players[battle.player2]?.name || "Player 2";
 const isPlayer1 = battle.player1 === playerId;
 const isPlayer2 = battle.player2 === playerId;
 
+console.log("I am player1:", isPlayer1, "I am player2:", isPlayer2);
+
 document.getElementById("leftName").textContent = player1Name;
 document.getElementById("rightName").textContent = player2Name;
 
-// Update timer
+// Update timer and UI continuously
+const updateBattleUI = () => {
 const elapsed = Date.now() - battle.startTime;
 const remaining = Math.max(0, 5 - Math.floor(elapsed / 1000));
 document.getElementById("battleTimer").textContent = remaining;
@@ -400,6 +405,16 @@ document.getElementById("progressBar").style.width = Math.abs(percentage) + "%";
 document.getElementById("progressBar").style.left = percentage < 0 ? "50%" : (50 - percentage) + "%";
 document.getElementById("clickCounts").textContent = `${clicks1} vs ${clicks2}`;
 
+console.log("Timer:", remaining, "Clicks:", clicks1, "vs", clicks2);
+};
+
+// Start timer interval if not already running
+if(!battleInterval){
+battleInterval = setInterval(updateBattleUI, 100);
+}
+
+updateBattleUI();
+
 // Handle clicking
 const leftButton = document.getElementById("leftButton");
 const rightButton = document.getElementById("rightButton");
@@ -407,32 +422,65 @@ const leftHand = document.getElementById("leftHand");
 const rightHand = document.getElementById("rightHand");
 
 const clickHandler = async () => {
-if(remaining <= 0) return;
+console.log("Button clicked!");
+const elapsed = Date.now() - battle.startTime;
+const remaining = Math.max(0, 5 - Math.floor(elapsed / 1000));
+if(remaining <= 0) {
+console.log("Battle time is up!");
+return;
+}
 if(isPlayer1){
-await update(ref(db,"rooms/"+roomId+"/battle/clicks1"), clicks1 + 1);
+console.log("Player 1 clicking, current:", battle.clicks1);
+await update(ref(db,"rooms/"+roomId+"/battle/clicks1"), (battle.clicks1 || 0) + 1);
 } else if(isPlayer2){
-await update(ref(db,"rooms/"+roomId+"/battle/clicks2"), clicks2 + 1);
+console.log("Player 2 clicking, current:", battle.clicks2);
+await update(ref(db,"rooms/"+roomId+"/battle/clicks2"), (battle.clicks2 || 0) + 1);
 }
 };
 
-leftButton.onclick = isPlayer1 ? clickHandler : null;
-rightButton.onclick = isPlayer2 ? clickHandler : null;
-leftHand.onclick = isPlayer1 ? clickHandler : null;
-rightHand.onclick = isPlayer2 ? clickHandler : null;
+// Remove old handlers and add new ones
+leftButton.onclick = null;
+rightButton.onclick = null;
+leftHand.onclick = null;
+rightHand.onclick = null;
+
+if(isPlayer1){
+leftButton.onclick = clickHandler;
+leftHand.onclick = clickHandler;
+leftButton.style.cursor = "pointer";
+leftHand.style.cursor = "pointer";
+console.log("Player 1 buttons enabled");
+} else if(isPlayer2){
+rightButton.onclick = clickHandler;
+rightHand.onclick = clickHandler;
+rightButton.style.cursor = "pointer";
+rightHand.style.cursor = "pointer";
+console.log("Player 2 buttons enabled");
+}
 
 // Check if battle is over
+const elapsed = Date.now() - battle.startTime;
+const remaining = Math.max(0, 5 - Math.floor(elapsed / 1000));
+
 if(remaining === 0 && !battle.winner){
+console.log("Battle over! Determining winner...");
+clearInterval(battleInterval);
+battleInterval = null;
+
 // Determine winner
+const clicks1 = battle.clicks1 || 0;
+const clicks2 = battle.clicks2 || 0;
 const winner = clicks1 > clicks2 ? battle.player1 : battle.player2;
 const winnerCard = clicks1 > clicks2 ? battle.card1 : battle.card2;
-const loser = clicks1 > clicks2 ? battle.player2 : battle.player1;
 
-console.log("Battle over! Winner:", winner);
+console.log("Winner:", winner, "with", clicks1 > clicks2 ? clicks1 : clicks2, "clicks");
 
 // Play winner's card
 let newHand = myHand;
 if(winner === playerId){
 newHand = myHand.filter(c => c.id !== winnerCard.id);
+myHand = newHand;
+renderHand();
 }
 
 // Update hands
