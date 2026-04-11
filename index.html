@@ -261,19 +261,18 @@ if(pendingPlay && pendingPlay.playerId !== playerId && (now - pendingPlay.timest
 // Simultaneous play detected! Trigger battle
 console.log("BATTLE! Two cards played within 2000ms");
   
-// Randomly give student (non-host) a hidden bonus (50/50 chance)
-const player1IsHost = pendingPlay.playerId === playerId ? isHost : !isHost;
-const player2IsHost = isHost;
-const bonus1 = !player1IsHost && Math.random() < 0.5 ? 10 : 0;
-const bonus2 = !player2IsHost && Math.random() < 0.5 ? 10 : 0;
+// Determine who is the student (non-host) - 50/50 chance they get bonus multiplier
+const player1IsHost = pendingPlay.playerId === (isHost ? playerId : null);
+const hasStudentBonus = Math.random() < 0.5; // 50/50 chance
   
 await update(ref(db,"rooms/"+roomId+"/battle"),{
 player1: pendingPlay.playerId,
 player2: playerId,
 card1: pendingPlay.card,
 card2: card,
-clicks1: bonus1,
-clicks2: bonus2,
+clicks1: 0,
+clicks2: 0,
+studentBonus: hasStudentBonus,
 startTime: now,
 active: true
 });
@@ -360,15 +359,31 @@ await update(ref(db,"rooms/"+roomId+"/chain"),{flipped:true});
 
 let battleAnimationShown = false;
 let battleInterval = null;
+let battleActive = false;
 
 async function handleBattle(battle, players){
 console.log("handleBattle called", battle);
+
+// Check if battle just ended
+if(!battle.active){
+console.log("Battle ended, cleaning up");
+if(battleInterval){
+clearInterval(battleInterval);
+battleInterval = null;
+}
+battleActive = false;
+battleAnimationShown = false;
+document.getElementById("battleScreen").style.display = "none";
+return;
+}
+
 const battleScreen = document.getElementById("battleScreen");
 battleScreen.style.display = "flex";
 
 // Show BATTLE! animation once
 if(!battleAnimationShown){
 battleAnimationShown = true;
+battleActive = true;
 const battleText = document.getElementById("battleText");
 battleText.style.opacity = "0";
 battleText.style.transform = "translateY(100px)";
@@ -384,11 +399,15 @@ const player1Name = players[battle.player1]?.name || "Player 1";
 const player2Name = players[battle.player2]?.name || "Player 2";
 const isPlayer1 = battle.player1 === playerId;
 const isPlayer2 = battle.player2 === playerId;
+const isStudent = !isHost;
 
-console.log("I am player1:", isPlayer1, "I am player2:", isPlayer2);
+console.log("I am player1:", isPlayer1, "I am player2:", isPlayer2, "I am student:", isStudent);
 
 document.getElementById("leftName").textContent = player1Name;
 document.getElementById("rightName").textContent = player2Name;
+
+// Student bonus: 50/50 chance their clicks count as 1.2x (hidden)
+const studentMultiplier = battle.studentBonus ? 1.2 : 1.0;
 
 // Update timer and UI continuously
 const updateBattleUI = () => {
@@ -396,26 +415,40 @@ const elapsed = Date.now() - battle.startTime;
 const remaining = Math.max(0, 5 - Math.floor(elapsed / 1000));
 document.getElementById("battleTimer").textContent = remaining;
 
-// Update progress bar
-const clicks1 = battle.clicks1 || 0;
-const clicks2 = battle.clicks2 || 0;
-const total = clicks1 + clicks2;
-const percentage = total > 0 ? ((clicks1 / total) * 100 - 50) : 0;
-document.getElementById("progressBar").style.width = Math.abs(percentage) + "%";
-document.getElementById("progressBar").style.left = percentage < 0 ? "50%" : (50 - percentage) + "%";
+// Apply student multiplier to display
+let clicks1 = battle.clicks1 || 0;
+let clicks2 = battle.clicks2 || 0;
+  
+// Don't show the multiplier - just display raw clicks
 document.getElementById("clickCounts").textContent = `${clicks1} vs ${clicks2}`;
 
-console.log("Timer:", remaining, "Clicks:", clicks1, "vs", clicks2);
+// For progress bar, apply multiplier to student's side
+const player1IsStudent = battle.player1 !== playerId ? !isHost : isHost === false;
+const effectiveClicks1 = player1IsStudent && battle.studentBonus ? clicks1 * studentMultiplier : clicks1;
+const effectiveClicks2 = !player1IsStudent && battle.studentBonus ? clicks2 * studentMultiplier : clicks2;
+  
+const total = effectiveClicks1 + effectiveClicks2;
+const percentage = total > 0 ? ((effectiveClicks1 / total) * 100 - 50) : 0;
+document.getElementById("progressBar").style.width = Math.abs(percentage) + "%";
+document.getElementById("progressBar").style.left = percentage < 0 ? "50%" : (50 - percentage) + "%";
+
+// Check if battle should end
+if(remaining === 0 && battleActive && !battle.winner){
+console.log("Battle time up! Resolving...");
+resolveBattle(battle, effectiveClicks1, effectiveClicks2);
+}
 };
 
-// Start timer interval if not already running
-if(!battleInterval){
+// Start timer interval only once
+if(!battleInterval && battleActive){
 battleInterval = setInterval(updateBattleUI, 100);
 }
 
 updateBattleUI();
 
-// Handle clicking
+// Handle clicking - only set up once
+if(!battleActive) return;
+
 const leftButton = document.getElementById("leftButton");
 const rightButton = document.getElementById("rightButton");
 const leftHand = document.getElementById("leftHand");
@@ -430,11 +463,13 @@ console.log("Battle time is up!");
 return;
 }
 if(isPlayer1){
-console.log("Player 1 clicking, current:", battle.clicks1);
-await update(ref(db,"rooms/"+roomId+"/battle/clicks1"), (battle.clicks1 || 0) + 1);
+const newClicks = (battle.clicks1 || 0) + 1;
+console.log("Player 1 clicking, new count:", newClicks);
+await set(ref(db,"rooms/"+roomId+"/battle/clicks1"), newClicks);
 } else if(isPlayer2){
-console.log("Player 2 clicking, current:", battle.clicks2);
-await update(ref(db,"rooms/"+roomId+"/battle/clicks2"), (battle.clicks2 || 0) + 1);
+const newClicks = (battle.clicks2 || 0) + 1;
+console.log("Player 2 clicking, new count:", newClicks);
+await set(ref(db,"rooms/"+roomId+"/battle/clicks2"), newClicks);
 }
 };
 
@@ -457,39 +492,42 @@ rightButton.style.cursor = "pointer";
 rightHand.style.cursor = "pointer";
 console.log("Player 2 buttons enabled");
 }
-
-// Check if battle is over
-const elapsed = Date.now() - battle.startTime;
-const remaining = Math.max(0, 5 - Math.floor(elapsed / 1000));
-
-if(remaining === 0 && !battle.winner){
-console.log("Battle over! Determining winner...");
-clearInterval(battleInterval);
-battleInterval = null;
-
-// Determine winner
-const clicks1 = battle.clicks1 || 0;
-const clicks2 = battle.clicks2 || 0;
-const winner = clicks1 > clicks2 ? battle.player1 : battle.player2;
-const winnerCard = clicks1 > clicks2 ? battle.card1 : battle.card2;
-
-console.log("Winner:", winner, "with", clicks1 > clicks2 ? clicks1 : clicks2, "clicks");
-
-// Play winner's card
-let newHand = myHand;
-if(winner === playerId){
-newHand = myHand.filter(c => c.id !== winnerCard.id);
-myHand = newHand;
-renderHand();
 }
 
-// Update hands
+async function resolveBattle(battle, effectiveClicks1, effectiveClicks2){
+console.log("Resolving battle:", effectiveClicks1, "vs", effectiveClicks2);
+battleActive = false;
+  
+if(battleInterval){
+clearInterval(battleInterval);
+battleInterval = null;
+}
+
+// Determine winner based on effective clicks (with multiplier)
+const winner = effectiveClicks1 > effectiveClicks2 ? battle.player1 : battle.player2;
+const winnerCard = effectiveClicks1 > effectiveClicks2 ? battle.card1 : battle.card2;
+
+console.log("Winner:", winner);
+
+// Show winner announcement
+const chainText = document.getElementById("chainText");
+const winnerName = winner === playerId ? "YOU" : "OPPONENT";
+chainText.innerHTML = `${winnerName} WIN THE BATTLE!`;
+
+// Wait a moment before continuing
+await new Promise(resolve => setTimeout(resolve, 2000));
+
+// Play winner's card
+if(winner === playerId){
+let newHand = myHand.filter(c => c.id !== winnerCard.id);
+myHand = newHand;
+  
+// Update hand in Firebase
 let handObj = {};
 newHand.forEach((c, idx) => handObj[idx] = c);
 await set(ref(db,"rooms/"+roomId+"/hands/"+playerId), handObj);
 
-// Only winner updates the chain
-if(winner === playerId){
+// Update chain
 await update(ref(db,"rooms/"+roomId+"/chain"),{
 iHave: winnerCard.iHave,
 whoHas: winnerCard.whoHas,
@@ -497,7 +535,9 @@ flipped: false,
 playedBy: winner
 });
 
-// Check for win
+renderHand();
+
+// Check for game win
 if(newHand.length === 0){
 let scoresSnap = await get(ref(db,"rooms/"+roomId+"/scores"));
 let scores = scoresSnap.val() || {};
@@ -507,10 +547,8 @@ await update(ref(db,"rooms/"+roomId),{winner: playerId, scores: scores});
 }
 }
 
-// Clear battle
+// Clear battle (both players do this)
 await update(ref(db,"rooms/"+roomId+"/battle"),{active: false, winner: winner});
-battleAnimationShown = false;
-}
 }
 
 function listenRoom(){
