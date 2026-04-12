@@ -68,28 +68,48 @@ Enter your name<br>
 </div>
 
 <!-- Battle Screen -->
-<div id="battleScreen" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(15,23,42,0.95);z-index:1000;flex-direction:column;justify-content:center;align-items:center;">
-<div id="battleText" style="font-size:120px;font-weight:900;color:#ef4444;text-shadow:0 0 40px rgba(239,68,68,0.8);margin-bottom:60px;opacity:0;">BATTLE!</div>
-<div style="display:flex;align-items:center;gap:80px;width:80%;">
-<div style="display:flex;flex-direction:column;align-items:center;gap:20px;">
-<div id="leftHand" style="font-size:100px;cursor:pointer;user-select:none;">👆</div>
-<div id="leftButton" style="width:120px;height:120px;background:#ef4444;border-radius:50%;box-shadow:0 10px 30px rgba(239,68,68,0.6);cursor:pointer;"></div>
-<div id="leftName" style="font-size:24px;font-weight:600;"></div>
+<div id="battleScreen" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(15,23,42,0.98);z-index:1000;flex-direction:column;justify-content:space-between;align-items:center;padding:60px 0;">
+<div id="battleText" style="font-size:120px;font-weight:900;color:#ef4444;text-shadow:0 0 40px rgba(239,68,68,0.8);opacity:0;">BATTLE!</div>
+
+<!-- Tipping Scale -->
+<div style="display:flex;flex-direction:column;align-items:center;gap:40px;margin-top:-100px;">
+<div id="battleTimer" style="font-size:64px;font-weight:700;color:#94a3b8;text-shadow:0 0 20px rgba(148,163,184,0.5);">5</div>
+
+<div style="display:flex;align-items:flex-end;gap:60px;">
+<div style="text-align:center;">
+<div id="leftName" style="font-size:32px;font-weight:700;margin-bottom:10px;"></div>
+<div id="leftScore" style="font-size:48px;font-weight:700;color:#3b82f6;">0</div>
 </div>
-<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:20px;">
-<div id="battleTimer" style="font-size:48px;font-weight:700;color:#94a3b8;">5</div>
-<div style="width:100%;height:40px;background:#1e293b;border-radius:20px;overflow:hidden;position:relative;">
-<div id="progressBar" style="position:absolute;left:50%;width:0%;height:100%;background:linear-gradient(90deg, #3b82f6, #ef4444);transition:all 0.1s;transform:translateX(-50%);"></div>
-<div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:4px;height:100%;background:white;z-index:10;"></div>
+
+<!-- Scale visualization -->
+<div style="position:relative;width:400px;height:200px;">
+<svg width="400" height="200" style="position:absolute;top:0;left:0;">
+<!-- Pivot point -->
+<circle cx="200" cy="150" r="8" fill="#64748b"/>
+<!-- Scale beam -->
+<line id="scaleBeam" x1="50" y1="150" x2="350" y2="150" stroke="#64748b" stroke-width="8" stroke-linecap="round" style="transform-origin: 200px 150px; transition: transform 0.2s;"/>
+<!-- Left pan -->
+<rect id="leftPan" x="30" y="130" width="60" height="40" fill="#3b82f6" rx="5" style="transform-origin: 60px 150px; transition: transform 0.2s;"/>
+<!-- Right pan -->
+<rect id="rightPan" x="310" y="130" width="60" height="40" fill="#ef4444" rx="5" style="transform-origin: 340px 150px; transition: transform 0.2s;"/>
+</svg>
 </div>
-<div id="clickCounts" style="font-size:20px;color:#94a3b8;"></div>
-</div>
-<div style="display:flex;flex-direction:column;align-items:center;gap:20px;">
-<div id="rightHand" style="font-size:100px;cursor:pointer;user-select:none;">👆</div>
-<div id="rightButton" style="width:120px;height:120px;background:#ef4444;border-radius:50%;box-shadow:0 10px 30px rgba(239,68,68,0.6);cursor:pointer;"></div>
-<div id="rightName" style="font-size:24px;font-weight:600;"></div>
+
+<div style="text-align:center;">
+<div id="rightName" style="font-size:32px;font-weight:700;margin-bottom:10px;"></div>
+<div id="rightScore" style="font-size:48px;font-weight:700;color:#ef4444;">0</div>
 </div>
 </div>
+</div>
+
+<!-- Centered Battle Button -->
+<div style="text-align:center;margin-bottom:40px;">
+<div id="battleButton" style="width:180px;height:180px;background:#ef4444;border-radius:50%;box-shadow:0 20px 60px rgba(239,68,68,0.8);cursor:pointer;transition:transform 0.05s;margin:0 auto;" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'"></div>
+<div style="font-size:24px;font-weight:600;margin-top:20px;color:#94a3b8;">CLICK!</div>
+</div>
+
+<!-- Winner Announcement (hidden by default) -->
+<div id="winnerAnnouncement" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:80px;font-weight:900;text-align:center;opacity:0;pointer-events:none;text-shadow:0 0 40px rgba(255,255,255,0.5);transition:opacity 0.5s;"></div>
 </div>
 </div>
 
@@ -261,9 +281,8 @@ if(pendingPlay && pendingPlay.playerId !== playerId && (now - pendingPlay.timest
 // Simultaneous play detected! Trigger battle
 console.log("BATTLE! Two cards played within 2000ms");
   
-// Determine who is the student (non-host) - 50/50 chance they get bonus multiplier
-const player1IsHost = pendingPlay.playerId === (isHost ? playerId : null);
-const hasStudentBonus = Math.random() < 0.5; // 50/50 chance
+// Student gets bonus multiplier 1/3 of the time (33% chance)
+const hasStudentBonus = Math.random() < 0.333;
   
 await update(ref(db,"rooms/"+roomId+"/battle"),{
 player1: pendingPlay.playerId,
@@ -290,8 +309,8 @@ card: card,
 timestamp: now
 });
 
-// Wait a moment to see if opponent plays
-await new Promise(resolve => setTimeout(resolve, 2100));
+// Wait a moment to see if opponent plays (reduced from 2100ms)
+await new Promise(resolve => setTimeout(resolve, 500));
 
 // Check if battle was triggered by opponent
 let battleCheck = await get(ref(db,"rooms/"+roomId+"/battle"));
@@ -360,6 +379,7 @@ await update(ref(db,"rooms/"+roomId+"/chain"),{flipped:true});
 let battleAnimationShown = false;
 let battleInterval = null;
 let battleActive = false;
+let battleClickHandler = null;
 
 async function handleBattle(battle, players){
 console.log("handleBattle called", battle);
@@ -373,6 +393,10 @@ battleInterval = null;
 }
 battleActive = false;
 battleAnimationShown = false;
+// Remove click handler
+const battleButton = document.getElementById("battleButton");
+if(battleButton) battleButton.onclick = null;
+battleClickHandler = null;
 document.getElementById("battleScreen").style.display = "none";
 return;
 }
@@ -380,7 +404,7 @@ return;
 const battleScreen = document.getElementById("battleScreen");
 battleScreen.style.display = "flex";
 
-// Show BATTLE! animation once
+// Show BATTLE! animation once per battle
 if(!battleAnimationShown){
 battleAnimationShown = true;
 battleActive = true;
@@ -399,14 +423,11 @@ const player1Name = players[battle.player1]?.name || "Player 1";
 const player2Name = players[battle.player2]?.name || "Player 2";
 const isPlayer1 = battle.player1 === playerId;
 const isPlayer2 = battle.player2 === playerId;
-const isStudent = !isHost;
-
-console.log("I am player1:", isPlayer1, "I am player2:", isPlayer2, "I am student:", isStudent);
 
 document.getElementById("leftName").textContent = player1Name;
 document.getElementById("rightName").textContent = player2Name;
 
-// Student bonus: 50/50 chance their clicks count as 1.2x (hidden)
+// Student bonus: 1/3 chance their clicks count as 1.2x (hidden)
 const studentMultiplier = battle.studentBonus ? 1.2 : 1.0;
 
 // Update timer and UI continuously
@@ -415,22 +436,35 @@ const elapsed = Date.now() - battle.startTime;
 const remaining = Math.max(0, 5 - Math.floor(elapsed / 1000));
 document.getElementById("battleTimer").textContent = remaining;
 
-// Apply student multiplier to display
+// Get clicks
 let clicks1 = battle.clicks1 || 0;
 let clicks2 = battle.clicks2 || 0;
   
-// Don't show the multiplier - just display raw clicks
-document.getElementById("clickCounts").textContent = `${clicks1} vs ${clicks2}`;
+// Display raw click counts
+document.getElementById("leftScore").textContent = clicks1;
+document.getElementById("rightScore").textContent = clicks2;
 
-// For progress bar, apply multiplier to student's side
-const player1IsStudent = battle.player1 !== playerId ? !isHost : isHost === false;
+// For scale, apply multiplier to student's side
+const player1IsStudent = !isHost && isPlayer1;
+const player2IsStudent = !isHost && isPlayer2;
 const effectiveClicks1 = player1IsStudent && battle.studentBonus ? clicks1 * studentMultiplier : clicks1;
-const effectiveClicks2 = !player1IsStudent && battle.studentBonus ? clicks2 * studentMultiplier : clicks2;
+const effectiveClicks2 = player2IsStudent && battle.studentBonus ? clicks2 * studentMultiplier : clicks2;
   
+// Tipping scale calculation
 const total = effectiveClicks1 + effectiveClicks2;
-const percentage = total > 0 ? ((effectiveClicks1 / total) * 100 - 50) : 0;
-document.getElementById("progressBar").style.width = Math.abs(percentage) + "%";
-document.getElementById("progressBar").style.left = percentage < 0 ? "50%" : (50 - percentage) + "%";
+let tilt = 0;
+if(total > 0){
+const ratio = effectiveClicks1 / total;
+tilt = (ratio - 0.5) * 30; // Max 15 degrees each way
+}
+
+// Update scale tilt
+const scaleBeam = document.getElementById("scaleBeam");
+const leftPan = document.getElementById("leftPan");
+const rightPan = document.getElementById("rightPan");
+if(scaleBeam) scaleBeam.style.transform = `rotate(${-tilt}deg)`;
+if(leftPan) leftPan.style.transform = `rotate(${-tilt}deg) translateY(${tilt * 2}px)`;
+if(rightPan) rightPan.style.transform = `rotate(${-tilt}deg) translateY(${-tilt * 2}px)`;
 
 // Check if battle should end
 if(remaining === 0 && battleActive && !battle.winner){
@@ -446,16 +480,10 @@ battleInterval = setInterval(updateBattleUI, 100);
 
 updateBattleUI();
 
-// Handle clicking - only set up once
-if(!battleActive) return;
-
-const leftButton = document.getElementById("leftButton");
-const rightButton = document.getElementById("rightButton");
-const leftHand = document.getElementById("leftHand");
-const rightHand = document.getElementById("rightHand");
-
-const clickHandler = async () => {
-console.log("Button clicked!");
+// Set up click handler only once per battle
+if(!battleClickHandler && battleActive){
+battleClickHandler = async () => {
+console.log("Battle button clicked!");
 const elapsed = Date.now() - battle.startTime;
 const remaining = Math.max(0, 5 - Math.floor(elapsed / 1000));
 if(remaining <= 0) {
@@ -473,24 +501,9 @@ await set(ref(db,"rooms/"+roomId+"/battle/clicks2"), newClicks);
 }
 };
 
-// Remove old handlers and add new ones
-leftButton.onclick = null;
-rightButton.onclick = null;
-leftHand.onclick = null;
-rightHand.onclick = null;
-
-if(isPlayer1){
-leftButton.onclick = clickHandler;
-leftHand.onclick = clickHandler;
-leftButton.style.cursor = "pointer";
-leftHand.style.cursor = "pointer";
-console.log("Player 1 buttons enabled");
-} else if(isPlayer2){
-rightButton.onclick = clickHandler;
-rightHand.onclick = clickHandler;
-rightButton.style.cursor = "pointer";
-rightHand.style.cursor = "pointer";
-console.log("Player 2 buttons enabled");
+const battleButton = document.getElementById("battleButton");
+battleButton.onclick = battleClickHandler;
+console.log("Battle button click handler attached");
 }
 }
 
@@ -509,13 +522,19 @@ const winnerCard = effectiveClicks1 > effectiveClicks2 ? battle.card1 : battle.c
 
 console.log("Winner:", winner);
 
-// Show winner announcement
-const chainText = document.getElementById("chainText");
-const winnerName = winner === playerId ? "YOU" : "OPPONENT";
-chainText.innerHTML = `${winnerName} WIN THE BATTLE!`;
+// Show winner announcement with fade in
+const winnerAnnouncement = document.getElementById("winnerAnnouncement");
+const winnerName = winner === playerId ? "YOU" : (battle.player1 === winner ? document.getElementById("leftName").textContent : document.getElementById("rightName").textContent);
+winnerAnnouncement.textContent = `${winnerName} WIN!`;
+winnerAnnouncement.style.color = winner === battle.player1 ? "#3b82f6" : "#ef4444";
+winnerAnnouncement.style.opacity = "1";
 
-// Wait a moment before continuing
-await new Promise(resolve => setTimeout(resolve, 2000));
+// Wait 3 seconds for celebration
+await new Promise(resolve => setTimeout(resolve, 3000));
+
+// Fade out
+winnerAnnouncement.style.opacity = "0";
+await new Promise(resolve => setTimeout(resolve, 500));
 
 // Play winner's card
 if(winner === playerId){
