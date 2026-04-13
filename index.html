@@ -72,31 +72,29 @@ Enter your name<br>
 <div id="battleText" style="font-size:80px;font-weight:900;color:#ef4444;text-shadow:0 0 40px rgba(239,68,68,0.8);opacity:0;">BATTLE!</div>
 
 <!-- Tipping Scale -->
-<div style="display:flex;flex-direction:column;align-items:center;gap:30px;">
+<div style="display:flex;flex-direction:column;align-items:center;gap:30px;width:600px;">
 <div id="battleTimer" style="font-size:48px;font-weight:700;color:#94a3b8;text-shadow:0 0 20px rgba(148,163,184,0.5);">5</div>
 
-<div style="display:flex;align-items:flex-end;gap:40px;">
-<div style="text-align:center;">
-<div id="leftName" style="font-size:24px;font-weight:700;margin-bottom:8px;"></div>
+<div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
+<div style="text-align:left;flex:0 0 150px;">
+<div id="leftName" style="font-size:24px;font-weight:700;margin-bottom:8px;color:#3b82f6;"></div>
 <div id="leftScore" style="font-size:36px;font-weight:700;color:#3b82f6;">0</div>
 </div>
 
-<!-- Scale visualization -->
-<div style="position:relative;width:300px;height:150px;">
-<svg width="300" height="150" style="position:absolute;top:0;left:0;">
-<!-- Pivot point -->
-<circle cx="150" cy="110" r="6" fill="#64748b"/>
-<!-- Scale beam -->
-<line id="scaleBeam" x1="40" y1="110" x2="260" y2="110" stroke="#64748b" stroke-width="6" stroke-linecap="round" style="transform-origin: 150px 110px; transition: transform 0.05s;"/>
-<!-- Left pan -->
-<rect id="leftPan" x="25" y="95" width="50" height="30" fill="#3b82f6" rx="4" style="transform-origin: 50px 110px; transition: transform 0.05s;"/>
-<!-- Right pan -->
-<rect id="rightPan" x="225" y="95" width="50" height="30" fill="#ef4444" rx="4" style="transform-origin: 250px 110px; transition: transform 0.05s;"/>
-</svg>
+<!-- Progress Bar -->
+<div style="flex:1;margin:0 30px;">
+<div style="position:relative;height:40px;background:#1e293b;border-radius:20px;overflow:visible;">
+<!-- Blue side (left) -->
+<div id="leftProgress" style="position:absolute;left:0;top:0;height:100%;background:#3b82f6;border-radius:20px 0 0 20px;transition:width 0.05s;width:50%;"></div>
+<!-- Red side (right) -->
+<div id="rightProgress" style="position:absolute;right:0;top:0;height:100%;background:#ef4444;border-radius:0 20px 20px 0;transition:width 0.05s;width:50%;"></div>
+<!-- Center line -->
+<div style="position:absolute;left:50%;top:0;width:3px;height:100%;background:white;transform:translateX(-50%);z-index:10;"></div>
+</div>
 </div>
 
-<div style="text-align:center;">
-<div id="rightName" style="font-size:24px;font-weight:700;margin-bottom:8px;"></div>
+<div style="text-align:right;flex:0 0 150px;">
+<div id="rightName" style="font-size:24px;font-weight:700;margin-bottom:8px;color:#ef4444;"></div>
 <div id="rightScore" style="font-size:36px;font-weight:700;color:#ef4444;">0</div>
 </div>
 </div>
@@ -450,27 +448,27 @@ let clicks2 = battle.clicks2 || 0;
 document.getElementById("leftScore").textContent = clicks1;
 document.getElementById("rightScore").textContent = clicks2;
 
-// For scale, apply multiplier to student's side
+// For progress bar, apply multiplier to student's side
 const player1IsStudent = !isHost && isPlayer1;
 const player2IsStudent = !isHost && isPlayer2;
 const effectiveClicks1 = player1IsStudent && battle.studentBonus ? clicks1 * studentMultiplier : clicks1;
 const effectiveClicks2 = player2IsStudent && battle.studentBonus ? clicks2 * studentMultiplier : clicks2;
   
-// Tipping scale calculation - more aggressive tilt
+// Progress bar calculation
 const total = effectiveClicks1 + effectiveClicks2;
-let tilt = 0;
+let leftPercent = 50;
+let rightPercent = 50;
+
 if(total > 0){
-const ratio = effectiveClicks1 / total;
-tilt = (ratio - 0.5) * 60; // Max 30 degrees each way (doubled from before)
+leftPercent = (effectiveClicks1 / total) * 100;
+rightPercent = (effectiveClicks2 / total) * 100;
 }
 
-// Update scale tilt with immediate response
-const scaleBeam = document.getElementById("scaleBeam");
-const leftPan = document.getElementById("leftPan");
-const rightPan = document.getElementById("rightPan");
-if(scaleBeam) scaleBeam.style.transform = `rotate(${-tilt}deg)`;
-if(leftPan) leftPan.style.transform = `rotate(${-tilt}deg) translateY(${tilt * 1.5}px)`;
-if(rightPan) rightPan.style.transform = `rotate(${-tilt}deg) translateY(${-tilt * 1.5}px)`;
+// Update progress bars
+const leftProgress = document.getElementById("leftProgress");
+const rightProgress = document.getElementById("rightProgress");
+if(leftProgress) leftProgress.style.width = leftPercent + "%";
+if(rightProgress) rightProgress.style.width = rightPercent + "%";
 
 // Check if battle should end
 if(remaining === 0 && battleActive && !battle.winner){
@@ -525,9 +523,11 @@ battleInterval = null;
 
 // Determine winner based on effective clicks (with multiplier)
 const winner = effectiveClicks1 > effectiveClicks2 ? battle.player1 : battle.player2;
+const loser = effectiveClicks1 > effectiveClicks2 ? battle.player2 : battle.player1;
 const winnerCard = effectiveClicks1 > effectiveClicks2 ? battle.card1 : battle.card2;
+const loserCard = effectiveClicks1 > effectiveClicks2 ? battle.card2 : battle.card1;
 
-console.log("Winner:", winner);
+console.log("Winner:", winner, "Loser:", loser);
 
 // Show winner announcement with fade in
 const winnerAnnouncement = document.getElementById("winnerAnnouncement");
@@ -543,7 +543,7 @@ await new Promise(resolve => setTimeout(resolve, 3000));
 winnerAnnouncement.style.opacity = "0";
 await new Promise(resolve => setTimeout(resolve, 500));
 
-// Play winner's card
+// WINNER: Remove card and play it
 if(winner === playerId){
 let newHand = myHand.filter(c => c.id !== winnerCard.id);
 myHand = newHand;
@@ -573,7 +573,15 @@ await update(ref(db,"rooms/"+roomId),{winner: playerId, scores: scores});
 }
 }
 
-// Clear battle (both players do this)
+// LOSER: Keep card (it should still be in hand since we never removed it)
+// Just make sure hand is correct
+if(loser === playerId){
+// Loser's hand should already have the card, but let's ensure it's rendered
+renderHand();
+console.log("Loser keeps card, hand size:", myHand.length);
+}
+
+// Clear battle (both players do this, but only winner updates chain)
 await update(ref(db,"rooms/"+roomId+"/battle"),{active: false, winner: winner});
 }
 
