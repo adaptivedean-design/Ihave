@@ -68,48 +68,48 @@ Enter your name<br>
 </div>
 
 <!-- Battle Screen -->
-<div id="battleScreen" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(15,23,42,0.98);z-index:1000;flex-direction:column;justify-content:space-between;align-items:center;padding:60px 0;">
-<div id="battleText" style="font-size:120px;font-weight:900;color:#ef4444;text-shadow:0 0 40px rgba(239,68,68,0.8);opacity:0;">BATTLE!</div>
+<div id="battleScreen" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(15,23,42,0.98);z-index:1000;flex-direction:column;justify-content:space-between;align-items:center;padding:40px 0;overflow:hidden;">
+<div id="battleText" style="font-size:80px;font-weight:900;color:#ef4444;text-shadow:0 0 40px rgba(239,68,68,0.8);opacity:0;">BATTLE!</div>
 
 <!-- Tipping Scale -->
-<div style="display:flex;flex-direction:column;align-items:center;gap:40px;margin-top:-100px;">
-<div id="battleTimer" style="font-size:64px;font-weight:700;color:#94a3b8;text-shadow:0 0 20px rgba(148,163,184,0.5);">5</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:30px;">
+<div id="battleTimer" style="font-size:48px;font-weight:700;color:#94a3b8;text-shadow:0 0 20px rgba(148,163,184,0.5);">5</div>
 
-<div style="display:flex;align-items:flex-end;gap:60px;">
+<div style="display:flex;align-items:flex-end;gap:40px;">
 <div style="text-align:center;">
-<div id="leftName" style="font-size:32px;font-weight:700;margin-bottom:10px;"></div>
-<div id="leftScore" style="font-size:48px;font-weight:700;color:#3b82f6;">0</div>
+<div id="leftName" style="font-size:24px;font-weight:700;margin-bottom:8px;"></div>
+<div id="leftScore" style="font-size:36px;font-weight:700;color:#3b82f6;">0</div>
 </div>
 
 <!-- Scale visualization -->
-<div style="position:relative;width:400px;height:200px;">
-<svg width="400" height="200" style="position:absolute;top:0;left:0;">
+<div style="position:relative;width:300px;height:150px;">
+<svg width="300" height="150" style="position:absolute;top:0;left:0;">
 <!-- Pivot point -->
-<circle cx="200" cy="150" r="8" fill="#64748b"/>
+<circle cx="150" cy="110" r="6" fill="#64748b"/>
 <!-- Scale beam -->
-<line id="scaleBeam" x1="50" y1="150" x2="350" y2="150" stroke="#64748b" stroke-width="8" stroke-linecap="round" style="transform-origin: 200px 150px; transition: transform 0.2s;"/>
+<line id="scaleBeam" x1="40" y1="110" x2="260" y2="110" stroke="#64748b" stroke-width="6" stroke-linecap="round" style="transform-origin: 150px 110px; transition: transform 0.05s;"/>
 <!-- Left pan -->
-<rect id="leftPan" x="30" y="130" width="60" height="40" fill="#3b82f6" rx="5" style="transform-origin: 60px 150px; transition: transform 0.2s;"/>
+<rect id="leftPan" x="25" y="95" width="50" height="30" fill="#3b82f6" rx="4" style="transform-origin: 50px 110px; transition: transform 0.05s;"/>
 <!-- Right pan -->
-<rect id="rightPan" x="310" y="130" width="60" height="40" fill="#ef4444" rx="5" style="transform-origin: 340px 150px; transition: transform 0.2s;"/>
+<rect id="rightPan" x="225" y="95" width="50" height="30" fill="#ef4444" rx="4" style="transform-origin: 250px 110px; transition: transform 0.05s;"/>
 </svg>
 </div>
 
 <div style="text-align:center;">
-<div id="rightName" style="font-size:32px;font-weight:700;margin-bottom:10px;"></div>
-<div id="rightScore" style="font-size:48px;font-weight:700;color:#ef4444;">0</div>
+<div id="rightName" style="font-size:24px;font-weight:700;margin-bottom:8px;"></div>
+<div id="rightScore" style="font-size:36px;font-weight:700;color:#ef4444;">0</div>
 </div>
 </div>
 </div>
 
 <!-- Centered Battle Button -->
-<div style="text-align:center;margin-bottom:40px;">
-<div id="battleButton" style="width:180px;height:180px;background:#ef4444;border-radius:50%;box-shadow:0 20px 60px rgba(239,68,68,0.8);cursor:pointer;transition:transform 0.05s;margin:0 auto;" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'"></div>
-<div style="font-size:24px;font-weight:600;margin-top:20px;color:#94a3b8;">CLICK!</div>
+<div style="text-align:center;margin-bottom:20px;">
+<div id="battleButton" style="width:140px;height:140px;background:#ef4444;border-radius:50%;box-shadow:0 20px 60px rgba(239,68,68,0.8);cursor:pointer;transition:transform 0.05s;margin:0 auto;user-select:none;" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'"></div>
+<div style="font-size:20px;font-weight:600;margin-top:15px;color:#94a3b8;">CLICK!</div>
 </div>
 
 <!-- Winner Announcement (hidden by default) -->
-<div id="winnerAnnouncement" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:80px;font-weight:900;text-align:center;opacity:0;pointer-events:none;text-shadow:0 0 40px rgba(255,255,255,0.5);transition:opacity 0.5s;"></div>
+<div id="winnerAnnouncement" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:64px;font-weight:900;text-align:center;opacity:0;pointer-events:none;text-shadow:0 0 40px rgba(255,255,255,0.5);transition:opacity 0.5s;z-index:10;"></div>
 </div>
 </div>
 
@@ -309,20 +309,8 @@ card: card,
 timestamp: now
 });
 
-// Wait a moment to see if opponent plays (reduced from 2100ms)
-await new Promise(resolve => setTimeout(resolve, 500));
-
-// Check if battle was triggered by opponent
-let battleCheck = await get(ref(db,"rooms/"+roomId+"/battle"));
-if(battleCheck.val()?.active){
-console.log("Battle triggered by opponent, waiting...");
-// Clear pending play
-await set(ref(db,"rooms/"+roomId+"/pendingPlay"), null);
-return; // Battle started, don't continue - hand stays intact
-}
-
-// No battle - clear pending and play normally
-await set(ref(db,"rooms/"+roomId+"/pendingPlay"), null);
+// Don't wait - let Firebase real-time listener handle battle detection
+// This eliminates all lag
 
 let newHand=myHand.filter(c=>c.id!==card.id);
 console.log("newHand length:", newHand.length);
@@ -380,9 +368,11 @@ let battleAnimationShown = false;
 let battleInterval = null;
 let battleActive = false;
 let battleClickHandler = null;
+let currentBattleId = null;
 
 async function handleBattle(battle, players){
-console.log("handleBattle called", battle);
+const battleId = `${battle.player1}_${battle.player2}_${battle.startTime}`;
+console.log("handleBattle called", battleId);
 
 // Check if battle just ended
 if(!battle.active){
@@ -393,16 +383,32 @@ battleInterval = null;
 }
 battleActive = false;
 battleAnimationShown = false;
+currentBattleId = null;
 // Remove click handler
 const battleButton = document.getElementById("battleButton");
 if(battleButton) battleButton.onclick = null;
 battleClickHandler = null;
 document.getElementById("battleScreen").style.display = "none";
+document.body.style.overflow = "auto"; // Re-enable scroll
 return;
+}
+
+// If this is a new battle, reset everything
+if(currentBattleId !== battleId){
+console.log("New battle detected, resetting state");
+if(battleInterval){
+clearInterval(battleInterval);
+battleInterval = null;
+}
+battleActive = false;
+battleAnimationShown = false;
+battleClickHandler = null;
+currentBattleId = battleId;
 }
 
 const battleScreen = document.getElementById("battleScreen");
 battleScreen.style.display = "flex";
+document.body.style.overflow = "hidden"; // Prevent body scroll
 
 // Show BATTLE! animation once per battle
 if(!battleAnimationShown){
@@ -450,21 +456,21 @@ const player2IsStudent = !isHost && isPlayer2;
 const effectiveClicks1 = player1IsStudent && battle.studentBonus ? clicks1 * studentMultiplier : clicks1;
 const effectiveClicks2 = player2IsStudent && battle.studentBonus ? clicks2 * studentMultiplier : clicks2;
   
-// Tipping scale calculation
+// Tipping scale calculation - more aggressive tilt
 const total = effectiveClicks1 + effectiveClicks2;
 let tilt = 0;
 if(total > 0){
 const ratio = effectiveClicks1 / total;
-tilt = (ratio - 0.5) * 30; // Max 15 degrees each way
+tilt = (ratio - 0.5) * 60; // Max 30 degrees each way (doubled from before)
 }
 
-// Update scale tilt
+// Update scale tilt with immediate response
 const scaleBeam = document.getElementById("scaleBeam");
 const leftPan = document.getElementById("leftPan");
 const rightPan = document.getElementById("rightPan");
 if(scaleBeam) scaleBeam.style.transform = `rotate(${-tilt}deg)`;
-if(leftPan) leftPan.style.transform = `rotate(${-tilt}deg) translateY(${tilt * 2}px)`;
-if(rightPan) rightPan.style.transform = `rotate(${-tilt}deg) translateY(${-tilt * 2}px)`;
+if(leftPan) leftPan.style.transform = `rotate(${-tilt}deg) translateY(${tilt * 1.5}px)`;
+if(rightPan) rightPan.style.transform = `rotate(${-tilt}deg) translateY(${-tilt * 1.5}px)`;
 
 // Check if battle should end
 if(remaining === 0 && battleActive && !battle.winner){
@@ -473,9 +479,10 @@ resolveBattle(battle, effectiveClicks1, effectiveClicks2);
 }
 };
 
-// Start timer interval only once
+// Start timer interval only once per battle
 if(!battleInterval && battleActive){
-battleInterval = setInterval(updateBattleUI, 100);
+console.log("Starting battle interval");
+battleInterval = setInterval(updateBattleUI, 50); // Update every 50ms for smoother animation
 }
 
 updateBattleUI();
@@ -666,6 +673,17 @@ handleBattle(data.battle, data.players);
 } else {
 // Hide battle screen if not active
 document.getElementById("battleScreen").style.display="none";
+}
+
+// Listen for pending play cancellation due to battle
+if(data.battle && data.battle.active){
+// If battle is active and I'm involved, restore my hand if needed
+const iAmInBattle = data.battle.player1 === playerId || data.battle.player2 === playerId;
+if(iAmInBattle && data.hands && data.hands[playerId]){
+// Restore hand from Firebase
+myHand = Object.values(data.hands[playerId]);
+renderHand();
+}
 }
 });
 }
