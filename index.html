@@ -300,17 +300,43 @@ console.log("Battle triggered, waiting for resolution...");
 return; // Don't update hand or play card - wait for battle resolution
 }
 
-// No battle detected yet - register this as a pending play
+// No battle detected yet - check if we should wait or play immediately
+const shouldWait = pendingPlay && (now - pendingPlay.timestamp) < 2000;
+
+if(!shouldWait){
+// No pending play from opponent - play card immediately with no delay
+console.log("No opponent pending play, playing card immediately");
+
+let newHand = myHand.filter(c => c.id !== card.id);
+myHand = newHand;
+renderHand();
+
+let handObj = {};
+newHand.forEach((c, idx) => handObj[idx] = c);
+await set(ref(db,"rooms/"+roomId+"/hands/"+playerId), handObj);
+await update(ref(db,"rooms/"+roomId+"/chain"),{
+iHave: card.iHave,
+whoHas: card.whoHas,
+flipped: false,
+playedBy: playerId
+});
+
+if(newHand.length === 0){
+let scoresSnap = await get(ref(db,"rooms/"+roomId+"/scores"));
+let scores = scoresSnap.val() || {};
+if(!scores[playerId]) scores[playerId] = 0;
+scores[playerId]++;
+await update(ref(db,"rooms/"+roomId),{winner: playerId, scores: scores});
+}
+} else {
+// Opponent has pending play - register ours and let battle detection handle it
 await set(ref(db,"rooms/"+roomId+"/pendingPlay"),{
 playerId: playerId,
 card: card,
 timestamp: now
 });
-
-console.log("Card registered as pending play, waiting to see if battle triggers...");
-// Don't play the card yet - the Firebase listener will either:
-// 1. Trigger a battle (if opponent plays within 2s), OR
-// 2. Auto-play this card after 2.1s if no battle occurs
+console.log("Opponent has pending play, registered for potential battle");
+}
 }
 
 async function flipCard(){
@@ -651,7 +677,7 @@ if(!scores[playerId]) scores[playerId] = 0;
 scores[playerId]++;
 await update(ref(db,"rooms/"+roomId),{winner: playerId, scores: scores});
 }
-}, 2100); // 2.1 seconds - slightly longer than battle window
+}, 400); // 400ms - just slightly longer than battle detection window (2000ms is for testing, production should be 300-500ms)
 }
 });
 }
