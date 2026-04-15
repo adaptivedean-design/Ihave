@@ -307,44 +307,10 @@ card: card,
 timestamp: now
 });
 
-// Don't wait - let Firebase real-time listener handle battle detection
-// This eliminates all lag
-
-let newHand=myHand.filter(c=>c.id!==card.id);
-console.log("newHand length:", newHand.length);
-
-// Update local hand immediately for instant UI feedback
-myHand = newHand;
-renderHand();
-
-// Convert array to object for Firebase (Firebase doesn't accept raw arrays in update)
-let handObj = {};
-newHand.forEach((c, idx) => handObj[idx] = c);
-
-// Use set() instead of update() to replace the entire hand (not merge)
-await set(ref(db,"rooms/"+roomId+"/hands/"+playerId), handObj);
-await update(ref(db,"rooms/"+roomId+"/chain"),{
-iHave:card.iHave,
-whoHas:card.whoHas,
-flipped:false,
-playedBy:playerId
-});
-
-if(newHand.length===0){
-console.log("Hand is empty! Player wins!");
-
-// Update score
-let scoresSnap = await get(ref(db,"rooms/"+roomId+"/scores"));
-let scores = scoresSnap.val() || {};
-if(!scores[playerId]) scores[playerId] = 0;
-scores[playerId]++;
-
-// Set winner immediately - first to finish wins
-await update(ref(db,"rooms/"+roomId),{
-winner:playerId,
-scores:scores
-});
-}
+console.log("Card registered as pending play, waiting to see if battle triggers...");
+// Don't play the card yet - the Firebase listener will either:
+// 1. Trigger a battle (if opponent plays within 2s), OR
+// 2. Auto-play this card after 2.1s if no battle occurs
 }
 
 async function flipCard(){
@@ -363,10 +329,10 @@ await update(ref(db,"rooms/"+roomId+"/chain"),{flipped:true});
 }
 
 let battleAnimationShown = false;
-let battleInterval = null;
 let battleActive = false;
-let battleClickHandler = null;
 let currentBattleId = null;
+let localClickCount = 0;
+let battleTimer = null;
 
 async function handleBattle(battle, players){
 const battleId = `${battle.player1}_${battle.player2}_${battle.startTime}`;
@@ -375,38 +341,35 @@ console.log("handleBattle called", battleId);
 // Check if battle just ended
 if(!battle.active){
 console.log("Battle ended, cleaning up");
-if(battleInterval){
-clearInterval(battleInterval);
-battleInterval = null;
+if(battleTimer){
+clearTimeout(battleTimer);
+battleTimer = null;
 }
 battleActive = false;
 battleAnimationShown = false;
 currentBattleId = null;
-// Remove click handler
-const battleButton = document.getElementById("battleButton");
-if(battleButton) battleButton.onclick = null;
-battleClickHandler = null;
+localClickCount = 0;
 document.getElementById("battleScreen").style.display = "none";
-document.body.style.overflow = "auto"; // Re-enable scroll
+document.body.style.overflow = "auto";
 return;
 }
 
 // If this is a new battle, reset everything
 if(currentBattleId !== battleId){
 console.log("New battle detected, resetting state");
-if(battleInterval){
-clearInterval(battleInterval);
-battleInterval = null;
+if(battleTimer){
+clearTimeout(battleTimer);
+battleTimer = null;
 }
 battleActive = false;
 battleAnimationShown = false;
-battleClickHandler = null;
+localClickCount = 0;
 currentBattleId = battleId;
 }
 
 const battleScreen = document.getElementById("battleScreen");
 battleScreen.style.display = "flex";
-document.body.style.overflow = "hidden"; // Prevent body scroll
+document.body.style.overflow = "hidden";
 
 // Show BATTLE! animation once per battle
 if(!battleAnimationShown){
@@ -420,6 +383,9 @@ setTimeout(() => {
 battleText.style.opacity = "1";
 battleText.style.transform = "translateY(0)";
 }, 50);
+
+// Start 5-second countdown and auto-submit
+startBattleCountdown(battle);
 }
 
 // Set player names
@@ -431,112 +397,151 @@ const isPlayer2 = battle.player2 === playerId;
 document.getElementById("leftName").textContent = player1Name;
 document.getElementById("rightName").textContent = player2Name;
 
-// Student bonus: 1/3 chance their clicks count as 1.2x (hidden)
-const studentMultiplier = battle.studentBonus ? 1.2 : 1.0;
+// Display submitted counts (or 0 if not submitted yet)
+const clicks1 = battle.clicks1 || 0;
+const clicks2 = battle.clicks2 || 0;
 
-// Update timer and UI continuously
-const updateBattleUI = () => {
-const elapsed = Date.now() - battle.startTime;
-const remaining = Math.max(0, 5 - Math.floor(elapsed / 1000));
-document.getElementById("battleTimer").textContent = remaining;
-
-// Get clicks
-let clicks1 = battle.clicks1 || 0;
-let clicks2 = battle.clicks2 || 0;
-  
-// Display raw click counts
 document.getElementById("leftScore").textContent = clicks1;
 document.getElementById("rightScore").textContent = clicks2;
 
-// For progress bar, apply multiplier to student's side
-const player1IsStudent = !isHost && isPlayer1;
-const player2IsStudent = !isHost && isPlayer2;
-const effectiveClicks1 = player1IsStudent && battle.studentBonus ? clicks1 * studentMultiplier : clicks1;
-const effectiveClicks2 = player2IsStudent && battle.studentBonus ? clicks2 * studentMultiplier : clicks2;
-  
-// Progress bar calculation
-const total = effectiveClicks1 + effectiveClicks2;
+// Update progress bars based on submitted counts
+const total = clicks1 + clicks2;
 let leftPercent = 50;
 let rightPercent = 50;
 
 if(total > 0){
-leftPercent = (effectiveClicks1 / total) * 100;
-rightPercent = (effectiveClicks2 / total) * 100;
+leftPercent = (clicks1 / total) * 100;
+rightPercent = (clicks2 / total) * 100;
 }
 
-// Update progress bars
 const leftProgress = document.getElementById("leftProgress");
 const rightProgress = document.getElementById("rightProgress");
 if(leftProgress) leftProgress.style.width = leftPercent + "%";
 if(rightProgress) rightProgress.style.width = rightPercent + "%";
 
-// Check if battle should end
-if(remaining === 0 && battleActive && !battle.winner){
-console.log("Battle time up! Resolving...");
-resolveBattle(battle, effectiveClicks1, effectiveClicks2);
+// Set up click handler for local counting
+const battleButton = document.getElementById("battleButton");
+battleButton.onclick = () => {
+if(!battleActive) return;
+localClickCount++;
+console.log("Local click count:", localClickCount);
+// Update MY score display immediately for instant feedback
+if(isPlayer1){
+document.getElementById("leftScore").textContent = localClickCount;
+} else if(isPlayer2){
+document.getElementById("rightScore").textContent = localClickCount;
+}
+// Recalculate progress bar with local count
+updateLocalProgress(isPlayer1, localClickCount, isPlayer1 ? clicks2 : clicks1);
+};
+}
+
+function updateLocalProgress(isLeft, myClicks, opponentClicks){
+const total = myClicks + opponentClicks;
+let leftPercent = 50;
+let rightPercent = 50;
+
+if(total > 0){
+if(isLeft){
+leftPercent = (myClicks / total) * 100;
+rightPercent = (opponentClicks / total) * 100;
+} else {
+leftPercent = (opponentClicks / total) * 100;
+rightPercent = (myClicks / total) * 100;
+}
+}
+
+const leftProgress = document.getElementById("leftProgress");
+const rightProgress = document.getElementById("rightProgress");
+if(leftProgress) leftProgress.style.width = leftPercent + "%";
+if(rightProgress) rightProgress.style.width = rightPercent + "%";
+}
+
+function startBattleCountdown(battle){
+const startTime = battle.startTime;
+const isPlayer1 = battle.player1 === playerId;
+const isPlayer2 = battle.player2 === playerId;
+const isStudent = !isHost;
+const hasBonus = battle.studentBonus && isStudent;
+
+let countdown = 5;
+
+const updateTimer = () => {
+const elapsed = Date.now() - startTime;
+countdown = Math.max(0, 5 - Math.floor(elapsed / 1000));
+document.getElementById("battleTimer").textContent = countdown;
+
+if(countdown > 0){
+requestAnimationFrame(updateTimer);
+} else if(battleActive){
+// Time's up! Submit final count
+submitBattleResult(battle, isPlayer1, isPlayer2, hasBonus);
 }
 };
 
-// Start timer interval only once per battle
-if(!battleInterval && battleActive){
-console.log("Starting battle interval");
-battleInterval = setInterval(updateBattleUI, 50); // Update every 50ms for smoother animation
+requestAnimationFrame(updateTimer);
 }
 
-updateBattleUI();
+async function submitBattleResult(battle, isPlayer1, isPlayer2, hasBonus){
+console.log("Submitting battle result. Local clicks:", localClickCount, "Bonus:", hasBonus);
+battleActive = false;
 
-// Set up click handler only once per battle
-if(!battleClickHandler && battleActive){
-battleClickHandler = async () => {
-console.log("Battle button clicked!");
-const elapsed = Date.now() - battle.startTime;
-const remaining = Math.max(0, 5 - Math.floor(elapsed / 1000));
-if(remaining <= 0) {
-console.log("Battle time is up!");
+// Apply student bonus (1.2x multiplier, 1/3 chance)
+const finalCount = hasBonus ? Math.round(localClickCount * 1.2) : localClickCount;
+console.log("Final count (after bonus):", finalCount);
+
+// Submit to Firebase
+if(isPlayer1){
+await set(ref(db,"rooms/"+roomId+"/battle/clicks1"), finalCount);
+await set(ref(db,"rooms/"+roomId+"/battle/submitted1"), true);
+} else if(isPlayer2){
+await set(ref(db,"rooms/"+roomId+"/battle/clicks2"), finalCount);
+await set(ref(db,"rooms/"+roomId+"/battle/submitted2"), true);
+}
+
+// Check if both submitted
+const battleSnap = await get(ref(db,"rooms/"+roomId+"/battle"));
+const battleData = battleSnap.val();
+
+if(battleData.submitted1 && battleData.submitted2){
+// Both submitted - resolve battle
+console.log("Both players submitted, resolving...");
+await resolveBattle(battleData);
+}
+}
+
+async function resolveBattle(battle){
+// Only resolve once
+if(battle.winner){
+console.log("Battle already resolved");
 return;
 }
-if(isPlayer1){
-const newClicks = (battle.clicks1 || 0) + 1;
-console.log("Player 1 clicking, new count:", newClicks);
-await set(ref(db,"rooms/"+roomId+"/battle/clicks1"), newClicks);
-} else if(isPlayer2){
-const newClicks = (battle.clicks2 || 0) + 1;
-console.log("Player 2 clicking, new count:", newClicks);
-await set(ref(db,"rooms/"+roomId+"/battle/clicks2"), newClicks);
-}
-};
 
-const battleButton = document.getElementById("battleButton");
-battleButton.onclick = battleClickHandler;
-console.log("Battle button click handler attached");
-}
-}
+const clicks1 = battle.clicks1 || 0;
+const clicks2 = battle.clicks2 || 0;
 
-async function resolveBattle(battle, effectiveClicks1, effectiveClicks2){
-console.log("Resolving battle:", effectiveClicks1, "vs", effectiveClicks2);
-battleActive = false;
-  
-if(battleInterval){
-clearInterval(battleInterval);
-battleInterval = null;
-}
+console.log("Resolving battle:", clicks1, "vs", clicks2);
 
-// Determine winner based on effective clicks (with multiplier)
-const winner = effectiveClicks1 > effectiveClicks2 ? battle.player1 : battle.player2;
-const loser = effectiveClicks1 > effectiveClicks2 ? battle.player2 : battle.player1;
-const winnerCard = effectiveClicks1 > effectiveClicks2 ? battle.card1 : battle.card2;
-const loserCard = effectiveClicks1 > effectiveClicks2 ? battle.card2 : battle.card1;
+// Determine winner
+const winner = clicks1 > clicks2 ? battle.player1 : battle.player2;
+const loser = clicks1 > clicks2 ? battle.player2 : battle.player1;
+const winnerCard = clicks1 > clicks2 ? battle.card1 : battle.card2;
 
 console.log("Winner:", winner, "Loser:", loser);
 
-// Show winner announcement with fade in
+// Mark winner in Firebase (first to write wins in case of race)
+await update(ref(db,"rooms/"+roomId+"/battle"),{winner: winner});
+
+// Show winner announcement
 const winnerAnnouncement = document.getElementById("winnerAnnouncement");
-const winnerName = winner === playerId ? "YOU" : (battle.player1 === winner ? document.getElementById("leftName").textContent : document.getElementById("rightName").textContent);
+const player1Name = document.getElementById("leftName").textContent;
+const player2Name = document.getElementById("rightName").textContent;
+const winnerName = winner === playerId ? "YOU" : (battle.player1 === winner ? player1Name : player2Name);
 winnerAnnouncement.textContent = `${winnerName} WIN!`;
 winnerAnnouncement.style.color = winner === battle.player1 ? "#3b82f6" : "#ef4444";
 winnerAnnouncement.style.opacity = "1";
 
-// Wait 3 seconds for celebration
+// Wait 3 seconds
 await new Promise(resolve => setTimeout(resolve, 3000));
 
 // Fade out
@@ -573,16 +578,82 @@ await update(ref(db,"rooms/"+roomId),{winner: playerId, scores: scores});
 }
 }
 
-// LOSER: Keep card (it should still be in hand since we never removed it)
-// Just make sure hand is correct
+// LOSER: Card stays in hand (never removed it)
 if(loser === playerId){
-// Loser's hand should already have the card, but let's ensure it's rendered
 renderHand();
-console.log("Loser keeps card, hand size:", myHand.length);
+console.log("Loser keeps card");
 }
 
-// Clear battle (both players do this, but only winner updates chain)
-await update(ref(db,"rooms/"+roomId+"/battle"),{active: false, winner: winner});
+// Clear battle
+await update(ref(db,"rooms/"+roomId+"/battle"),{active: false});
+}
+
+let pendingPlayTimeout = null;
+
+function listenPendingPlay(){
+onValue(ref(db,"rooms/"+roomId+"/pendingPlay"), async (snap) => {
+const pendingPlay = snap.val();
+  
+// Clear any existing timeout
+if(pendingPlayTimeout){
+clearTimeout(pendingPlayTimeout);
+pendingPlayTimeout = null;
+}
+  
+if(!pendingPlay) return;
+  
+// If this is MY pending play, set timeout to auto-play after 2.1 seconds
+if(pendingPlay.playerId === playerId){
+console.log("My pending play detected, will auto-play in 2.1s if no battle");
+pendingPlayTimeout = setTimeout(async () => {
+// Check if battle was triggered
+const battleSnap = await get(ref(db,"rooms/"+roomId+"/battle"));
+if(battleSnap.val()?.active){
+console.log("Battle active, not auto-playing");
+return;
+}
+      
+// Check if pending play still exists
+const stillPending = await get(ref(db,"rooms/"+roomId+"/pendingPlay"));
+if(!stillPending.val() || stillPending.val().playerId !== playerId){
+console.log("Pending play cleared, not auto-playing");
+return;
+}
+      
+// No battle occurred - play the card normally
+console.log("No battle, auto-playing card");
+const card = pendingPlay.card;
+      
+// Clear pending play
+await set(ref(db,"rooms/"+roomId+"/pendingPlay"), null);
+      
+// Remove card from hand
+let newHand = myHand.filter(c => c.id !== card.id);
+myHand = newHand;
+renderHand();
+      
+// Update Firebase
+let handObj = {};
+newHand.forEach((c, idx) => handObj[idx] = c);
+await set(ref(db,"rooms/"+roomId+"/hands/"+playerId), handObj);
+await update(ref(db,"rooms/"+roomId+"/chain"),{
+iHave: card.iHave,
+whoHas: card.whoHas,
+flipped: false,
+playedBy: playerId
+});
+      
+// Check for win
+if(newHand.length === 0){
+let scoresSnap = await get(ref(db,"rooms/"+roomId+"/scores"));
+let scores = scoresSnap.val() || {};
+if(!scores[playerId]) scores[playerId] = 0;
+scores[playerId]++;
+await update(ref(db,"rooms/"+roomId),{winner: playerId, scores: scores});
+}
+}, 2100); // 2.1 seconds - slightly longer than battle window
+}
+});
 }
 
 function listenRoom(){
@@ -715,6 +786,7 @@ await update(ref(db,"rooms/"+roomId+"/players/"+playerId),{name:myName});
 home.style.display="none";
 lobby.style.display="block";
 listenRoom();
+listenPendingPlay();
 }
 
 async function startGame(){
