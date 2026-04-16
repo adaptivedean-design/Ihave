@@ -111,6 +111,9 @@ Enter your name<br>
 </div>
 </div>
 
+<!-- Socket.IO Client Library -->
+<script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getDatabase, ref, set, update, onValue, get } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
@@ -135,6 +138,10 @@ let isHost=false;
 let myHand=[];
 let currentChain=null;
 let winner=null;
+
+// WebSocket connection for battles
+const BATTLE_SERVER = "https://ihave.onrender.com";
+let socket = null;
 
 // DECK CONFIGURATION
 // This structure allows easy theming - just swap out the theme object
@@ -270,73 +277,17 @@ return;
 
 console.log("Playing card...");
 
-// BATTLE DETECTION: Check for simultaneous plays
-const now = Date.now();
-let battleSnap = await get(ref(db,"rooms/"+roomId+"/pendingPlay"));
-let pendingPlay = battleSnap.val();
-
-if(pendingPlay && pendingPlay.playerId !== playerId && (now - pendingPlay.timestamp) < 2000){
-// Simultaneous play detected! Trigger battle
-console.log("BATTLE! Two cards played within 2000ms");
-  
-// Student gets bonus multiplier 1/3 of the time (33% chance)
-const hasStudentBonus = Math.random() < 0.333;
-  
-await update(ref(db,"rooms/"+roomId+"/battle"),{
-player1: pendingPlay.playerId,
-player2: playerId,
-card1: pendingPlay.card,
-card2: card,
-clicks1: 0,
-clicks2: 0,
-studentBonus: hasStudentBonus,
-startTime: now,
-active: true
-});
-  
-// Clear pending play
-await set(ref(db,"rooms/"+roomId+"/pendingPlay"), null);
-console.log("Battle triggered, waiting for resolution...");
-return; // Don't update hand or play card - wait for battle resolution
-}
-
-// No battle detected yet - check if we should wait or play immediately
-const shouldWait = pendingPlay && (now - pendingPlay.timestamp) < 2000;
-
-if(!shouldWait){
-// No pending play from opponent - play card immediately with no delay
-console.log("No opponent pending play, playing card immediately");
-
-let newHand = myHand.filter(c => c.id !== card.id);
-myHand = newHand;
-renderHand();
-
-let handObj = {};
-newHand.forEach((c, idx) => handObj[idx] = c);
-await set(ref(db,"rooms/"+roomId+"/hands/"+playerId), handObj);
-await update(ref(db,"rooms/"+roomId+"/chain"),{
-iHave: card.iHave,
-whoHas: card.whoHas,
-flipped: false,
-playedBy: playerId
-});
-
-if(newHand.length === 0){
-let scoresSnap = await get(ref(db,"rooms/"+roomId+"/scores"));
-let scores = scoresSnap.val() || {};
-if(!scores[playerId]) scores[playerId] = 0;
-scores[playerId]++;
-await update(ref(db,"rooms/"+roomId),{winner: playerId, scores: scores});
-}
-} else {
-// Opponent has pending play - register ours and let battle detection handle it
-await set(ref(db,"rooms/"+roomId+"/pendingPlay"),{
+// Send card play to WebSocket server for battle detection
+console.log("Sending card_played to server");
+socket.emit('card_played', {
+roomId: roomId,
 playerId: playerId,
 card: card,
-timestamp: now
+isHost: isHost
 });
-console.log("Opponent has pending play, registered for potential battle");
-}
+
+// Note: Server will either trigger battle_start or play_card_now
+// Don't play the card here - wait for server response
 }
 
 async function flipCard(){
@@ -614,6 +565,184 @@ console.log("Loser keeps card");
 await update(ref(db,"rooms/"+roomId+"/battle"),{active: false});
 }
 
+// WebSocket handler: Play card immediately (no battle)
+async function playCardNow(card){
+console.log("Playing card now:", card);
+
+let newHand = myHand.filter(c => c.id !== card.id);
+myHand = newHand;
+renderHand();
+
+let handObj = {};
+newHand.forEach((c, idx) => handObj[idx] = c);
+await set(ref(db,"rooms/"+roomId+"/hands/"+playerId), handObj);
+await update(ref(db,"rooms/"+roomId+"/chain"),{
+iHave: card.iHave,
+whoHas: card.whoHas,
+flipped: false,
+playedBy: playerId
+});
+
+if(newHand.length === 0){
+let scoresSnap = await get(ref(db,"rooms/"+roomId+"/scores"));
+let scores = scoresSnap.val() || {};
+if(!scores[playerId]) scores[playerId] = 0;
+scores[playerId]++;
+await update(ref(db,"rooms/"+roomId),{winner: playerId, scores: scores});
+}
+}
+
+// WebSocket handler: Battle started
+let battleState = null;
+let battleClicks = 0;
+let battleTimerInterval = null;
+
+function handleBattleStart(battle){
+console.log("handleBattleStart", battle);
+battleState = battle;
+battleClicks = 0;
+
+// Show battle UI
+const battleScreen = document.getElementById("battleScreen");
+battleScreen.style.display = "flex";
+document.body.style.overflow = "hidden";
+
+// Animate BATTLE! text
+const battleText = document.getElementById("battleText");
+battleText.style.opacity = "0";
+battleText.style.transform = "translateY(100px)";
+battleText.style.transition = "all 1s ease-out";
+setTimeout(() => {
+battleText.style.opacity = "1";
+battleText.style.transform = "translateY(0)";
+}, 50);
+
+// Get player data from Firebase
+get(ref(db,"rooms/"+roomId+"/players")).then(snap => {
+const players = snap.val();
+const player1Name = players[battle.player1]?.name || "Player 1";
+const player2Name = players[battle.player2]?.name || "Player 2";
+
+document.getElementById("leftName").textContent = player1Name;
+document.getElementById("rightName").textContent = player2Name;
+});
+
+// Start countdown timer
+let elapsed = 0;
+battleTimerInterval = setInterval(() => {
+elapsed = Date.now() - battle.startTime;
+const remaining = Math.max(0, 5 - Math.floor(elapsed / 1000));
+document.getElementById("battleTimer").textContent = remaining;
+
+if(remaining === 0 && battleTimerInterval){
+clearInterval(battleTimerInterval);
+battleTimerInterval = null;
+// Tell server battle ended
+socket.emit('battle_end', { roomId });
+}
+}, 100);
+
+// Set up click handler
+const battleButton = document.getElementById("battleButton");
+battleButton.onclick = () => {
+if(!battleState) return;
+const elapsed = Date.now() - battleState.startTime;
+const remaining = Math.max(0, 5 - Math.floor(elapsed / 1000));
+if(remaining <= 0) return;
+
+battleClicks++;
+console.log("Battle click:", battleClicks);
+
+// Send click to server
+socket.emit('battle_click', { roomId, playerId });
+};
+}
+
+// WebSocket handler: Battle click update
+function updateBattleClicks(clicks1, clicks2){
+if(!battleState) return;
+
+document.getElementById("leftScore").textContent = clicks1;
+document.getElementById("rightScore").textContent = clicks2;
+
+// Update progress bars
+const total = clicks1 + clicks2;
+let leftPercent = 50;
+let rightPercent = 50;
+
+if(total > 0){
+leftPercent = (clicks1 / total) * 100;
+rightPercent = (clicks2 / total) * 100;
+}
+
+const leftProgress = document.getElementById("leftProgress");
+const rightProgress = document.getElementById("rightProgress");
+if(leftProgress) leftProgress.style.width = leftPercent + "%";
+if(rightProgress) rightProgress.style.width = rightPercent + "%";
+}
+
+// WebSocket handler: Battle result
+async function handleBattleResult(result){
+console.log("handleBattleResult", result);
+
+if(battleTimerInterval){
+clearInterval(battleTimerInterval);
+battleTimerInterval = null;
+}
+
+// Show winner announcement
+const winnerAnnouncement = document.getElementById("winnerAnnouncement");
+const player1Name = document.getElementById("leftName").textContent;
+const player2Name = document.getElementById("rightName").textContent;
+const winnerName = result.winner === playerId ? "YOU" : (battleState.player1 === result.winner ? player1Name : player2Name);
+winnerAnnouncement.textContent = `${winnerName} WIN!`;
+winnerAnnouncement.style.color = result.winner === battleState.player1 ? "#3b82f6" : "#ef4444";
+winnerAnnouncement.style.opacity = "1";
+
+// Wait 3 seconds
+await new Promise(resolve => setTimeout(resolve, 3000));
+
+// Fade out
+winnerAnnouncement.style.opacity = "0";
+await new Promise(resolve => setTimeout(resolve, 500));
+
+// Winner plays card
+if(result.winner === playerId){
+let newHand = myHand.filter(c => c.id !== result.winnerCard.id);
+myHand = newHand;
+
+let handObj = {};
+newHand.forEach((c, idx) => handObj[idx] = c);
+await set(ref(db,"rooms/"+roomId+"/hands/"+playerId), handObj);
+
+await update(ref(db,"rooms/"+roomId+"/chain"),{
+iHave: result.winnerCard.iHave,
+whoHas: result.winnerCard.whoHas,
+flipped: false,
+playedBy: result.winner
+});
+
+renderHand();
+
+if(newHand.length === 0){
+let scoresSnap = await get(ref(db,"rooms/"+roomId+"/scores"));
+let scores = scoresSnap.val() || {};
+if(!scores[playerId]) scores[playerId] = 0;
+scores[playerId]++;
+await update(ref(db,"rooms/"+roomId),{winner: playerId, scores: scores});
+}
+} else {
+// Loser - just re-render hand (card stays)
+renderHand();
+}
+
+// Hide battle screen
+document.getElementById("battleScreen").style.display = "none";
+document.body.style.overflow = "auto";
+battleState = null;
+battleClicks = 0;
+}
+
 let pendingPlayTimeout = null;
 
 function listenPendingPlay(){
@@ -813,6 +942,34 @@ home.style.display="none";
 lobby.style.display="block";
 listenRoom();
 listenPendingPlay();
+
+// Connect to WebSocket server for battles
+console.log("Connecting to battle server:", BATTLE_SERVER);
+socket = io(BATTLE_SERVER);
+
+socket.on('connect', () => {
+console.log('Connected to battle server');
+socket.emit('join_room', { roomId, playerId });
+});
+
+socket.on('battle_start', (battle) => {
+console.log('Battle started!', battle);
+handleBattleStart(battle);
+});
+
+socket.on('battle_update', ({ clicks1, clicks2 }) => {
+updateBattleClicks(clicks1, clicks2);
+});
+
+socket.on('battle_result', (result) => {
+console.log('Battle result:', result);
+handleBattleResult(result);
+});
+
+socket.on('play_card_now', ({ card }) => {
+console.log('Play card now (no battle):', card);
+playCardNow(card);
+});
 }
 
 async function startGame(){
