@@ -277,8 +277,15 @@ return;
 
 console.log("Playing card...");
 
+// Check if socket is connected
+if(!socket || !socket.connected){
+console.error("Socket not connected! Falling back to immediate play");
+playCardNow(card);
+return;
+}
+
 // Send card play to WebSocket server for battle detection
-console.log("Sending card_played to server");
+console.log("Sending card_played to server:", {roomId, playerId, card, isHost});
 socket.emit('card_played', {
 roomId: roomId,
 playerId: playerId,
@@ -286,6 +293,7 @@ card: card,
 isHost: isHost
 });
 
+console.log("card_played event sent, waiting for server response...");
 // Note: Server will either trigger battle_start or play_card_now
 // Don't play the card here - wait for server response
 }
@@ -945,29 +953,42 @@ listenPendingPlay();
 
 // Connect to WebSocket server for battles
 console.log("Connecting to battle server:", BATTLE_SERVER);
-socket = io(BATTLE_SERVER);
+socket = io(BATTLE_SERVER, {
+transports: ['websocket', 'polling'],
+reconnection: true
+});
 
 socket.on('connect', () => {
-console.log('Connected to battle server');
+console.log('✅ Connected to battle server, socket ID:', socket.id);
 socket.emit('join_room', { roomId, playerId });
+console.log('Sent join_room:', { roomId, playerId });
+});
+
+socket.on('connect_error', (error) => {
+console.error('❌ Connection error:', error);
+});
+
+socket.on('disconnect', (reason) => {
+console.warn('⚠️ Disconnected from battle server:', reason);
 });
 
 socket.on('battle_start', (battle) => {
-console.log('Battle started!', battle);
+console.log('🎮 Battle started!', battle);
 handleBattleStart(battle);
 });
 
 socket.on('battle_update', ({ clicks1, clicks2 }) => {
+console.log('🔄 Battle update:', clicks1, 'vs', clicks2);
 updateBattleClicks(clicks1, clicks2);
 });
 
 socket.on('battle_result', (result) => {
-console.log('Battle result:', result);
+console.log('🏆 Battle result:', result);
 handleBattleResult(result);
 });
 
 socket.on('play_card_now', ({ card }) => {
-console.log('Play card now (no battle):', card);
+console.log('▶️ Play card now (no battle):', card);
 playCardNow(card);
 });
 }
