@@ -50,11 +50,21 @@ io.on('connection', (socket) => {
     const now = Date.now();
     
     // Check if another player has a pending play within 2000ms
+    // FOR TESTING: Allow same player to trigger battle with themselves
     let battleOpponent = null;
     for (const [pid, pending] of Object.entries(room.pendingPlays)) {
-      if (pid !== playerId && (now - pending.timestamp) < 2000) {
-        battleOpponent = { playerId: pid, card: pending.card, isHost: pending.isHost };
-        break;
+      if ((now - pending.timestamp) < 2000) {
+        // Found a pending play within time window
+        if (pid !== playerId) {
+          // Different player - normal battle
+          battleOpponent = { playerId: pid, card: pending.card, isHost: pending.isHost };
+          break;
+        } else {
+          // Same player - testing mode (allow battle with self)
+          console.log('Testing mode: same player triggering battle');
+          battleOpponent = { playerId: pid + '_clone', card: pending.card, isHost: pending.isHost };
+          break;
+        }
       }
     }
 
@@ -68,7 +78,7 @@ io.on('connection', (socket) => {
       const hasStudentBonus = Math.random() < 0.333;
       
       room.activeBattle = {
-        player1: battleOpponent.playerId,
+        player1: battleOpponent.playerId.replace('_clone', ''), // Remove clone suffix
         player2: playerId,
         card1: battleOpponent.card,
         card2: card,
