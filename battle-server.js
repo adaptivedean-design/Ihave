@@ -42,26 +42,42 @@ io.on('connection', (socket) => {
 
   // Card played - check for battle
   socket.on('card_played', ({ roomId, playerId, card, isHost }) => {
-    console.log(`Card played: ${playerId} in room ${roomId}`);
+    console.log(`\n========== CARD PLAYED ==========`);
+    console.log(`Player: ${playerId}`);
+    console.log(`Room: ${roomId}`);
+    console.log(`Card: ${card.iHave}`);
+    console.log(`IsHost: ${isHost}`);
     
     const room = rooms[roomId];
-    if (!room) return;
+    if (!room) {
+      console.log(`❌ Room ${roomId} not found!`);
+      return;
+    }
 
     const now = Date.now();
+    
+    console.log(`Current pending plays:`, Object.keys(room.pendingPlays).map(pid => ({
+      playerId: pid,
+      age: now - room.pendingPlays[pid].timestamp
+    })));
     
     // Check if another player has a pending play within 2000ms
     // FOR TESTING: Allow same player to trigger battle with themselves
     let battleOpponent = null;
     for (const [pid, pending] of Object.entries(room.pendingPlays)) {
-      if ((now - pending.timestamp) < 2000) {
+      const age = now - pending.timestamp;
+      console.log(`Checking pending play from ${pid}, age: ${age}ms`);
+      
+      if (age < 2000) {
         // Found a pending play within time window
         if (pid !== playerId) {
           // Different player - normal battle
+          console.log(`✅ DIFFERENT PLAYER - Battle triggered!`);
           battleOpponent = { playerId: pid, card: pending.card, isHost: pending.isHost };
           break;
         } else {
           // Same player - testing mode (allow battle with self)
-          console.log('Testing mode: same player triggering battle');
+          console.log('🧪 TESTING MODE: same player triggering battle');
           battleOpponent = { playerId: pid + '_clone', card: pending.card, isHost: pending.isHost };
           break;
         }
@@ -70,7 +86,7 @@ io.on('connection', (socket) => {
 
     if (battleOpponent && !room.activeBattle) {
       // BATTLE!
-      console.log(`BATTLE triggered between ${playerId} and ${battleOpponent.playerId}`);
+      console.log(`🎮 BATTLE triggered between ${playerId} and ${battleOpponent.playerId}`);
       
       // Determine who is student and apply 1/3 chance bonus
       const player1IsStudent = !battleOpponent.isHost;
@@ -93,10 +109,12 @@ io.on('connection', (socket) => {
       room.pendingPlays = {};
       
       // Notify both players battle started
+      console.log(`📢 Emitting battle_start to room ${roomId}`);
       io.to(roomId).emit('battle_start', room.activeBattle);
       
     } else if (!room.activeBattle) {
       // No battle - add to pending or play immediately
+      console.log(`No battle opponent found, adding to pending plays`);
       room.pendingPlays[playerId] = {
         card: card,
         timestamp: now,
@@ -105,11 +123,16 @@ io.on('connection', (socket) => {
       
       // If no other pending plays, play immediately
       if (Object.keys(room.pendingPlays).length === 1) {
-        console.log(`No opponent pending, playing card immediately for ${playerId}`);
+        console.log(`✅ First pending play, sending play_card_now to ${playerId}`);
         socket.emit('play_card_now', { card: card });
         delete room.pendingPlays[playerId];
+      } else {
+        console.log(`⏳ Waiting for potential battle, pending count: ${Object.keys(room.pendingPlays).length}`);
       }
+    } else {
+      console.log(`⚠️ Battle already active, ignoring card play`);
     }
+    console.log(`================================\n`);
   });
 
   // Battle click
