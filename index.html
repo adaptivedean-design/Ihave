@@ -323,7 +323,8 @@ let battleTimer = null;
 
 // WebSocket handler: Play card immediately (no battle)
 async function playCardNow(card){
-console.log("Playing card now:", card);
+console.log("⚠️ playCardNow called with card:", card);
+console.trace("Call stack:"); // This will show what called this function
 
 let newHand = myHand.filter(c => c.id !== card.id);
 myHand = newHand;
