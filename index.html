@@ -356,6 +356,12 @@ let battleTimerInterval = null;
 
 function handleBattleStart(battle){
 console.log("handleBattleStart", battle);
+
+// RESET ALL BATTLE STATE
+if(battleTimerInterval){
+clearInterval(battleTimerInterval);
+battleTimerInterval = null;
+}
 battleState = battle;
 battleClicks = 0;
 
@@ -363,6 +369,15 @@ battleClicks = 0;
 const battleScreen = document.getElementById("battleScreen");
 battleScreen.style.display = "flex";
 document.body.style.overflow = "hidden";
+
+// Reset all UI elements to default state
+document.getElementById("leftScore").textContent = "0";
+document.getElementById("rightScore").textContent = "0";
+document.getElementById("battleTimer").textContent = "5";
+document.getElementById("leftProgress").style.width = "50%";
+document.getElementById("rightProgress").style.width = "50%";
+document.getElementById("winnerAnnouncement").style.opacity = "0";
+document.getElementById("winnerAnnouncement").textContent = "";
 
 // Animate BATTLE! text
 const battleText = document.getElementById("battleText");
@@ -374,14 +389,36 @@ battleText.style.opacity = "1";
 battleText.style.transform = "translateY(0)";
 }, 50);
 
-// Get player data from Firebase
+// Get player data from Firebase and ensure host is always on left
 get(ref(db,"rooms/"+roomId+"/players")).then(snap => {
 const players = snap.val();
-const player1Name = players[battle.player1]?.name || "Player 1";
-const player2Name = players[battle.player2]?.name || "Player 2";
 
-document.getElementById("leftName").textContent = player1Name;
-document.getElementById("rightName").textContent = player2Name;
+// Determine which player is host
+let hostPlayerId = null;
+let studentPlayerId = null;
+for(const pid in players){
+if(players[pid].isHost === true || pid === battle.player1 && isHost){
+hostPlayerId = pid;
+} else {
+studentPlayerId = pid;
+}
+}
+
+// If we can't determine from players object, use battle positions
+if(!hostPlayerId){
+// Assume player1 in battle is whoever started as host
+hostPlayerId = isHost && battle.player1 === playerId ? battle.player1 : battle.player2;
+studentPlayerId = hostPlayerId === battle.player1 ? battle.player2 : battle.player1;
+}
+
+const hostName = players[hostPlayerId]?.name || "Host";
+const studentName = players[studentPlayerId]?.name || "Student";
+
+// Always show host on left, student on right
+document.getElementById("leftName").textContent = hostName;
+document.getElementById("rightName").textContent = studentName;
+
+console.log(`Battle UI: ${hostName} (left) vs ${studentName} (right)`);
 });
 
 // Start countdown timer
@@ -626,8 +663,8 @@ reconnection: true
 
 socket.on('connect', () => {
 console.log('✅ Connected to battle server, socket ID:', socket.id);
-socket.emit('join_room', { roomId, playerId });
-console.log('Sent join_room:', { roomId, playerId });
+socket.emit('join_room', { roomId, playerId, isHost });
+console.log('Sent join_room:', { roomId, playerId, isHost });
 });
 
 socket.on('connect_error', (error) => {
