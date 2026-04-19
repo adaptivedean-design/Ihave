@@ -113,7 +113,7 @@ io.on('connection', (socket) => {
       io.to(roomId).emit('battle_start', room.activeBattle);
       
     } else if (!room.activeBattle) {
-      // No battle - add to pending or play immediately
+      // No battle - add to pending
       console.log(`No battle opponent found, adding to pending plays`);
       room.pendingPlays[playerId] = {
         card: card,
@@ -121,14 +121,17 @@ io.on('connection', (socket) => {
         isHost: isHost
       };
       
-      // If no other pending plays, play immediately
-      if (Object.keys(room.pendingPlays).length === 1) {
-        console.log(`✅ First pending play, sending play_card_now to ${playerId}`);
-        socket.emit('play_card_now', { card: card });
-        delete room.pendingPlays[playerId];
-      } else {
-        console.log(`⏳ Waiting for potential battle, pending count: ${Object.keys(room.pendingPlays).length}`);
-      }
+      // Set timeout to auto-play after 2.1 seconds if no battle occurs
+      setTimeout(() => {
+        // Check if this pending play still exists and no battle started
+        if (room.pendingPlays[playerId] && !room.activeBattle) {
+          console.log(`⏰ Timeout: Auto-playing card for ${playerId} (no battle occurred)`);
+          socket.emit('play_card_now', { card: card });
+          delete room.pendingPlays[playerId];
+        }
+      }, 2100);
+      
+      console.log(`⏳ Pending play registered, will auto-play in 2.1s if no battle. Pending count: ${Object.keys(room.pendingPlays).length}`);
     } else {
       console.log(`⚠️ Battle already active, ignoring card play`);
     }
