@@ -21,7 +21,7 @@ io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
   // Join a room
-  socket.on('join_room', ({ roomId, playerId }) => {
+  socket.on('join_room', ({ roomId, playerId, isHost }) => {
     socket.join(roomId);
     
     if (!rooms[roomId]) {
@@ -34,10 +34,11 @@ io.on('connection', (socket) => {
     
     rooms[roomId].players[playerId] = {
       socketId: socket.id,
-      playerId: playerId
+      playerId: playerId,
+      isHost: isHost || false
     };
     
-    console.log(`Player ${playerId} joined room ${roomId}`);
+    console.log(`Player ${playerId} joined room ${roomId} (host: ${isHost})`);
   });
 
   // Card played - check for battle
