@@ -6,8 +6,10 @@
 <title>I Have / Who Has</title>
 <style>
 body{margin:0;font-family:system-ui;background:#0f172a;color:white;display:flex;justify-content:center;align-items:center;min-height:100vh;}
-#app{width:1100px;background:#004870;padding:20px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);}
-h1{margin-top:0;color:#6ee3de;}
+#app{width:1100px;background:#004870;padding:20px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);position:relative;}
+#logo{position:absolute;top:20px;left:50%;transform:translateX(-50%);height:50px;opacity:0.95;z-index:10;}
+h1{margin-top:0;color:#6ee3de;text-align:center;font-size:42px;margin-bottom:30px;}
+#game h1{display:none;} /* Hide title in game screen */
 input,button{padding:8px;border-radius:6px;border:none;margin:6px 0;}
 button{background:#23879f;color:white;cursor:pointer;font-weight:600;}
 button:hover{background:#16b7a7;}
@@ -19,9 +21,10 @@ button:hover{background:#16b7a7;}
 #opponentGrid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;width:90%;}
 .opponentCard{background:#023047;height:45px;border-radius:6px;opacity:.85;border:1px solid #16b7a7;}
 #centerArea{display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;}
-#logo{position:absolute;top:10px;left:10px;height:40px;opacity:0.9;}
-#scoreBoard{position:absolute;top:10px;right:10px;font-size:14px;background:rgba(0,72,112,0.8);padding:10px 15px;border-radius:8px;border:1px solid #16b7a7;min-width:120px;}
-#restartBtn{position:absolute;bottom:10px;right:10px;}
+#scoreBoard{position:absolute;top:10px;left:50%;transform:translateX(-50%);font-size:14px;background:rgba(0,72,112,0.9);padding:8px 20px;border-radius:8px;border:1px solid #16b7a7;display:flex;gap:30px;align-items:center;}
+#scoreBoard b{color:#6ee3de;}
+#restartBtn{position:absolute;top:15px;right:80px;width:35px;height:35px;border-radius:50%;background:#23879f;border:2px solid #16b7a7;cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center;justify-content:center;}
+#restartBtn:hover{background:#16b7a7;transform:rotate(180deg);transition:all 0.3s;}
 #deck{background:linear-gradient(135deg, #23879f, #16b7a7);width:220px;height:120px;border-radius:10px;display:flex;justify-content:center;align-items:center;text-align:center;padding:10px;cursor:pointer;transition:transform .1s;position:relative;perspective:1000px;box-shadow:0 4px 20px rgba(35,135,159,0.4);}
 #deck:hover{transform:scale(1.03);}
 #deck.canFlip{box-shadow:0 0 30px rgba(110,227,222,0.8);border:2px solid #6ee3de;}
@@ -45,6 +48,7 @@ button:hover{background:#16b7a7;}
 </head>
 <body>
 <div id="app">
+<img id="logo" src="https://i.ibb.co/C3KcP9cZ/Adaptivelogotrans.png" alt="Logo">
 <h1>I Have / Who Has</h1>
 
 <div id="home">
@@ -64,9 +68,8 @@ Enter your name<br>
 <div id="board">
 <div id="opponentArea"><div id="opponentGrid"></div></div>
 <div id="centerArea">
-<img id="logo" src="https://i.ibb.co/C3KcP9cZ/Adaptivelogotrans.png" alt="Logo">
 <div id="scoreBoard"></div>
-<button id="restartBtn" style="display:none;">Restart</button>
+<button id="restartBtn" style="display:none;">↻</button>
 <div id="deck">
 <div class="deckInner">
 <div class="deckFront">Waiting...</div>
@@ -650,13 +653,13 @@ chainText.innerHTML="Play any card to begin!";
 // Display scores
 if(data.scores){
 const scoreBoard=document.getElementById("scoreBoard");
-let scoreHTML = "<b>Scores:</b><br>";
+let scores = [];
 for(const p in data.players){
 const playerName = data.players[p].name;
 const playerScore = data.scores[p] || 0;
-scoreHTML += `${playerName}: ${playerScore}<br>`;
+scores.push(`<span>${playerName}: <b>${playerScore}</b></span>`);
 }
-scoreBoard.innerHTML = scoreHTML;
+scoreBoard.innerHTML = scores.join(' <span style="color:#16b7a7;">|</span> ');
 }
 
 // OLD Firebase battle system removed - now using WebSocket
