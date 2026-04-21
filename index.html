@@ -8,8 +8,14 @@
 body{margin:0;font-family:system-ui;background:#0f172a;color:#004870;display:flex;justify-content:center;align-items:center;min-height:100vh;}
 #app{width:1100px;background:#dafbe9;padding:20px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);position:relative;}
 #logo{width:180px;height:180px;object-fit:contain;background:white;border-radius:50%;padding:20px;box-shadow:0 8px 24px rgba(0,72,112,0.3);margin:0 auto;display:block;transition:all 0.3s;}
-body.in-game #logo{width:80px;height:80px;padding:10px;position:fixed;left:20px;top:50%;transform:translateY(-50%);z-index:100;margin:0;}
+body.in-game #logo{width:80px;height:80px;padding:10px;position:fixed;left:20px;top:120px;z-index:100;margin:0;transform:none;}
 body.in-game h1{display:none;}
+#gameSidebar{position:fixed;left:20px;top:220px;display:none;flex-direction:column;gap:15px;align-items:center;z-index:100;}
+body.in-game #gameSidebar{display:flex;}
+#gameSidebar #scoreBoard{position:static;transform:none;background:rgba(255,255,255,0.95);padding:10px 15px;border-radius:8px;border:2px solid #16b7a7;font-size:13px;color:#004870;min-width:140px;text-align:center;}
+#gameSidebar #scoreBoard b{color:#23879f;display:block;margin-top:4px;}
+#gameSidebar #restartBtn{position:static;width:40px;height:40px;border-radius:50%;background:#23879f;border:2px solid #16b7a7;cursor:pointer;font-size:24px;padding:0;display:flex;align-items:center;justify-content:center;color:white;}
+#gameSidebar #restartBtn:hover{background:#16b7a7;transform:rotate(180deg);transition:all 0.3s;}
 #home{text-align:center;max-width:400px;margin:0 auto;}
 #home input{width:100%;max-width:300px;margin:10px auto;display:block;}
 #home button{width:100%;max-width:300px;margin:10px auto;display:block;}
@@ -28,10 +34,6 @@ button:hover{background:#16b7a7;}
 #opponentGrid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;width:90%;}
 .opponentCard{background:#bdf6e0;height:45px;border-radius:6px;opacity:.95;border:2px solid #16b7a7;}
 #centerArea{display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;}
-#scoreBoard{position:absolute;top:10px;left:50%;transform:translateX(-50%);font-size:14px;background:rgba(255,255,255,0.9);padding:8px 20px;border-radius:8px;border:2px solid #16b7a7;display:flex;gap:30px;align-items:center;color:#004870;}
-#scoreBoard b{color:#23879f;}
-#restartBtn{position:absolute;top:15px;right:80px;width:35px;height:35px;border-radius:50%;background:#23879f;border:2px solid #16b7a7;cursor:pointer;font-size:20px;padding:0;display:flex;align-items:center;justify-content:center;}
-#restartBtn:hover{background:#16b7a7;transform:rotate(180deg);transition:all 0.3s;}
 #deck{background:linear-gradient(135deg, #23879f, #16b7a7);width:220px;height:120px;border-radius:10px;display:flex;justify-content:center;align-items:center;text-align:center;padding:10px;cursor:pointer;transition:transform .1s;position:relative;perspective:1000px;box-shadow:0 4px 20px rgba(35,135,159,0.4);}
 #deck:hover{transform:scale(1.03);}
 #deck.canFlip{box-shadow:0 0 30px rgba(110,227,222,0.8);border:2px solid #6ee3de;}
@@ -75,8 +77,6 @@ Enter your name<br>
 <div id="board">
 <div id="opponentArea"><div id="opponentGrid"></div></div>
 <div id="centerArea">
-<div id="scoreBoard"></div>
-<button id="restartBtn" style="display:none;">↻</button>
 <div id="deck">
 <div class="deckInner">
 <div class="deckFront">Waiting...</div>
@@ -89,35 +89,47 @@ Enter your name<br>
 </div>
 </div>
 
+<!-- Game Sidebar (appears during game) -->
+<div id="gameSidebar">
+<div id="scoreBoard"></div>
+<button id="restartBtn" style="display:none;">↻</button>
+</div>
+
 <!-- Battle Screen -->
 <div id="battleScreen" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:linear-gradient(135deg, rgba(0,72,112,0.98), rgba(35,135,159,0.98));z-index:1000;flex-direction:column;justify-content:space-between;align-items:center;padding:40px 0;overflow:hidden;">
 <div id="battleText" style="font-size:80px;font-weight:900;color:#e4e09a;text-shadow:0 0 40px rgba(228,224,154,0.8);opacity:0;">BATTLE!</div>
 
-<!-- Progress Bars -->
+<!-- Tipping Scale Battle UI -->
 <div style="display:flex;flex-direction:column;align-items:center;gap:30px;width:600px;">
 <div id="battleTimer" style="font-size:48px;font-weight:700;color:#eff8d7;text-shadow:0 0 20px rgba(239,248,215,0.5);">5</div>
 
-<div style="display:flex;align-items:center;justify-content:space-between;width:100%;">
-<div style="text-align:left;flex:0 0 150px;">
+<div style="display:flex;align-items:flex-end;justify-content:space-between;width:100%;padding:0 40px;">
+<div style="text-align:center;flex:0 0 140px;">
 <div id="leftName" style="font-size:24px;font-weight:700;margin-bottom:8px;color:#6ee3de;"></div>
-<div id="leftScore" style="font-size:36px;font-weight:700;color:#6ee3de;">0</div>
+<div id="leftScore" style="font-size:42px;font-weight:700;color:#6ee3de;">0</div>
 </div>
 
-<!-- Progress Bar -->
-<div style="flex:1;margin:0 30px;">
-<div style="position:relative;height:40px;background:#004870;border-radius:20px;overflow:visible;border:2px solid #16b7a7;">
-<!-- Blue side (left) -->
-<div id="leftProgress" style="position:absolute;left:0;top:0;height:100%;background:#23879f;border-radius:20px 0 0 20px;transition:width 0.05s;width:50%;"></div>
-<!-- Red side (right) -->
-<div id="rightProgress" style="position:absolute;right:0;top:0;height:100%;background:#e4e09a;border-radius:0 20px 20px 0;transition:width 0.05s;width:50%;"></div>
-<!-- Center line -->
-<div style="position:absolute;left:50%;top:0;width:3px;height:100%;background:#eff8d7;transform:translateX(-50%);z-index:10;"></div>
-</div>
+<!-- SVG Tipping Scale -->
+<div style="flex:1;display:flex;justify-content:center;align-items:flex-end;height:200px;">
+<svg width="400" height="200" viewBox="0 0 400 200" style="overflow:visible;">
+<!-- Fulcrum/Stand -->
+<path d="M 180 180 L 200 200 L 220 180 Z" fill="#50d3df" stroke="#16b7a7" stroke-width="2"/>
+<circle cx="200" cy="180" r="8" fill="#23879f" stroke="#16b7a7" stroke-width="2"/>
+
+<!-- Scale Beam (will rotate) -->
+<g id="scaleBeam" style="transform-origin: 200px 180px; transition: transform 0.1s ease-out;">
+<line x1="40" y1="180" x2="360" y2="180" stroke="#16b7a7" stroke-width="6" stroke-linecap="round"/>
+<!-- Left Pan -->
+<rect x="20" y="165" width="60" height="35" rx="5" fill="#6ee3de" stroke="#16b7a7" stroke-width="2"/>
+<!-- Right Pan -->
+<rect x="320" y="165" width="60" height="35" rx="5" fill="#e4e09a" stroke="#16b7a7" stroke-width="2"/>
+</g>
+</svg>
 </div>
 
-<div style="text-align:right;flex:0 0 150px;">
+<div style="text-align:center;flex:0 0 140px;">
 <div id="rightName" style="font-size:24px;font-weight:700;margin-bottom:8px;color:#e4e09a;"></div>
-<div id="rightScore" style="font-size:36px;font-weight:700;color:#e4e09a;">0</div>
+<div id="rightScore" style="font-size:42px;font-weight:700;color:#e4e09a;">0</div>
 </div>
 </div>
 </div>
@@ -414,8 +426,8 @@ document.body.style.overflow = "hidden";
 document.getElementById("leftScore").textContent = "0";
 document.getElementById("rightScore").textContent = "0";
 document.getElementById("battleTimer").textContent = "5";
-document.getElementById("leftProgress").style.width = "50%";
-document.getElementById("rightProgress").style.width = "50%";
+const scaleBeam = document.getElementById("scaleBeam");
+if(scaleBeam) scaleBeam.style.transform = "rotate(0deg)";
 document.getElementById("winnerAnnouncement").style.opacity = "0";
 document.getElementById("winnerAnnouncement").textContent = "";
 
@@ -522,20 +534,22 @@ console.log(`Click update: Host=${hostClicks}, Student=${studentClicks} (p1=${cl
 document.getElementById("leftScore").textContent = hostClicks;
 document.getElementById("rightScore").textContent = studentClicks;
 
-// Update progress bars
+// Calculate tipping angle based on click difference
 const total = hostClicks + studentClicks;
-let leftPercent = 50;
-let rightPercent = 50;
+let tiltAngle = 0;
 
 if(total > 0){
-leftPercent = (hostClicks / total) * 100;
-rightPercent = (studentClicks / total) * 100;
+const ratio = hostClicks / total;
+// Map ratio (0 to 1) to tilt angle (-25 to +25 degrees)
+// 0.5 = balanced (0°), <0.5 tips right, >0.5 tips left
+tiltAngle = (ratio - 0.5) * 50; // Max 25° tilt each direction
 }
 
-const leftProgress = document.getElementById("leftProgress");
-const rightProgress = document.getElementById("rightProgress");
-if(leftProgress) leftProgress.style.width = leftPercent + "%";
-if(rightProgress) rightProgress.style.width = rightPercent + "%";
+// Apply rotation to scale beam
+const scaleBeam = document.getElementById("scaleBeam");
+if(scaleBeam){
+scaleBeam.style.transform = `rotate(${-tiltAngle}deg)`;
+}
 }
 
 // WebSocket handler: Battle result
