@@ -7,14 +7,14 @@
 <style>
 body{margin:0;font-family:system-ui;background:#0f172a;color:#004870;display:flex;justify-content:center;align-items:center;min-height:100vh;}
 #app{width:1100px;background:#dafbe9;padding:20px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);position:relative;}
-#logo{width:180px;height:180px;object-fit:contain;background:white;border-radius:50%;padding:20px;box-shadow:0 8px 24px rgba(0,72,112,0.3);margin:0 auto;display:block;}
+#logo{width:180px;height:180px;object-fit:contain;background:white;border-radius:50%;padding:20px;box-shadow:0 8px 24px rgba(0,72,112,0.3);margin:0 auto;display:block;transition:all 0.3s;}
+body.in-game #logo{width:80px;height:80px;padding:10px;position:fixed;left:20px;top:50%;transform:translateY(-50%);z-index:100;margin:0;}
+body.in-game h1{display:none;}
 #home{text-align:center;max-width:400px;margin:0 auto;}
 #home input{width:100%;max-width:300px;margin:10px auto;display:block;}
 #home button{width:100%;max-width:300px;margin:10px auto;display:block;}
 #lobby{text-align:center;}
 h1{margin:20px 0 30px 0;color:#004870;text-align:center;font-size:28px;font-weight:700;}
-#game h1{display:none;} /* Hide title in game screen */
-#game #logo{width:80px;height:80px;padding:10px;position:absolute;left:-110px;top:50%;transform:translateY(-50%);z-index:100;}
 #headerBar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:0 20px;}
 #headerBar > div{flex:1;display:flex;align-items:center;gap:15px;}
 input,button{padding:8px;border-radius:6px;border:none;margin:6px 0;}
@@ -433,27 +433,40 @@ battleText.style.transform = "translateY(0)";
 get(ref(db,"rooms/"+roomId+"/players")).then(snap => {
 const players = snap.val();
 
-// Determine which player is host
+// Determine which player is host - check the isHost property set when joining
 let hostPlayerId = null;
 let studentPlayerId = null;
+
+// Method 1: Check players object for isHost flag
 for(const pid in players){
-if(players[pid].isHost === true || pid === battle.player1 && isHost){
+// The server should have stored isHost when player joined
+if(pid === playerId && isHost){
 hostPlayerId = pid;
-} else {
-studentPlayerId = pid;
+} else if(pid !== playerId && !isHost){
+// The other player must be the host
+hostPlayerId = pid;
 }
 }
 
-// If we can't determine from players object, use battle positions
+// Method 2: Fallback - one of the battle participants is me
 if(!hostPlayerId){
-// Assume player1 in battle is whoever started as host
-hostPlayerId = isHost && battle.player1 === playerId ? battle.player1 : battle.player2;
-studentPlayerId = hostPlayerId === battle.player1 ? battle.player2 : battle.player1;
+hostPlayerId = isHost ? playerId : (battle.player1 === playerId ? battle.player2 : battle.player1);
 }
+
+// Student is the other player
+studentPlayerId = hostPlayerId === battle.player1 ? battle.player2 : battle.player1;
+if(hostPlayerId === battle.player2) studentPlayerId = battle.player1;
 
 // Store in battleState so updateBattleClicks can use it
 battleState.hostPlayerId = hostPlayerId;
 battleState.studentPlayerId = studentPlayerId;
+
+console.log(`=== BATTLE SETUP ===`);
+console.log(`I am: ${playerId}, isHost: ${isHost}`);
+console.log(`Battle player1: ${battle.player1}, player2: ${battle.player2}`);
+console.log(`Determined hostPlayerId: ${hostPlayerId}`);
+console.log(`Determined studentPlayerId: ${studentPlayerId}`);
+console.log(`==================`);
 
 const hostName = players[hostPlayerId]?.name || "Host";
 const studentName = players[studentPlayerId]?.name || "Student";
@@ -602,10 +615,13 @@ for(const p in data.players){ playersDiv.innerHTML+=data.players[p].name+"<br>";
 if(data.state==="playing"){ 
 lobby.style.display="none"; 
 game.style.display="block";
+document.body.classList.add("in-game"); // Add class for logo repositioning
 // Show restart button for host when in game
 if(isHost){
 document.getElementById("restartBtn").style.display="inline-block";
 }
+} else {
+document.body.classList.remove("in-game"); // Remove class when not in game
 }
 
 // Check winner status BEFORE rendering hands
