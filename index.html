@@ -8,8 +8,13 @@
 body{margin:0;font-family:system-ui;background:#0f172a;color:#004870;display:flex;justify-content:center;align-items:center;min-height:100vh;}
 #app{width:1100px;background:#dafbe9;padding:20px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);position:relative;}
 #logo{width:180px;height:180px;object-fit:contain;background:white;border-radius:50%;padding:20px;box-shadow:0 8px 24px rgba(0,72,112,0.3);margin:0 auto;display:block;}
+#home{text-align:center;max-width:400px;margin:0 auto;}
+#home input{width:100%;max-width:300px;margin:10px auto;display:block;}
+#home button{width:100%;max-width:300px;margin:10px auto;display:block;}
+#lobby{text-align:center;}
 h1{margin:20px 0 30px 0;color:#004870;text-align:center;font-size:28px;font-weight:700;}
 #game h1{display:none;} /* Hide title in game screen */
+#game #logo{width:80px;height:80px;padding:10px;position:absolute;left:-110px;top:50%;transform:translateY(-50%);z-index:100;}
 #headerBar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:0 20px;}
 #headerBar > div{flex:1;display:flex;align-items:center;gap:15px;}
 input,button{padding:8px;border-radius:6px;border:none;margin:6px 0;}
@@ -446,6 +451,10 @@ hostPlayerId = isHost && battle.player1 === playerId ? battle.player1 : battle.p
 studentPlayerId = hostPlayerId === battle.player1 ? battle.player2 : battle.player1;
 }
 
+// Store in battleState so updateBattleClicks can use it
+battleState.hostPlayerId = hostPlayerId;
+battleState.studentPlayerId = studentPlayerId;
+
 const hostName = players[hostPlayerId]?.name || "Host";
 const studentName = players[studentPlayerId]?.name || "Student";
 
@@ -491,11 +500,11 @@ socket.emit('battle_click', { roomId, playerId });
 function updateBattleClicks(clicks1, clicks2){
 if(!battleState) return;
 
-// Map clicks to host/student instead of player1/player2
-// Determine who is host in the battle
-const player1IsHost = battleState.player1 === playerId ? isHost : !isHost;
-const hostClicks = player1IsHost ? clicks1 : clicks2;
-const studentClicks = player1IsHost ? clicks2 : clicks1;
+// Map clicks to host/student using the stored IDs
+const hostClicks = battleState.player1 === battleState.hostPlayerId ? clicks1 : clicks2;
+const studentClicks = battleState.player1 === battleState.hostPlayerId ? clicks2 : clicks1;
+
+console.log(`Click update: Host=${hostClicks}, Student=${studentClicks} (p1=${clicks1}, p2=${clicks2})`);
 
 document.getElementById("leftScore").textContent = hostClicks;
 document.getElementById("rightScore").textContent = studentClicks;
