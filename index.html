@@ -10,7 +10,7 @@ body{margin:0;font-family:system-ui;background:#0f172a;color:#004870;display:fle
 #logo{width:180px;height:180px;object-fit:contain;background:white;border-radius:50%;padding:20px;box-shadow:0 8px 24px rgba(0,72,112,0.3);margin:0 auto;display:block;transition:all 0.3s;}
 body.in-game #logo{width:80px;height:80px;padding:10px;position:fixed;left:20px;top:25px;z-index:100;margin:0;transform:none;}
 body.in-game h1{display:none;}
-#gameSidebar{position:fixed;left:20px;top:125px;display:none;flex-direction:column;gap:15px;align-items:center;z-index:100;}
+#gameSidebar{position:fixed;left:20px;top:144px;display:none;flex-direction:column;gap:15px;align-items:center;z-index:100;}
 body.in-game #gameSidebar{display:flex;}
 #gameSidebar #scoreBoard{position:static;transform:none;background:rgba(255,255,255,0.95);padding:8px 12px;border-radius:8px;border:2px solid #16b7a7;font-size:12px;color:#004870;width:110px;text-align:left;}
 #gameSidebar #scoreBoard > div{display:flex;justify-content:space-between;align-items:center;margin:3px 0;}
@@ -555,13 +555,50 @@ clearInterval(battleTimerInterval);
 battleTimerInterval = null;
 }
 
-// Show winner announcement
+// Determine if I won
+const iWon = result.winner === playerId;
+const winnerIsHost = result.winner === battleState.hostPlayerId;
+
+// STEP 1: Tip scale entirely to winner's side (dramatic animation)
+const scaleBeam = document.getElementById("scaleBeam");
+if(scaleBeam){
+const finalAngle = winnerIsHost ? -25 : 25; // -25 = left (host), +25 = right (student)
+scaleBeam.style.transition = "transform 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55)"; // Bouncy
+scaleBeam.style.transform = `rotate(${-finalAngle}deg)`;
+}
+
+// Wait for scale animation
+await new Promise(resolve => setTimeout(resolve, 800));
+
+// STEP 2: Show personalized winner announcement with celebration/sadness
 const winnerAnnouncement = document.getElementById("winnerAnnouncement");
-const player1Name = document.getElementById("leftName").textContent;
-const player2Name = document.getElementById("rightName").textContent;
-const winnerName = result.winner === playerId ? "YOU" : (battleState.player1 === result.winner ? player1Name : player2Name);
-winnerAnnouncement.textContent = `${winnerName} WIN!`;
-winnerAnnouncement.style.color = result.winner === battleState.player1 ? "#3b82f6" : "#ef4444";
+
+if(iWon){
+// I WON! 🎉
+winnerAnnouncement.innerHTML = `
+<div style="text-align:center;">
+<div style="font-size:80px;margin-bottom:20px;">🎉</div>
+<div style="font-size:64px;font-weight:900;">YOU WON!</div>
+<div style="font-size:40px;margin-top:10px;">✨ 🎊 ✨</div>
+</div>
+`;
+winnerAnnouncement.style.color = "#eff8d7";
+
+// Confetti effect (simple emoji rain)
+createConfetti();
+} else {
+// I LOST 😢
+const winnerName = winnerIsHost ? battleState.hostPlayerId : battleState.studentPlayerId;
+const winnerDisplayName = document.getElementById(winnerIsHost ? "leftName" : "rightName").textContent;
+winnerAnnouncement.innerHTML = `
+<div style="text-align:center;">
+<div style="font-size:80px;margin-bottom:20px;">😢</div>
+<div style="font-size:48px;font-weight:700;">${winnerDisplayName} wins...</div>
+</div>
+`;
+winnerAnnouncement.style.color = "#94a3b8";
+}
+
 winnerAnnouncement.style.opacity = "1";
 
 // Wait 3 seconds
@@ -701,6 +738,40 @@ const playerScore = data.scores[p] || 0;
 scores.push(`<div><span>${playerName}:</span><b>${playerScore}</b></div>`);
 }
 scoreBoard.innerHTML = scores.join('');
+}
+
+// Confetti celebration animation
+function createConfetti(){
+const battleScreen = document.getElementById("battleScreen");
+const emojis = ['🎉', '✨', '🎊', '⭐', '💫', '🌟'];
+const colors = ['#e4e09a', '#6ee3de', '#50d3df', '#eff8d7'];
+
+for(let i = 0; i < 30; i++){
+const confetti = document.createElement('div');
+const isEmoji = Math.random() > 0.5;
+confetti.textContent = isEmoji ? emojis[Math.floor(Math.random() * emojis.length)] : '●';
+confetti.style.position = 'absolute';
+confetti.style.left = Math.random() * 100 + '%';
+confetti.style.top = '-50px';
+confetti.style.fontSize = (20 + Math.random() * 30) + 'px';
+if(!isEmoji) confetti.style.color = colors[Math.floor(Math.random() * colors.length)];
+confetti.style.opacity = '0.8';
+confetti.style.pointerEvents = 'none';
+confetti.style.zIndex = '1001';
+
+battleScreen.appendChild(confetti);
+
+// Animate falling
+const duration = 2000 + Math.random() * 2000;
+const finalY = window.innerHeight + 100;
+confetti.animate([
+{ transform: 'translateY(0) rotate(0deg)', opacity: 0.8 },
+{ transform: `translateY(${finalY}px) rotate(${360 * (Math.random() * 2 - 1)}deg)`, opacity: 0 }
+], {
+duration: duration,
+easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+}).onfinish = () => confetti.remove();
+}
 }
 
 // OLD Firebase battle system removed - now using WebSocket
