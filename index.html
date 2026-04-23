@@ -8,12 +8,13 @@
 body{margin:0;font-family:system-ui;background:#0f172a;color:#004870;display:flex;justify-content:center;align-items:center;min-height:100vh;}
 #app{width:1100px;background:#dafbe9;padding:20px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);position:relative;}
 #logo{width:180px;height:180px;object-fit:contain;background:white;border-radius:50%;padding:20px;box-shadow:0 8px 24px rgba(0,72,112,0.3);margin:0 auto;display:block;transition:all 0.3s;}
-body.in-game #logo{width:80px;height:80px;padding:10px;position:fixed;left:20px;top:120px;z-index:100;margin:0;transform:none;}
+body.in-game #logo{width:80px;height:80px;padding:10px;position:fixed;left:20px;top:25px;z-index:100;margin:0;transform:none;}
 body.in-game h1{display:none;}
-#gameSidebar{position:fixed;left:20px;top:220px;display:none;flex-direction:column;gap:15px;align-items:center;z-index:100;}
+#gameSidebar{position:fixed;left:20px;top:125px;display:none;flex-direction:column;gap:15px;align-items:center;z-index:100;}
 body.in-game #gameSidebar{display:flex;}
-#gameSidebar #scoreBoard{position:static;transform:none;background:rgba(255,255,255,0.95);padding:10px 15px;border-radius:8px;border:2px solid #16b7a7;font-size:13px;color:#004870;min-width:140px;text-align:center;}
-#gameSidebar #scoreBoard b{color:#23879f;display:block;margin-top:4px;}
+#gameSidebar #scoreBoard{position:static;transform:none;background:rgba(255,255,255,0.95);padding:8px 12px;border-radius:8px;border:2px solid #16b7a7;font-size:12px;color:#004870;width:110px;text-align:left;}
+#gameSidebar #scoreBoard > div{display:flex;justify-content:space-between;align-items:center;margin:3px 0;}
+#gameSidebar #scoreBoard b{color:#23879f;}
 #gameSidebar #restartBtn{position:static;width:40px;height:40px;border-radius:50%;background:#23879f;border:2px solid #16b7a7;cursor:pointer;font-size:24px;padding:0;display:flex;align-items:center;justify-content:center;color:white;}
 #gameSidebar #restartBtn:hover{background:#16b7a7;transform:rotate(180deg);transition:all 0.3s;}
 #home{text-align:center;max-width:400px;margin:0 auto;}
@@ -105,8 +106,7 @@ Enter your name<br>
 
 <div style="display:flex;align-items:flex-end;justify-content:space-between;width:100%;padding:0 40px;">
 <div style="text-align:center;flex:0 0 140px;">
-<div id="leftName" style="font-size:24px;font-weight:700;margin-bottom:8px;color:#6ee3de;"></div>
-<div id="leftScore" style="font-size:42px;font-weight:700;color:#6ee3de;">0</div>
+<div id="leftName" style="font-size:28px;font-weight:700;color:#6ee3de;"></div>
 </div>
 
 <!-- SVG Tipping Scale -->
@@ -128,8 +128,7 @@ Enter your name<br>
 </div>
 
 <div style="text-align:center;flex:0 0 140px;">
-<div id="rightName" style="font-size:24px;font-weight:700;margin-bottom:8px;color:#e4e09a;"></div>
-<div id="rightScore" style="font-size:42px;font-weight:700;color:#e4e09a;">0</div>
+<div id="rightName" style="font-size:28px;font-weight:700;color:#e4e09a;"></div>
 </div>
 </div>
 </div>
@@ -423,8 +422,6 @@ battleScreen.style.display = "flex";
 document.body.style.overflow = "hidden";
 
 // Reset all UI elements to default state
-document.getElementById("leftScore").textContent = "0";
-document.getElementById("rightScore").textContent = "0";
 document.getElementById("battleTimer").textContent = "5";
 const scaleBeam = document.getElementById("scaleBeam");
 if(scaleBeam) scaleBeam.style.transform = "rotate(0deg)";
@@ -531,9 +528,6 @@ const studentClicks = battleState.player1 === battleState.hostPlayerId ? clicks2
 
 console.log(`Click update: Host=${hostClicks}, Student=${studentClicks} (p1=${clicks1}, p2=${clicks2})`);
 
-document.getElementById("leftScore").textContent = hostClicks;
-document.getElementById("rightScore").textContent = studentClicks;
-
 // Calculate tipping angle based on click difference
 const total = hostClicks + studentClicks;
 let tiltAngle = 0;
@@ -545,7 +539,7 @@ const ratio = hostClicks / total;
 tiltAngle = (ratio - 0.5) * 50; // Max 25° tilt each direction
 }
 
-// Apply rotation to scale beam
+// Apply rotation to scale beam - ONLY visual feedback, no numbers
 const scaleBeam = document.getElementById("scaleBeam");
 if(scaleBeam){
 scaleBeam.style.transform = `rotate(${-tiltAngle}deg)`;
@@ -704,9 +698,9 @@ let scores = [];
 for(const p in data.players){
 const playerName = data.players[p].name;
 const playerScore = data.scores[p] || 0;
-scores.push(`<span>${playerName}: <b>${playerScore}</b></span>`);
+scores.push(`<div><span>${playerName}:</span><b>${playerScore}</b></div>`);
 }
-scoreBoard.innerHTML = scores.join(' <span style="color:#16b7a7;">|</span> ');
+scoreBoard.innerHTML = scores.join('');
 }
 
 // OLD Firebase battle system removed - now using WebSocket
