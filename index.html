@@ -548,7 +548,12 @@ scaleBeam.style.transform = `rotate(${-tiltAngle}deg)`;
 
 // WebSocket handler: Battle result
 async function handleBattleResult(result){
-console.log("handleBattleResult", result);
+console.log("🏆 handleBattleResult", result);
+console.log("🔍 Debug info:");
+console.log("  - I am:", playerId, "isHost:", isHost);
+console.log("  - Battle winner:", result.winner);
+console.log("  - battleState.hostPlayerId:", battleState.hostPlayerId);
+console.log("  - battleState.studentPlayerId:", battleState.studentPlayerId);
 
 if(battleTimerInterval){
 clearInterval(battleTimerInterval);
@@ -557,12 +562,25 @@ battleTimerInterval = null;
 
 // Determine if I won
 const iWon = result.winner === playerId;
-const winnerIsHost = result.winner === battleState.hostPlayerId;
+
+// Determine if winner is host (use isHost flag directly)
+let winnerIsHost = false;
+if(result.winner === playerId){
+// Winner is me, check my isHost status
+winnerIsHost = isHost;
+} else {
+// Winner is opponent, check opposite of my isHost
+winnerIsHost = !isHost;
+}
+
+console.log("  - iWon:", iWon);
+console.log("  - winnerIsHost:", winnerIsHost);
 
 // STEP 1: Tip scale entirely to winner's side (dramatic animation)
 const scaleBeam = document.getElementById("scaleBeam");
 if(scaleBeam){
 const finalAngle = winnerIsHost ? -25 : 25; // -25 = left (host), +25 = right (student)
+console.log("  - Tipping scale to:", finalAngle, "degrees");
 scaleBeam.style.transition = "transform 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55)"; // Bouncy
 scaleBeam.style.transform = `rotate(${-finalAngle}deg)`;
 }
@@ -575,6 +593,7 @@ const winnerAnnouncement = document.getElementById("winnerAnnouncement");
 
 if(iWon){
 // I WON! 🎉
+console.log("  - Showing: YOU WON!");
 winnerAnnouncement.innerHTML = `
 <div style="text-align:center;">
 <div style="font-size:80px;margin-bottom:20px;">🎉</div>
@@ -588,8 +607,8 @@ winnerAnnouncement.style.color = "#eff8d7";
 createConfetti();
 } else {
 // I LOST 😢
-const winnerName = winnerIsHost ? battleState.hostPlayerId : battleState.studentPlayerId;
 const winnerDisplayName = document.getElementById(winnerIsHost ? "leftName" : "rightName").textContent;
+console.log("  - Showing: " + winnerDisplayName + " wins...");
 winnerAnnouncement.innerHTML = `
 <div style="text-align:center;">
 <div style="font-size:80px;margin-bottom:20px;">😢</div>
