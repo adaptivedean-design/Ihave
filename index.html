@@ -534,15 +534,15 @@ let tiltAngle = 0;
 
 if(total > 0){
 const ratio = hostClicks / total;
-// Map ratio (0 to 1) to tilt angle (-25 to +25 degrees)
-// 0.5 = balanced (0°), <0.5 tips right, >0.5 tips left
+// Map ratio (0 to 1) to tilt angle
+// 0.5 = balanced (0°), >0.5 tips left (host winning), <0.5 tips right (student winning)
 tiltAngle = (ratio - 0.5) * 50; // Max 25° tilt each direction
 }
 
 // Apply rotation to scale beam - ONLY visual feedback, no numbers
 const scaleBeam = document.getElementById("scaleBeam");
 if(scaleBeam){
-scaleBeam.style.transform = `rotate(${-tiltAngle}deg)`;
+scaleBeam.style.transform = `rotate(${tiltAngle}deg)`; // Positive = left, negative = right
 }
 }
 
@@ -579,10 +579,10 @@ console.log("  - winnerIsHost:", winnerIsHost);
 // STEP 1: Tip scale entirely to winner's side (dramatic animation)
 const scaleBeam = document.getElementById("scaleBeam");
 if(scaleBeam){
-const finalAngle = winnerIsHost ? -25 : 25; // -25 = left (host), +25 = right (student)
+const finalAngle = winnerIsHost ? 25 : -25; // POSITIVE = left (host), NEGATIVE = right (student)
 console.log("  - Tipping scale to:", finalAngle, "degrees");
 scaleBeam.style.transition = "transform 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55)"; // Bouncy
-scaleBeam.style.transform = `rotate(${-finalAngle}deg)`;
+scaleBeam.style.transform = `rotate(${finalAngle}deg)`; // No negation needed
 }
 
 // Wait for scale animation
@@ -759,6 +759,10 @@ scores.push(`<div><span>${playerName}:</span><b>${playerScore}</b></div>`);
 scoreBoard.innerHTML = scores.join('');
 }
 
+// OLD Firebase battle system removed - now using WebSocket
+});
+}
+
 // Confetti celebration animation
 function createConfetti(){
 const battleScreen = document.getElementById("battleScreen");
@@ -791,10 +795,6 @@ duration: duration,
 easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)'
 }).onfinish = () => confetti.remove();
 }
-}
-
-// OLD Firebase battle system removed - now using WebSocket
-});
 }
 
 async function enterGame(){
