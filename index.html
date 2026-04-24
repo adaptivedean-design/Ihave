@@ -49,13 +49,14 @@ button:hover{background:#16b7a7;}
 #playerPiles{width:90%;display:flex;flex-direction:column;gap:15px;align-items:center;}
 #playerPilesTop{display:flex;gap:8px;width:100%;justify-content:space-between;}
 #playerPilesBottom{display:flex;justify-content:center;width:100%;}
-.pile{width:90px;min-height:120px;border:2px dashed #16b7a7;border-radius:8px;background:rgba(189,246,224,0.3);transition:background 0.2s;padding:5px;}
-.pile.large{width:200px;min-height:140px;} /* Large communal pile */
+.pile{width:95px;min-height:130px;border:2px dashed #16b7a7;border-radius:8px;background:rgba(189,246,224,0.3);transition:background 0.2s;padding:8px;}
+.pile.large{width:220px;min-height:150px;} /* Large communal pile */
 .pile.dragOver{background:rgba(110,227,222,0.5);border-color:#6ee3de;border-style:solid;}
-.pile .pileLabel{font-size:10px;color:#004870;text-align:center;opacity:0.5;margin-bottom:4px;}
-.cardInPile{position:relative;cursor:grab;margin-top:-65px;width:80px;} /* Overlap for fan effect */
+.pile .pileLabel{font-size:9px;color:#004870;text-align:center;opacity:0.4;margin-bottom:4px;user-select:none;}
+.cardInPile{position:relative;cursor:grab;margin-top:-70px;width:80px;} /* Overlap for fan effect */
 .cardInPile:first-child{margin-top:0;}
 .cardInPile.dragging{opacity:0.5;cursor:grabbing;}
+.cardInPile:hover{z-index:10;} /* Bring to front on hover */
 .playerCard{background:linear-gradient(135deg, #004870, #023047);height:95px;border-radius:8px;cursor:pointer;display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:13px;text-align:center;transition:transform .08s;padding:6px;border:2px solid #16b7a7;color:white;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,0.3);}
 .playerCard:hover{transform:scale(1.05);border-color:#6ee3de;box-shadow:0 0 15px rgba(110,227,222,0.5);}
 .playerCard.wrong,.playerCard.wrongCard{animation:shake 0.4s;border-color:#ff6b6b !important;background:linear-gradient(135deg, #8b0000, #ff6b6b) !important;}
@@ -300,11 +301,25 @@ console.log("Cards rendered in piles:", communalPile ? communalPile.children.len
 }
 
 function renderOpponent(count){
-opponentGrid.innerHTML="";
+// Get opponent communal pile
+const opponentCommunal = document.querySelector('[data-pile-id="opponent-communal"]');
+
+// Clear the communal pile
+if(opponentCommunal){
+opponentCommunal.innerHTML = '<div class="pileLabel">All Cards</div>';
+
+// Add opponent cards to communal pile
 for(let i=0;i<count;i++){
 let d=document.createElement("div");
-d.className="opponentCard";
-opponentGrid.appendChild(d);
+d.className="opponentCard cardInPile";
+d.style.width = "80px";
+d.style.height = "45px";
+d.style.background = "#bdf6e0";
+d.style.border = "2px solid #16b7a7";
+d.style.borderRadius = "6px";
+d.style.marginTop = i === 0 ? "0" : "-30px"; // Smaller fan for opponent cards
+opponentCommunal.appendChild(d);
+}
 }
 }
 
