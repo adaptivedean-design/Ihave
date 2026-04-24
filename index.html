@@ -245,11 +245,32 @@ function makeDeck(){
 
 function renderHand(){
 console.log("renderHand called, myHand:", myHand);
-playerGrid.innerHTML="";
+
+// Create piles if they don't exist
+const playerPilesContainer = document.getElementById("playerPiles");
+if(playerPilesContainer.children.length === 0){
+createPiles();
+}
+
+// Get the first pile for initial placement (users can organize later)
+const firstPile = playerPilesContainer.querySelector('.pile');
+
+// Clear only the first pile's cards
+if(firstPile){
+firstPile.innerHTML = "";
+}
+
 myHand.forEach(card=>{
 let div=document.createElement("div");
-div.className="playerCard";
+div.className="playerCard cardInPile";
 div.innerHTML=`<b>I HAVE</b><br>${card.iHave}`;
+div.draggable = true; // Make draggable
+div.dataset.cardId = card.id;
+
+// Drag events
+div.addEventListener('dragstart', handleDragStart);
+div.addEventListener('dragend', handleDragEnd);
+
 // Only make clickable if no winner
 if(!winner){
 div.onclick=(event)=>{
@@ -260,9 +281,11 @@ tryPlay(card, event.target);
 div.style.opacity="0.5";
 div.style.cursor="not-allowed";
 }
-playerGrid.appendChild(div);
+if(firstPile){
+firstPile.appendChild(div);
+}
 });
-console.log("Cards rendered:", playerGrid.children.length);
+console.log("Cards rendered in piles:", firstPile ? firstPile.children.length : 0);
 }
 
 function renderOpponent(count){
