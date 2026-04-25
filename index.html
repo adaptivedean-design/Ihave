@@ -49,14 +49,14 @@ button:hover{background:#16b7a7;}
 #playerPiles{width:90%;display:flex;flex-direction:column;gap:15px;align-items:center;}
 #playerPilesTop{display:flex;gap:8px;width:100%;justify-content:space-between;}
 #playerPilesBottom{display:flex;justify-content:center;width:100%;}
-.pile{width:95px;min-height:130px;border:2px dashed #16b7a7;border-radius:8px;background:rgba(189,246,224,0.3);transition:background 0.2s;padding:8px;}
-.pile.large{width:220px;min-height:150px;} /* Large communal pile */
+.pile{width:95px;min-height:130px;border:2px dashed #16b7a7;border-radius:8px;background:rgba(189,246,224,0.3);transition:background 0.2s;padding:8px;display:flex;flex-wrap:wrap;align-items:flex-start;}
+.pile.large{width:auto;min-width:400px;min-height:150px;} /* Large communal pile - auto width for horizontal cards */
 .pile.dragOver{background:rgba(110,227,222,0.5);border-color:#6ee3de;border-style:solid;}
 .pile .pileLabel{font-size:9px;color:#004870;text-align:center;opacity:0.4;margin-bottom:4px;user-select:none;}
-.cardInPile{position:relative;cursor:grab;margin-top:-70px;width:80px;} /* Overlap for fan effect */
-.cardInPile:first-child{margin-top:0;}
+.cardInPile{position:relative;cursor:grab;margin-left:-60px;width:80px;} /* Horizontal overlap - left to right */
+.cardInPile:first-child{margin-left:8px;} /* First card has normal margin */
 .cardInPile.dragging{opacity:0.5;cursor:grabbing;}
-.cardInPile:hover{z-index:10;} /* Bring to front on hover */
+.cardInPile:hover{z-index:10;transform:translateY(-10px);} /* Lift card on hover */
 .playerCard{background:linear-gradient(135deg, #004870, #023047);height:95px;border-radius:8px;cursor:pointer;display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:13px;text-align:center;transition:transform .08s;padding:6px;border:2px solid #16b7a7;color:white;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,0.3);}
 .playerCard:hover{transform:scale(1.05);border-color:#6ee3de;box-shadow:0 0 15px rgba(110,227,222,0.5);}
 .playerCard.wrong,.playerCard.wrongCard{animation:shake 0.4s;border-color:#ff6b6b !important;background:linear-gradient(135deg, #8b0000, #ff6b6b) !important;}
@@ -267,10 +267,9 @@ createPiles();
 // Get the communal pile for initial placement (users can organize later)
 const communalPile = document.querySelector('[data-pile-id="player-communal"]');
 
-// Clear only the communal pile's cards
-if(communalPile){
-communalPile.innerHTML = '<div class="pileLabel">All Cards</div>';
-}
+// Clear cards from communal pile
+const existingCards = communalPile ? communalPile.querySelectorAll('.cardInPile') : [];
+existingCards.forEach(card => card.remove());
 
 myHand.forEach(card=>{
 let div=document.createElement("div");
@@ -304,11 +303,12 @@ function renderOpponent(count){
 // Get opponent communal pile
 const opponentCommunal = document.querySelector('[data-pile-id="opponent-communal"]');
 
-// Clear the communal pile
+// Clear existing cards
 if(opponentCommunal){
-opponentCommunal.innerHTML = '<div class="pileLabel">All Cards</div>';
+const existingCards = opponentCommunal.querySelectorAll('.cardInPile');
+existingCards.forEach(card => card.remove());
 
-// Add opponent cards to communal pile
+// Add opponent cards to communal pile with horizontal fan
 for(let i=0;i<count;i++){
 let d=document.createElement("div");
 d.className="opponentCard cardInPile";
@@ -317,7 +317,8 @@ d.style.height = "45px";
 d.style.background = "#bdf6e0";
 d.style.border = "2px solid #16b7a7";
 d.style.borderRadius = "6px";
-d.style.marginTop = i === 0 ? "0" : "-30px"; // Smaller fan for opponent cards
+d.style.marginLeft = i === 0 ? "8px" : "-60px"; // Horizontal fan like player
+d.style.cursor = "default"; // Not draggable
 opponentCommunal.appendChild(d);
 }
 }
@@ -442,7 +443,14 @@ console.trace("Call stack:"); // This will show what called this function
 
 let newHand = myHand.filter(c => c.id !== card.id);
 myHand = newHand;
-renderHand();
+
+// Remove card visually from pile (don't re-render entire hand)
+const cardElements = document.querySelectorAll('.cardInPile');
+cardElements.forEach(el => {
+if(el.dataset.cardId == card.id){
+el.remove();
+}
+});
 
 let handObj = {};
 newHand.forEach((c, idx) => handObj[idx] = c);
@@ -717,8 +725,8 @@ scores[playerId]++;
 await update(ref(db,"rooms/"+roomId),{winner: playerId, scores: scores});
 }
 } else {
-// Loser - just re-render hand (card stays)
-renderHand();
+// Loser - card stays in hand, no need to re-render
+console.log("Lost battle, keeping card");
 }
 
 // Hide battle screen
@@ -845,7 +853,6 @@ for(let i = 0; i < 8; i++){
 const pile = document.createElement("div");
 pile.className = "pile";
 pile.dataset.pileId = `player-${i}`;
-pile.innerHTML = `<div class="pileLabel">Pile ${i + 1}</div>`;
 
 // Drag and drop handlers
 pile.addEventListener('dragover', handleDragOver);
@@ -859,7 +866,6 @@ playerPilesTop.appendChild(pile);
 const playerCommunal = document.createElement("div");
 playerCommunal.className = "pile large";
 playerCommunal.dataset.pileId = "player-communal";
-playerCommunal.innerHTML = `<div class="pileLabel">All Cards</div>`;
 playerCommunal.addEventListener('dragover', handleDragOver);
 playerCommunal.addEventListener('drop', handleDrop);
 playerCommunal.addEventListener('dragleave', handleDragLeave);
@@ -870,7 +876,6 @@ for(let i = 0; i < 8; i++){
 const pile = document.createElement("div");
 pile.className = "pile";
 pile.dataset.pileId = `opponent-${i}`;
-pile.innerHTML = `<div class="pileLabel">Pile ${i + 1}</div>`;
 opponentPilesTop.appendChild(pile);
 }
 
@@ -878,7 +883,6 @@ opponentPilesTop.appendChild(pile);
 const opponentCommunal = document.createElement("div");
 opponentCommunal.className = "pile large";
 opponentCommunal.dataset.pileId = "opponent-communal";
-opponentCommunal.innerHTML = `<div class="pileLabel">All Cards</div>`;
 opponentPilesBottom.appendChild(opponentCommunal);
 }
 
@@ -965,7 +969,11 @@ startBtn.style.display="inline-block";
 }else{isHost=false;startBtn.style.display="none";}
 
 const link=location.origin+location.pathname+"?room="+roomId;
+if(isHost){
 document.getElementById("share").innerHTML="Send link to student:<br>"+link;
+} else {
+document.getElementById("share").innerHTML=""; // Student doesn't see link
+}
 
 await update(ref(db,"rooms/"+roomId+"/players/"+playerId),{name:myName});
 home.style.display="none";
