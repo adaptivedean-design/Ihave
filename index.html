@@ -273,9 +273,9 @@ createPiles();
 // Get the communal pile for initial placement (users can organize later)
 const communalPile = document.querySelector('[data-pile-id="player-communal"]');
 
-// Clear cards from communal pile
-const existingCards = communalPile ? communalPile.querySelectorAll('.cardInPile') : [];
-existingCards.forEach(card => card.remove());
+// Clear ALL cards from ALL piles (not just communal)
+const allPlayerCards = document.querySelectorAll('.playerCard.cardInPile');
+allPlayerCards.forEach(card => card.remove());
 
 myHand.forEach(card=>{
 let div=document.createElement("div");
@@ -468,6 +468,33 @@ flipped: false,
 playedBy: playerId
 });
 
+// Check if chain is now broken (target animal depleted)
+const targetAnimal = card.whoHas;
+let handsSnap = await get(ref(db,"rooms/"+roomId+"/hands"));
+let allHands = handsSnap.val() || {};
+
+let targetExists = false;
+for(const pid in allHands){
+const hand = Object.values(allHands[pid]);
+if(hand.some(c => c.iHave === targetAnimal)){
+targetExists = true;
+break;
+}
+}
+
+if(!targetExists){
+// Chain is broken! Flash notification
+console.log("⚠️ CHAIN BROKEN! Target animal depleted:", targetAnimal);
+const playerArea = document.getElementById("playerArea");
+const opponentArea = document.getElementById("opponentArea");
+playerArea.style.background = "#e4e09a";
+opponentArea.style.background = "#e4e09a";
+setTimeout(() => {
+playerArea.style.background = "";
+opponentArea.style.background = "";
+}, 800);
+}
+
 if(newHand.length === 0){
 let scoresSnap = await get(ref(db,"rooms/"+roomId+"/scores"));
 let scores = scoresSnap.val() || {};
@@ -620,6 +647,7 @@ tiltAngle = -(ratio - 0.5) * 50; // Invert: negative when host ahead, positive w
 // Apply rotation to scale beam - ONLY visual feedback, no numbers
 const scaleBeam = document.getElementById("scaleBeam");
 if(scaleBeam){
+scaleBeam.style.transition = "transform 0.1s linear"; // Fast, direct transition - no backwards tipping
 scaleBeam.style.transform = `rotate(${tiltAngle}deg)`;
 }
 }
@@ -942,7 +970,7 @@ pile.classList.remove('dragOver');
 if(draggedCard){
 pile.appendChild(draggedCard);
 
-// Check if communal pile is now empty and hide it
+// Update communal pile visibility
 const communalPile = document.querySelector('[data-pile-id="player-communal"]');
 if(communalPile){
 const cardsInCommunal = communalPile.querySelectorAll('.cardInPile');
