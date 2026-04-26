@@ -17,6 +17,8 @@ const io = new Server(server, {
 // Store active rooms and their state
 const rooms = {};
 
+const BATTLE_WINDOW_MS = 500; // Battle detection window
+
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
@@ -62,14 +64,14 @@ io.on('connection', (socket) => {
       age: now - room.pendingPlays[pid].timestamp
     })));
     
-    // Check if another player has a pending play within 2000ms
+    // Check if another player has a pending play within battle window
     // FOR TESTING: Allow same player to trigger battle with themselves
     let battleOpponent = null;
     for (const [pid, pending] of Object.entries(room.pendingPlays)) {
       const age = now - pending.timestamp;
       console.log(`Checking pending play from ${pid}, age: ${age}ms`);
       
-      if (age < 2000) {
+      if (age < BATTLE_WINDOW_MS) {
         // Found a pending play within time window
         if (pid !== playerId) {
           // Different player - normal battle
@@ -122,7 +124,7 @@ io.on('connection', (socket) => {
         isHost: isHost
       };
       
-      // Set timeout to auto-play after 2.1 seconds if no battle occurs
+      // Set timeout to auto-play after battle window + buffer if no battle occurs
       setTimeout(() => {
         // Check if this pending play still exists and no battle started
         if (room.pendingPlays[playerId] && !room.activeBattle) {
@@ -130,9 +132,9 @@ io.on('connection', (socket) => {
           socket.emit('play_card_now', { card: card });
           delete room.pendingPlays[playerId];
         }
-      }, 2100);
+      }, BATTLE_WINDOW_MS + 100); // 500ms window + 100ms buffer
       
-      console.log(`⏳ Pending play registered, will auto-play in 2.1s if no battle. Pending count: ${Object.keys(room.pendingPlays).length}`);
+      console.log(`⏳ Pending play registered, will auto-play in ${BATTLE_WINDOW_MS + 100}ms if no battle. Pending count: ${Object.keys(room.pendingPlays).length}`);
     } else {
       console.log(`⚠️ Battle already active, ignoring card play`);
     }
