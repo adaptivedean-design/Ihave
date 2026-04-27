@@ -63,7 +63,8 @@ button:hover{background:#16b7a7;}
 .cardInPile{position:relative;cursor:grab;}
 .cardInPile.dragging{opacity:0.5;cursor:grabbing;}
 .cardInPile:hover{z-index:10;transform:translateY(-10px);} /* Lift card on hover */
-.playerCard{background:linear-gradient(135deg, #004870, #023047);height:95px;border-radius:8px;cursor:pointer;display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:13px;text-align:center;transition:transform .08s;padding:6px;border:2px solid #16b7a7;color:white;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,0.3);}
+.playerCard{background:linear-gradient(135deg, #004870, #023047);height:95px;border-radius:8px;cursor:pointer;display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:13px;text-align:center;transition:transform .08s;padding:0;border:2px solid #16b7a7;color:white;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,0.3);overflow:hidden;} /* Remove padding, add overflow:hidden for clean image edges */
+.playerCard img{display:block;width:100%;height:100%;object-fit:contain;} /* Ensure images display properly */
 .playerCard:hover{transform:scale(1.05);border-color:#6ee3de;box-shadow:0 0 15px rgba(110,227,222,0.5);}
 .playerCard.wrong,.playerCard.wrongCard{animation:shake 0.4s;border-color:#ff6b6b !important;background:linear-gradient(135deg, #8b0000, #ff6b6b) !important;}
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
@@ -72,7 +73,8 @@ button:hover{background:#16b7a7;}
 @keyframes flashRed{0%,100%{background:linear-gradient(135deg, #004870, #023047);}50%{background:#8b0000;border-color:#ff0000;}}
 .deckInner{position:relative;width:100%;height:100%;transition:transform 0.6s;transform-style:preserve-3d;}
 #deck.flipped .deckInner{transform:rotateY(180deg);}
-.deckFront,.deckBack{position:absolute;width:100%;height:100%;backface-visibility:hidden;display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:16px;}
+.deckFront,.deckBack{position:absolute;width:100%;height:100%;backface-visibility:hidden;display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:16px;padding:10px;overflow:hidden;}
+.deckFront img,.deckBack img{display:block;max-width:100%;max-height:100%;object-fit:contain;}
 .deckBack{transform:rotateY(180deg);}
 </style>
 </head>
@@ -204,6 +206,30 @@ let myHand=[];
 let currentChain=null;
 let winner=null;
 
+// Image URL mapping for cards
+const CARD_IMAGES = {
+  ihave: {
+    'Alligator': 'https://i.ibb.co/3mjbrnJW/ihave-alligator.png',
+    'Cat': 'https://i.ibb.co/DfT10yp1/ihave-cat.png',
+    'Dog': 'https://i.ibb.co/xKMLpw80/ihave-dog.png',
+    'Elephant': 'https://i.ibb.co/xSv1PZhs/ihave-elephant.png',
+    'Horse': 'https://i.ibb.co/tw5wQ0Df/ihave-horse.png',
+    'Lion': 'https://i.ibb.co/21hNcm3v/ihave-lion.png',
+    'Shark': 'https://i.ibb.co/gFySV2bw/ihave-shark.png',
+    'Snake': 'https://i.ibb.co/C5Hc6C7k/ihave-snake.png'
+  },
+  whas: {
+    'Alligator': 'https://i.ibb.co/k2zPZ8KB/whas-alligator.png',
+    'Cat': 'https://i.ibb.co/nNqCt7Mq/whas-cat.png',
+    'Dog': 'https://i.ibb.co/ZpFY12Zy/whas-dog.png',
+    'Elephant': 'https://i.ibb.co/XkZ65HGv/whas-elephant.png',
+    'Horse': 'https://i.ibb.co/G4px7ZMH/whas-horse.png',
+    'Lion': 'https://i.ibb.co/5Ww2X61d/whas-lion.png',
+    'Shark': 'https://i.ibb.co/TBXDspBs/whas-shark.png',
+    'Snake': 'https://i.ibb.co/ds2kK7Px/whas-snake.png'
+  }
+};
+
 // WebSocket connection for battles
 const BATTLE_SERVER = "https://ihave.onrender.com";
 let socket = null;
@@ -280,7 +306,16 @@ allPlayerCards.forEach(card => card.remove());
 myHand.forEach(card=>{
 let div=document.createElement("div");
 div.className="playerCard cardInPile";
+
+// Use image instead of text
+const imgUrl = CARD_IMAGES.ihave[card.iHave];
+if(imgUrl){
+div.innerHTML=`<img src="${imgUrl}" alt="${card.iHave}" style="width:100%;height:100%;object-fit:contain;">`;
+} else {
+// Fallback to text if image not found
 div.innerHTML=`<b>I HAVE</b><br>${card.iHave}`;
+}
+
 div.draggable = true; // Make draggable
 div.dataset.cardId = card.id;
 
@@ -305,28 +340,111 @@ communalPile.appendChild(div);
 console.log("Cards rendered in piles:", communalPile ? communalPile.children.length - 1 : 0); // -1 for label
 }
 
-function renderOpponent(count){
-// Get opponent communal pile
+async function renderOpponent(opponentHand){
+// Clear existing cards from ALL opponent piles
+const allOpponentCards = document.querySelectorAll('#opponentPiles .cardInPile');
+allOpponentCards.forEach(card => card.remove());
+
+if(!opponentHand || opponentHand.length === 0){
+// Hide communal pile if no cards
 const opponentCommunal = document.querySelector('[data-pile-id="opponent-communal"]');
+if(opponentCommunal) opponentCommunal.style.display = 'none';
+return;
+}
 
-// Clear existing cards
-if(opponentCommunal){
-const existingCards = opponentCommunal.querySelectorAll('.cardInPile');
-existingCards.forEach(card => card.remove());
+// Get opponent's pile organization from Firebase
+let pileOrganization = {};
+try {
+// Find opponent's player ID
+let opponentId = null;
+const playersSnap = await get(ref(db, `rooms/${roomId}/players`));
+const players = playersSnap.val();
+for(const pid in players){
+if(pid !== playerId){
+opponentId = pid;
+break;
+}
+}
 
-// Add opponent cards to communal pile with horizontal fan
-for(let i=0;i<count;i++){
-let d=document.createElement("div");
-d.className="opponentCard cardInPile";
+if(opponentId){
+const orgSnap = await get(ref(db, `rooms/${roomId}/pileOrganization/${opponentId}`));
+pileOrganization = orgSnap.val() || {};
+}
+} catch(e){
+console.log("No pile organization for opponent yet");
+}
+
+// Create a map of cards by ID for easy lookup
+const cardMap = {};
+opponentHand.forEach(card => {
+cardMap[card.id] = card;
+});
+
+// Track which cards have been placed
+const placedCards = new Set();
+
+// Place cards in their organized piles
+for(const pileId in pileOrganization){
+const cardIds = pileOrganization[pileId];
+// Convert player pile IDs to opponent pile IDs
+const opponentPileId = pileId.replace('player-', 'opponent-');
+const pile = document.querySelector(`[data-pile-id="${opponentPileId}"]`);
+
+if(pile){
+cardIds.forEach(cardId => {
+const card = cardMap[cardId];
+if(card){
+const d = document.createElement("div");
+d.className = "playerCard cardInPile";
+
+// Use image instead of text
+const imgUrl = CARD_IMAGES.ihave[card.iHave];
+if(imgUrl){
+d.innerHTML = `<img src="${imgUrl}" alt="${card.iHave}" style="width:100%;height:100%;object-fit:contain;">`;
+} else {
+d.innerHTML = `<b>I HAVE</b><br>${card.iHave}`;
+}
+
 d.style.width = "80px";
-d.style.height = "45px";
-d.style.background = "#bdf6e0";
-d.style.border = "2px solid #16b7a7";
-d.style.borderRadius = "6px";
-d.style.marginLeft = i === 0 ? "8px" : "-60px"; // Horizontal fan like player
-d.style.cursor = "default"; // Not draggable
+d.style.height = "95px";
+d.style.cursor = "default";
+d.style.opacity = "0.9";
+d.dataset.cardId = card.id;
+pile.appendChild(d);
+placedCards.add(cardId);
+}
+});
+}
+}
+
+// Place remaining unorganized cards in communal pile
+const opponentCommunal = document.querySelector('[data-pile-id="opponent-communal"]');
+if(opponentCommunal){
+opponentHand.forEach(card => {
+if(!placedCards.has(String(card.id))){
+const d = document.createElement("div");
+d.className = "playerCard cardInPile";
+
+// Use image instead of text
+const imgUrl = CARD_IMAGES.ihave[card.iHave];
+if(imgUrl){
+d.innerHTML = `<img src="${imgUrl}" alt="${card.iHave}" style="width:100%;height:100%;object-fit:contain;">`;
+} else {
+d.innerHTML = `<b>I HAVE</b><br>${card.iHave}`;
+}
+
+d.style.width = "80px";
+d.style.height = "95px";
+d.style.cursor = "default";
+d.style.opacity = "0.9";
+d.dataset.cardId = card.id;
 opponentCommunal.appendChild(d);
 }
+});
+
+// Show/hide communal pile
+const cardsInCommunal = opponentCommunal.querySelectorAll('.cardInPile');
+opponentCommunal.style.display = cardsInCommunal.length > 0 ? 'flex' : 'none';
 }
 }
 
@@ -827,14 +945,30 @@ myHand = newHand;
 }
 
 if(data.hands){
-let opp=0;
+let opponentHand = [];
 for(const p in data.hands){
 if(p!==playerId){
-// Count cards in opponent's hand (convert object to array)
-opp = Object.keys(data.hands[p]).length;
+// Get opponent's actual cards
+opponentHand = Object.values(data.hands[p]);
 }
 }
-renderOpponent(opp);
+renderOpponent(opponentHand);
+}
+
+// Listen for pile organization changes (triggers re-render of opponent)
+if(data.pileOrganization){
+// Re-render opponent when they reorganize
+if(data.hands){
+let opponentHand = [];
+for(const p in data.hands){
+if(p!==playerId){
+opponentHand = Object.values(data.hands[p]);
+}
+}
+if(opponentHand.length > 0){
+renderOpponent(opponentHand);
+}
+}
 }
 
 if(data.chain){
@@ -845,13 +979,35 @@ const deckBack=document.querySelector(".deckBack");
 if(data.chain.flipped){
 deck.classList.add("flipped");
 deck.classList.remove("canFlip");
-deckFront.innerHTML=`<b>I HAVE</b><br>${data.chain.iHave}`;
-deckBack.innerHTML=`<b>WHO HAS</b><br>${data.chain.whoHas}?`;
+
+// Front: "I HAVE" image
+const iHaveImg = CARD_IMAGES.ihave[data.chain.iHave];
+deckFront.innerHTML = iHaveImg ? 
+`<img src="${iHaveImg}" style="width:100%;height:100%;object-fit:contain;">` : 
+`<b>I HAVE</b><br>${data.chain.iHave}`;
+
+// Back: "WHO HAS" image
+const whoHasImg = CARD_IMAGES.whas[data.chain.whoHas];
+deckBack.innerHTML = whoHasImg ? 
+`<img src="${whoHasImg}" style="width:100%;height:100%;object-fit:contain;">` : 
+`<b>WHO HAS</b><br>${data.chain.whoHas}?`;
+
 chainText.innerHTML="Find and play your card!";
 } else {
 deck.classList.remove("flipped");
-deckFront.innerHTML=`<b>I HAVE</b><br>${data.chain.iHave}`;
-deckBack.innerHTML=`<b>WHO HAS</b><br>${data.chain.whoHas}?`;
+
+// Front: "I HAVE" image
+const iHaveImg = CARD_IMAGES.ihave[data.chain.iHave];
+deckFront.innerHTML = iHaveImg ? 
+`<img src="${iHaveImg}" style="width:100%;height:100%;object-fit:contain;">` : 
+`<b>I HAVE</b><br>${data.chain.iHave}`;
+
+// Back: "WHO HAS" image  
+const whoHasImg = CARD_IMAGES.whas[data.chain.whoHas];
+deckBack.innerHTML = whoHasImg ? 
+`<img src="${whoHasImg}" style="width:100%;height:100%;object-fit:contain;">` : 
+`<b>WHO HAS</b><br>${data.chain.whoHas}?`;
+
 if(data.chain.playedBy===playerId){
 deck.classList.add("canFlip");
 chainText.innerHTML="Click the center card to flip it!";
@@ -936,6 +1092,25 @@ opponentCommunal.dataset.pileId = "opponent-communal";
 opponentPilesBottom.appendChild(opponentCommunal);
 }
 
+// Save current pile organization to Firebase
+async function savePileOrganization(){
+const pileOrganization = {};
+
+// Get all player piles
+const allPiles = document.querySelectorAll('[data-pile-id^="player-"]');
+allPiles.forEach(pile => {
+const pileId = pile.dataset.pileId;
+const cardsInPile = pile.querySelectorAll('.cardInPile');
+const cardIds = Array.from(cardsInPile).map(card => card.dataset.cardId);
+if(cardIds.length > 0){
+pileOrganization[pileId] = cardIds;
+}
+});
+
+// Save to Firebase
+await set(ref(db, `rooms/${roomId}/pileOrganization/${playerId}`), pileOrganization);
+}
+
 let draggedCard = null;
 
 function handleDragStart(e){
@@ -969,6 +1144,9 @@ pile.classList.remove('dragOver');
 
 if(draggedCard){
 pile.appendChild(draggedCard);
+
+// Save pile organization to Firebase
+savePileOrganization();
 
 // Update communal pile visibility
 const communalPile = document.querySelector('[data-pile-id="player-communal"]');
