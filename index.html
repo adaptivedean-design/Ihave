@@ -49,24 +49,23 @@ button:hover{background:#16b7a7;}
 #playerPiles{width:90%;display:flex;flex-direction:column;gap:15px;align-items:center;}
 #playerPilesTop{display:flex;gap:8px;width:100%;justify-content:space-between;}
 #playerPilesBottom{display:flex;justify-content:center;width:100%;}
-.pile{width:95px;min-height:130px;border:2px dashed #16b7a7;border-radius:8px;background:rgba(189,246,224,0.3);transition:background 0.2s;padding:8px;display:flex;flex-direction:column;align-items:center;} /* Vertical stacking for small piles */
-.pile.large{width:auto;min-width:400px;min-height:150px;flex-direction:row;flex-wrap:wrap;align-items:flex-start;} /* Horizontal for communal pile */
+.pile{width:180px;min-height:220px;border:2px dashed #16b7a7;border-radius:8px;background:rgba(189,246,224,0.3);transition:background 0.2s;padding:8px;display:flex;flex-direction:column;align-items:center;} /* Vertical stacking for small piles - larger for 2x cards */
+.pile.large{width:auto;min-width:700px;min-height:240px;flex-direction:row;flex-wrap:wrap;align-items:flex-start;} /* Horizontal for communal pile - wider for 2x cards */
 .pile.dragOver{background:rgba(110,227,222,0.5);border-color:#6ee3de;border-style:solid;}
 .pile .pileLabel{font-size:9px;color:#004870;text-align:center;opacity:0.4;margin-bottom:4px;user-select:none;}
 /* Cards in SMALL piles - vertical fan */
-.pile:not(.large) .cardInPile{margin-left:0;margin-top:-65px;width:80px;}
+.pile:not(.large) .cardInPile{margin-left:0;margin-top:-140px;} /* Larger overlap for 2x cards */
 .pile:not(.large) .cardInPile:first-child{margin-top:0;}
 /* Cards in LARGE communal pile - horizontal fan */
-.pile.large .cardInPile{margin-top:0;margin-left:-60px;width:80px;}
+.pile.large .cardInPile{margin-top:0;margin-left:-120px;} /* Larger overlap for 2x cards */
 .pile.large .cardInPile:first-child{margin-left:8px;}
 /* General card styles */
 .cardInPile{position:relative;cursor:grab;}
 .cardInPile.dragging{opacity:0.5;cursor:grabbing;}
 .cardInPile:hover{z-index:10;transform:translateY(-10px);} /* Lift card on hover */
-.playerCard{background:linear-gradient(135deg, #004870, #023047);height:95px;border-radius:8px;cursor:pointer;display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:13px;text-align:center;transition:transform .08s;padding:0;border:2px solid #16b7a7;color:white;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,0.3);overflow:hidden;} /* Remove padding, add overflow:hidden for clean image edges */
-.playerCard img{display:block;width:100%;height:100%;object-fit:contain;} /* Ensure images display properly */
-.playerCard:hover{transform:scale(1.05);border-color:#6ee3de;box-shadow:0 0 15px rgba(110,227,222,0.5);}
-.playerCard.wrong,.playerCard.wrongCard{animation:shake 0.4s;border-color:#ff6b6b !important;background:linear-gradient(135deg, #8b0000, #ff6b6b) !important;}
+.playerCard{border-radius:8px;cursor:pointer;transition:transform .08s;border:2px solid #16b7a7;display:block;object-fit:contain;} /* Images are cards now - minimal styling */
+.playerCard:hover{transform:scale(1.05);border-color:#23879f;box-shadow:0 0 15px rgba(35,135,159,0.5);}
+.playerCard.wrong,.playerCard.wrongCard{animation:shake 0.4s;border-color:#ff6b6b !important;}
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
 .wrongCard{animation:shake 0.4s,flashRed 0.4s;}
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-10px);}75%{transform:translateX(10px);}}
@@ -244,16 +243,16 @@ const DECK_THEME = {
   cards: [
     {id: 0, iHave: "Dog", whoHas: "Cat"},
     {id: 1, iHave: "Cat", whoHas: "Shark"},
-    {id: 2, iHave: "Shark", whoHas: "Pig"},
-    {id: 3, iHave: "Pig", whoHas: "Alligator"},
+    {id: 2, iHave: "Shark", whoHas: "Lion"},
+    {id: 3, iHave: "Lion", whoHas: "Alligator"},
     {id: 4, iHave: "Alligator", whoHas: "Snake"},
     {id: 5, iHave: "Snake", whoHas: "Horse"},
     {id: 6, iHave: "Horse", whoHas: "Elephant"},
-    {id: 7, iHave: "Elephant", whoHas: "Pig"},
-    {id: 8, iHave: "Pig", whoHas: "Snake"},
+    {id: 7, iHave: "Elephant", whoHas: "Lion"},
+    {id: 8, iHave: "Lion", whoHas: "Snake"},
     {id: 9, iHave: "Snake", whoHas: "Dog"},
-    {id: 10, iHave: "Dog", whoHas: "Pig"},
-    {id: 11, iHave: "Pig", whoHas: "Horse"},
+    {id: 10, iHave: "Dog", whoHas: "Lion"},
+    {id: 11, iHave: "Lion", whoHas: "Horse"},
     {id: 12, iHave: "Horse", whoHas: "Shark"},
     {id: 13, iHave: "Shark", whoHas: "Dog"},
     {id: 14, iHave: "Dog", whoHas: "Alligator"},
@@ -304,37 +303,37 @@ const allPlayerCards = document.querySelectorAll('.playerCard.cardInPile');
 allPlayerCards.forEach(card => card.remove());
 
 myHand.forEach(card=>{
-let div=document.createElement("div");
-div.className="playerCard cardInPile";
+// Create image element that IS the card (no wrapper div)
+const img = document.createElement("img");
+img.src = CARD_IMAGES.ihave[card.iHave] || "";
+img.alt = card.iHave;
+img.className = "playerCard cardInPile";
+img.draggable = true;
+img.dataset.cardId = card.id;
 
-// Use image instead of text
-const imgUrl = CARD_IMAGES.ihave[card.iHave];
-if(imgUrl){
-div.innerHTML=`<img src="${imgUrl}" alt="${card.iHave}" style="width:100%;height:100%;object-fit:contain;">`;
-} else {
-// Fallback to text if image not found
-div.innerHTML=`<b>I HAVE</b><br>${card.iHave}`;
-}
-
-div.draggable = true; // Make draggable
-div.dataset.cardId = card.id;
+// Size: 2x original (160px x 190px)
+img.style.width = "160px";
+img.style.height = "190px";
+img.style.objectFit = "contain";
 
 // Drag events
-div.addEventListener('dragstart', handleDragStart);
-div.addEventListener('dragend', handleDragEnd);
+img.addEventListener('dragstart', handleDragStart);
+img.addEventListener('dragend', handleDragEnd);
 
-// Only make clickable if no winner
+// Click to play (if no winner)
 if(!winner){
-div.onclick=(event)=>{
+img.onclick = (event) => {
 console.log("Card clicked:", card);
-tryPlay(card, event.target);
+tryPlay(card, event);
 };
+img.style.cursor = "pointer";
 } else {
-div.style.opacity="0.5";
-div.style.cursor="not-allowed";
+img.style.opacity = "0.5";
+img.style.cursor = "not-allowed";
 }
+
 if(communalPile){
-communalPile.appendChild(div);
+communalPile.appendChild(img);
 }
 });
 console.log("Cards rendered in piles:", communalPile ? communalPile.children.length - 1 : 0); // -1 for label
@@ -394,23 +393,21 @@ if(pile){
 cardIds.forEach(cardId => {
 const card = cardMap[cardId];
 if(card){
-const d = document.createElement("div");
-d.className = "playerCard cardInPile";
+// Create image element that IS the card
+const img = document.createElement("img");
+img.src = CARD_IMAGES.ihave[card.iHave] || "";
+img.alt = card.iHave;
+img.className = "playerCard cardInPile";
+img.dataset.cardId = card.id;
 
-// Use image instead of text
-const imgUrl = CARD_IMAGES.ihave[card.iHave];
-if(imgUrl){
-d.innerHTML = `<img src="${imgUrl}" alt="${card.iHave}" style="width:100%;height:100%;object-fit:contain;">`;
-} else {
-d.innerHTML = `<b>I HAVE</b><br>${card.iHave}`;
-}
+// Size: 2x (160px x 190px)
+img.style.width = "160px";
+img.style.height = "190px";
+img.style.objectFit = "contain";
+img.style.cursor = "default";
+img.style.opacity = "0.9";
 
-d.style.width = "80px";
-d.style.height = "95px";
-d.style.cursor = "default";
-d.style.opacity = "0.9";
-d.dataset.cardId = card.id;
-pile.appendChild(d);
+pile.appendChild(img);
 placedCards.add(cardId);
 }
 });
@@ -422,23 +419,21 @@ const opponentCommunal = document.querySelector('[data-pile-id="opponent-communa
 if(opponentCommunal){
 opponentHand.forEach(card => {
 if(!placedCards.has(String(card.id))){
-const d = document.createElement("div");
-d.className = "playerCard cardInPile";
+// Create image element that IS the card
+const img = document.createElement("img");
+img.src = CARD_IMAGES.ihave[card.iHave] || "";
+img.alt = card.iHave;
+img.className = "playerCard cardInPile";
+img.dataset.cardId = card.id;
 
-// Use image instead of text
-const imgUrl = CARD_IMAGES.ihave[card.iHave];
-if(imgUrl){
-d.innerHTML = `<img src="${imgUrl}" alt="${card.iHave}" style="width:100%;height:100%;object-fit:contain;">`;
-} else {
-d.innerHTML = `<b>I HAVE</b><br>${card.iHave}`;
-}
+// Size: 2x (160px x 190px)
+img.style.width = "160px";
+img.style.height = "190px";
+img.style.objectFit = "contain";
+img.style.cursor = "default";
+img.style.opacity = "0.9";
 
-d.style.width = "80px";
-d.style.height = "95px";
-d.style.cursor = "default";
-d.style.opacity = "0.9";
-d.dataset.cardId = card.id;
-opponentCommunal.appendChild(d);
+opponentCommunal.appendChild(img);
 }
 });
 
