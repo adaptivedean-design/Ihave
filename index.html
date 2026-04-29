@@ -38,7 +38,7 @@ button:hover{background:#16b7a7;}
 #opponentPilesBottom{display:flex;justify-content:center;width:100%;}
 .opponentCard{background:#bdf6e0;height:45px;border-radius:6px;opacity:.95;border:2px solid #16b7a7;}
 #centerArea{display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;}
-#deck{background:linear-gradient(135deg, #23879f, #16b7a7);width:220px;height:120px;border-radius:10px;display:flex;justify-content:center;align-items:center;text-align:center;padding:10px;cursor:pointer;transition:transform .1s;position:relative;perspective:1000px;box-shadow:0 4px 20px rgba(35,135,159,0.4);}
+#deck{background:linear-gradient(135deg, #23879f, #16b7a7);width:300px;height:180px;border-radius:10px;display:flex;justify-content:center;align-items:center;text-align:center;padding:10px;cursor:pointer;transition:transform .1s;position:relative;perspective:1000px;box-shadow:0 4px 20px rgba(35,135,159,0.4);}
 #deck:hover{transform:scale(1.03);}
 #deck.canFlip{box-shadow:0 0 30px rgba(110,227,222,0.8);border:2px solid #6ee3de;}
 #chainText{margin-top:12px;font-size:18px;font-weight:500;text-align:center;color:#b2ecd1;}
@@ -46,26 +46,28 @@ button:hover{background:#16b7a7;}
 #restartBtn{position:absolute;top:20px;left:20px;}
 #playerArea{border-top:2px solid #16b7a7;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;position:relative;padding:10px 0;}
 #playerGrid{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;width:90%;display:none;} /* Hide old grid */
-#playerPiles{width:90%;display:flex;flex-direction:column;gap:15px;align-items:center;}
-#playerPilesTop{display:flex;gap:8px;width:100%;justify-content:space-between;}
-#playerPilesBottom{display:flex;justify-content:center;width:100%;}
-.pile{width:180px;min-height:220px;border:2px dashed #16b7a7;border-radius:8px;background:rgba(189,246,224,0.3);transition:background 0.2s;padding:8px;display:flex;flex-direction:column;align-items:center;} /* Vertical stacking for small piles - larger for 2x cards */
-.pile.large{width:auto;min-width:700px;min-height:240px;flex-direction:row;flex-wrap:wrap;align-items:flex-start;} /* Horizontal for communal pile - wider for 2x cards */
+#playerPiles{width:100%;height:100%;display:flex;flex-direction:column;position:relative;}
+#playerPilesTop{display:flex;gap:20px;justify-content:center;width:80%;margin:0 auto;} /* Arc of organizing piles */
+#playerPilesBottom{display:flex;justify-content:center;align-items:center;flex:1;} /* Unorganized cluster area */
+#opponentPiles{width:100%;height:100%;display:flex;flex-direction:column;position:relative;}
+#opponentPilesTop{display:flex;gap:20px;justify-content:center;width:80%;margin:0 auto;} /* Arc of organizing piles */
+#opponentPilesBottom{display:none;} /* HIDDEN - opponent's unorganized cards not visible */
+.pile{width:100px;min-height:140px;border:2px dashed #16b7a7;border-radius:8px;background:rgba(189,246,224,0.2);transition:background 0.2s;padding:8px;display:flex;flex-direction:column;align-items:center;} /* Organizing piles */
+.pile.communal{width:auto;min-width:350px;min-height:220px;border:none;background:transparent;padding:20px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:0;} /* Unorganized cluster - no border */
 .pile.dragOver{background:rgba(110,227,222,0.5);border-color:#6ee3de;border-style:solid;}
-.pile .pileLabel{font-size:9px;color:#004870;text-align:center;opacity:0.4;margin-bottom:4px;user-select:none;}
-/* Cards in SMALL piles - vertical fan */
-.pile:not(.large) .cardInPile{margin-left:0;margin-top:-140px;} /* Larger overlap for 2x cards */
-.pile:not(.large) .cardInPile:first-child{margin-top:0;}
-/* Cards in LARGE communal pile - horizontal fan */
-.pile.large .cardInPile{margin-top:0;margin-left:-120px;} /* Larger overlap for 2x cards */
-.pile.large .cardInPile:first-child{margin-left:8px;}
+/* Cards in organizing piles - vertical stack */
+.pile:not(.communal) .cardInPile{margin-left:0;margin-top:-140px;}
+.pile:not(.communal) .cardInPile:first-child{margin-top:0;}
+/* Cards in communal cluster - slight random overlap for messy look */
+.pile.communal .cardInPile{margin:-80px;position:relative;}
+.pile.communal .cardInPile:first-child{margin:0;}
 /* General card styles */
 .cardInPile{position:relative;cursor:grab;}
 .cardInPile.dragging{opacity:0.5;cursor:grabbing;}
 .cardInPile:hover{z-index:10;transform:translateY(-10px);} /* Lift card on hover */
-.playerCard{border-radius:8px;cursor:pointer;transition:transform .08s;border:2px solid #16b7a7;display:block;object-fit:contain;} /* Images are cards now - minimal styling */
-.playerCard:hover{transform:scale(1.05);border-color:#23879f;box-shadow:0 0 15px rgba(35,135,159,0.5);}
-.playerCard.wrong,.playerCard.wrongCard{animation:shake 0.4s;border-color:#ff6b6b !important;}
+.playerCard{border-radius:8px;cursor:pointer;transition:transform .08s;border:none;display:block;object-fit:contain;} /* No borders - images stand alone */
+.playerCard:hover{transform:scale(1.1);box-shadow:0 0 20px rgba(35,135,159,0.7);} /* Glow effect instead of border */
+.playerCard.wrong,.playerCard.wrongCard{animation:shake 0.4s;box-shadow:0 0 20px rgba(255,107,107,0.9) !important;} /* Red glow for wrong card */
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
 .wrongCard{animation:shake 0.4s,flashRed 0.4s;}
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-10px);}75%{transform:translateX(10px);}}
@@ -870,7 +872,7 @@ flipped: false,
 playedBy: result.winner
 });
 
-renderHand();
+// Don't call renderHand() - card already removed visually above
 
 if(newHand.length === 0){
 let scoresSnap = await get(ref(db,"rooms/"+roomId+"/scores"));
@@ -1063,9 +1065,9 @@ pile.addEventListener('dragleave', handleDragLeave);
 playerPilesTop.appendChild(pile);
 }
 
-// Create 1 large communal pile for player (bottom)
+// Create 1 communal pile for player (bottom - unorganized cards)
 const playerCommunal = document.createElement("div");
-playerCommunal.className = "pile large";
+playerCommunal.className = "pile communal";
 playerCommunal.dataset.pileId = "player-communal";
 playerCommunal.addEventListener('dragover', handleDragOver);
 playerCommunal.addEventListener('drop', handleDrop);
@@ -1080,9 +1082,9 @@ pile.dataset.pileId = `opponent-${i}`;
 opponentPilesTop.appendChild(pile);
 }
 
-// Create 1 large communal pile for opponent (bottom - visually at top due to column-reverse)
+// Create 1 communal pile for opponent (hidden - you don't see their unorganized cards)
 const opponentCommunal = document.createElement("div");
-opponentCommunal.className = "pile large";
+opponentCommunal.className = "pile communal";
 opponentCommunal.dataset.pileId = "opponent-communal";
 opponentPilesBottom.appendChild(opponentCommunal);
 }
