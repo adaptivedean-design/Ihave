@@ -37,22 +37,38 @@ button:hover{background:#16b7a7;}
 #opponentPilesTop{display:flex;gap:8px;width:100%;justify-content:space-between;}
 #opponentPilesBottom{display:flex;justify-content:center;width:100%;}
 .opponentCard{background:#bdf6e0;height:45px;border-radius:6px;opacity:.95;border:2px solid #16b7a7;}
-#centerArea{display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;}
-#deck{background:linear-gradient(135deg, #23879f, #16b7a7);width:300px;height:180px;border-radius:10px;display:flex;justify-content:center;align-items:center;text-align:center;padding:10px;cursor:pointer;transition:transform .1s;position:relative;perspective:1000px;box-shadow:0 4px 20px rgba(35,135,159,0.4);}
+#centerArea{display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;background:transparent;} /* Remove teal background */
+#deck{background:linear-gradient(135deg, #23879f, #16b7a7);width:345px;height:207px;border-radius:10px;display:flex;justify-content:center;align-items:center;text-align:center;padding:15px;cursor:pointer;transition:transform .1s;position:relative;perspective:1000px;box-shadow:0 4px 20px rgba(35,135,159,0.4);} /* 15% larger than 300x180 */
 #deck:hover{transform:scale(1.03);}
 #deck.canFlip{box-shadow:0 0 30px rgba(110,227,222,0.8);border:2px solid #6ee3de;}
-#chainText{margin-top:12px;font-size:18px;font-weight:500;text-align:center;color:#b2ecd1;}
+#chainText{display:none;} /* Hidden - text removed per user request */
 #scoreBoard{position:absolute;top:20px;right:20px;background:rgba(0,72,112,0.8);padding:12px 16px;border-radius:8px;font-size:14px;border:2px solid #16b7a7;line-height:1.6;}
 #restartBtn{position:absolute;top:20px;left:20px;}
 #playerArea{border-top:2px solid #16b7a7;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;position:relative;padding:10px 0;}
 #playerGrid{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;width:90%;display:none;} /* Hide old grid */
 #playerPiles{width:100%;height:100%;display:flex;flex-direction:column;position:relative;}
-#playerPilesTop{display:flex;gap:20px;justify-content:center;width:80%;margin:0 auto;} /* Arc of organizing piles */
+#playerPilesTop{display:flex;gap:0;justify-content:center;width:100%;margin:0 auto;position:relative;height:50px;} /* Arc of organizing piles */
+#playerPilesTop .pile:nth-child(1){transform:translateY(30px) translateX(-280px);}
+#playerPilesTop .pile:nth-child(2){transform:translateY(15px) translateX(-200px);}
+#playerPilesTop .pile:nth-child(3){transform:translateY(5px) translateX(-120px);}
+#playerPilesTop .pile:nth-child(4){transform:translateY(0px) translateX(-40px);}
+#playerPilesTop .pile:nth-child(5){transform:translateY(0px) translateX(40px);}
+#playerPilesTop .pile:nth-child(6){transform:translateY(5px) translateX(120px);}
+#playerPilesTop .pile:nth-child(7){transform:translateY(15px) translateX(200px);}
+#playerPilesTop .pile:nth-child(8){transform:translateY(30px) translateX(280px);}
 #playerPilesBottom{display:flex;justify-content:center;align-items:center;flex:1;} /* Unorganized cluster area */
 #opponentPiles{width:100%;height:100%;display:flex;flex-direction:column;position:relative;}
-#opponentPilesTop{display:flex;gap:20px;justify-content:center;width:80%;margin:0 auto;} /* Arc of organizing piles */
+#opponentPilesTop{display:flex;gap:0;justify-content:center;width:100%;margin:0 auto;position:relative;height:50px;} /* Arc of organizing piles - inverted */
+#opponentPilesTop .pile:nth-child(1){transform:translateY(-30px) translateX(-280px);}
+#opponentPilesTop .pile:nth-child(2){transform:translateY(-15px) translateX(-200px);}
+#opponentPilesTop .pile:nth-child(3){transform:translateY(-5px) translateX(-120px);}
+#opponentPilesTop .pile:nth-child(4){transform:translateY(0px) translateX(-40px);}
+#opponentPilesTop .pile:nth-child(5){transform:translateY(0px) translateX(40px);}
+#opponentPilesTop .pile:nth-child(6){transform:translateY(-5px) translateX(120px);}
+#opponentPilesTop .pile:nth-child(7){transform:translateY(-15px) translateX(200px);}
+#opponentPilesTop .pile:nth-child(8){transform:translateY(-30px) translateX(280px);}
 #opponentPilesBottom{display:none;} /* HIDDEN - opponent's unorganized cards not visible */
-.pile{width:100px;min-height:140px;border:2px dashed #16b7a7;border-radius:8px;background:rgba(189,246,224,0.2);transition:background 0.2s;padding:8px;display:flex;flex-direction:column;align-items:center;} /* Organizing piles */
+.pile{width:100px;height:240px;min-height:240px;border:2px dashed #16b7a7;border-radius:8px;background:rgba(189,246,224,0.2);transition:background 0.2s;padding:8px;display:flex;flex-direction:column;align-items:center;position:absolute;} /* Organizing piles - full size, positioned absolutely for arc */
 .pile.communal{width:auto;min-width:350px;min-height:220px;border:none;background:transparent;padding:20px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:0;} /* Unorganized cluster - no border */
 .pile.dragOver{background:rgba(110,227,222,0.5);border-color:#6ee3de;border-style:solid;}
 /* Cards in organizing piles - vertical stack */
@@ -69,6 +85,8 @@ button:hover{background:#16b7a7;}
 .playerCard:hover{transform:scale(1.1);box-shadow:0 0 20px rgba(35,135,159,0.7);} /* Glow effect instead of border */
 .playerCard.wrong,.playerCard.wrongCard{animation:shake 0.4s;box-shadow:0 0 20px rgba(255,107,107,0.9) !important;} /* Red glow for wrong card */
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
+@keyframes chainBreakPulse{0%,100%{background:rgba(228,224,154,0.3);}50%{background:rgba(228,224,154,0.7);}} /* Pulse yellow */
+.chainBroken{animation:chainBreakPulse 1s infinite;} /* Apply to playerArea when chain breaks */
 .wrongCard{animation:shake 0.4s,flashRed 0.4s;}
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-10px);}75%{transform:translateX(10px);}}
 @keyframes flashRed{0%,100%{background:linear-gradient(135deg, #004870, #023047);}50%{background:#8b0000;border-color:#ff0000;}}
@@ -177,6 +195,12 @@ Enter your name<br>
 <!-- Winner Announcement (hidden by default) -->
 <div id="winnerAnnouncement" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:64px;font-weight:900;text-align:center;opacity:0;pointer-events:none;text-shadow:0 0 40px rgba(255,255,255,0.8);transition:opacity 0.5s;z-index:10;color:#eff8d7;"></div>
 </div>
+</div>
+
+<!-- Winner Announcement Overlay (separate from battle) -->
+<div id="roundWinnerOverlay" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);background:linear-gradient(135deg, #23879f, #16b7a7);padding:60px 80px;border-radius:20px;z-index:10000;text-align:center;box-shadow:0 10px 50px rgba(0,0,0,0.5);">
+<div id="roundWinnerText" style="font-size:48px;font-weight:bold;color:white;margin-bottom:20px;"></div>
+<div id="roundWinnerSubtext" style="font-size:24px;color:#dafbe9;"></div>
 </div>
 
 <!-- Socket.IO Client Library -->
@@ -322,17 +346,12 @@ img.style.objectFit = "contain";
 img.addEventListener('dragstart', handleDragStart);
 img.addEventListener('dragend', handleDragEnd);
 
-// Click to play (if no winner)
-if(!winner){
+// Click to play (always enabled - game continues after winner)
 img.onclick = (event) => {
 console.log("Card clicked:", card);
 tryPlay(card, event);
 };
 img.style.cursor = "pointer";
-} else {
-img.style.opacity = "0.5";
-img.style.cursor = "not-allowed";
-}
 
 if(communalPile){
 communalPile.appendChild(img);
@@ -489,18 +508,8 @@ setTimeout(() => cardElement.classList.remove('wrongCard'), 400);
 return; // Wrong card, can't play
 } else {
 console.log("Chain broken! Target animal depleted, allowing any card to restart chain");
-
-// VISUAL INDICATOR: Flash to show chain is broken
-const playerArea = document.getElementById("playerArea");
-const opponentArea = document.getElementById("opponentArea");
-playerArea.style.background = "#e4e09a";
-opponentArea.style.background = "#e4e09a";
-setTimeout(() => {
-playerArea.style.background = "";
-opponentArea.style.background = "";
-}, 800);
-
 // Chain is broken - allow this card to restart the chain
+// (Flash will happen after flip, not here)
 }
 }
 }
@@ -547,6 +556,22 @@ return;
 }
 console.log("Flipping card...");
 await update(ref(db,"rooms/"+roomId+"/chain"),{flipped:true});
+
+// Check for chain break 500ms after flip (when "Who Has" is revealed)
+setTimeout(() => {
+if(!currentChain || !currentChain.flipped) return;
+
+// Check if target animal is depleted
+const targetAnimal = currentChain.whoHas;
+const hasTarget = myHand.some(c => c.iHave === targetAnimal);
+
+if(!hasTarget){
+// Chain is broken - start pulsing
+const playerArea = document.getElementById("playerArea");
+playerArea.classList.add("chainBroken");
+console.log("Chain break pulse started");
+}
+}, 500);
 }
 
 let battleAnimationShown = false;
@@ -583,6 +608,10 @@ flipped: false,
 playedBy: playerId
 });
 
+// Stop chain break pulse (card has been played)
+const playerArea = document.getElementById("playerArea");
+playerArea.classList.remove("chainBroken");
+
 // Check if chain is now broken (target animal depleted)
 const targetAnimal = card.whoHas;
 let handsSnap = await get(ref(db,"rooms/"+roomId+"/hands"));
@@ -616,6 +645,19 @@ let scores = scoresSnap.val() || {};
 if(!scores[playerId]) scores[playerId] = 0;
 scores[playerId]++;
 await update(ref(db,"rooms/"+roomId),{winner: playerId, scores: scores});
+
+// Show winner announcement for 3 seconds
+const overlay = document.getElementById("roundWinnerOverlay");
+const winnerText = document.getElementById("roundWinnerText");
+const winnerSubtext = document.getElementById("roundWinnerSubtext");
+
+winnerText.textContent = "🎉 YOU WIN! 🎉";
+winnerSubtext.textContent = "First to empty your hand!";
+overlay.style.display = "block";
+
+setTimeout(() => {
+overlay.style.display = "none";
+}, 3000);
 }
 }
 
@@ -857,7 +899,7 @@ let handObj = {};
 newHand.forEach((c, idx) => handObj[idx] = c);
 await set(ref(db,"rooms/"+roomId+"/hands/"+playerId), handObj);
 
-// Remove card visually from pile
+// Remove card visually from pile (ONLY for winner)
 const cardElements = document.querySelectorAll('.cardInPile');
 cardElements.forEach(el => {
 if(el.dataset.cardId == result.winnerCard.id){
@@ -880,6 +922,19 @@ let scores = scoresSnap.val() || {};
 if(!scores[playerId]) scores[playerId] = 0;
 scores[playerId]++;
 await update(ref(db,"rooms/"+roomId),{winner: playerId, scores: scores});
+
+// Show winner announcement for 3 seconds
+const overlay = document.getElementById("roundWinnerOverlay");
+const winnerText = document.getElementById("roundWinnerText");
+const winnerSubtext = document.getElementById("roundWinnerSubtext");
+
+winnerText.textContent = "🎉 YOU WIN! 🎉";
+winnerSubtext.textContent = "First to empty your hand!";
+overlay.style.display = "block";
+
+setTimeout(() => {
+overlay.style.display = "none";
+}, 3000);
 }
 } else {
 // Loser - card stays in hand, no need to re-render
@@ -922,6 +977,21 @@ if(data.winner){
 winner=data.winner;
 const winnerName = data.players[winner]?.name || "Someone";
 chainText.innerHTML=(winner===playerId)?`YOU WIN 🎉`:`${winnerName} wins!`;
+
+// Show announcement for loser too
+if(winner !== playerId){
+const overlay = document.getElementById("roundWinnerOverlay");
+const winnerText = document.getElementById("roundWinnerText");
+const winnerSubtext = document.getElementById("roundWinnerSubtext");
+
+winnerText.textContent = "😢 YOU LOST";
+winnerSubtext.textContent = `${winnerName} finished first! Complete your chain.`;
+overlay.style.display = "block";
+
+setTimeout(() => {
+overlay.style.display = "none";
+}, 3000);
+}
 } else {
 // Reset winner when game restarts
 winner=null;
@@ -952,21 +1022,7 @@ opponentHand = Object.values(data.hands[p]);
 renderOpponent(opponentHand);
 }
 
-// Listen for pile organization changes (triggers re-render of opponent)
-if(data.pileOrganization){
-// Re-render opponent when they reorganize
-if(data.hands){
-let opponentHand = [];
-for(const p in data.hands){
-if(p!==playerId){
-opponentHand = Object.values(data.hands[p]);
-}
-}
-if(opponentHand.length > 0){
-renderOpponent(opponentHand);
-}
-}
-}
+// Note: renderOpponent already fetches pile organization internally, no need to call it again here
 
 if(data.chain){
 currentChain=data.chain;
@@ -977,32 +1033,32 @@ if(data.chain.flipped){
 deck.classList.add("flipped");
 deck.classList.remove("canFlip");
 
-// Front: "I HAVE" image
+// Front: "I HAVE" image - sharp rendering
 const iHaveImg = CARD_IMAGES.ihave[data.chain.iHave];
 deckFront.innerHTML = iHaveImg ? 
-`<img src="${iHaveImg}" style="width:100%;height:100%;object-fit:contain;">` : 
+`<img src="${iHaveImg}" style="width:315px;height:177px;object-fit:contain;image-rendering:crisp-edges;">` : 
 `<b>I HAVE</b><br>${data.chain.iHave}`;
 
-// Back: "WHO HAS" image
+// Back: "WHO HAS" image - sharp rendering
 const whoHasImg = CARD_IMAGES.whas[data.chain.whoHas];
 deckBack.innerHTML = whoHasImg ? 
-`<img src="${whoHasImg}" style="width:100%;height:100%;object-fit:contain;">` : 
+`<img src="${whoHasImg}" style="width:315px;height:177px;object-fit:contain;image-rendering:crisp-edges;">` : 
 `<b>WHO HAS</b><br>${data.chain.whoHas}?`;
 
 chainText.innerHTML="Find and play your card!";
 } else {
 deck.classList.remove("flipped");
 
-// Front: "I HAVE" image
+// Front: "I HAVE" image - sharp rendering
 const iHaveImg = CARD_IMAGES.ihave[data.chain.iHave];
 deckFront.innerHTML = iHaveImg ? 
-`<img src="${iHaveImg}" style="width:100%;height:100%;object-fit:contain;">` : 
+`<img src="${iHaveImg}" style="width:315px;height:177px;object-fit:contain;image-rendering:crisp-edges;">` : 
 `<b>I HAVE</b><br>${data.chain.iHave}`;
 
-// Back: "WHO HAS" image  
+// Back: "WHO HAS" image - sharp rendering
 const whoHasImg = CARD_IMAGES.whas[data.chain.whoHas];
 deckBack.innerHTML = whoHasImg ? 
-`<img src="${whoHasImg}" style="width:100%;height:100%;object-fit:contain;">` : 
+`<img src="${whoHasImg}" style="width:315px;height:177px;object-fit:contain;image-rendering:crisp-edges;">` : 
 `<b>WHO HAS</b><br>${data.chain.whoHas}?`;
 
 if(data.chain.playedBy===playerId){
