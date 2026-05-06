@@ -65,7 +65,6 @@ io.on('connection', (socket) => {
     })));
     
     // Check if another player has a pending play within battle window
-    // FOR TESTING: Allow same player to trigger battle with themselves
     let battleOpponent = null;
     for (const [pid, pending] of Object.entries(room.pendingPlays)) {
       const age = now - pending.timestamp;
@@ -90,6 +89,13 @@ io.on('connection', (socket) => {
     if (battleOpponent && !room.activeBattle) {
       // BATTLE!
       console.log(`🎮 BATTLE triggered between ${playerId} and ${battleOpponent.playerId}`);
+      
+      // **FIX: Clear the timeout for the opponent's pending play**
+      const opponentPending = room.pendingPlays[battleOpponent.playerId.replace('_clone', '')];
+      if (opponentPending && opponentPending.timeout) {
+        console.log(`🔧 Clearing timeout for ${battleOpponent.playerId}'s pending play`);
+        clearTimeout(opponentPending.timeout);
+      }
       
       // Determine who is student and apply 1/3 chance bonus
       const player1IsStudent = !battleOpponent.isHost;
@@ -118,21 +124,26 @@ io.on('connection', (socket) => {
     } else if (!room.activeBattle) {
       // No battle - add to pending
       console.log(`No battle opponent found, adding to pending plays`);
-      room.pendingPlays[playerId] = {
-        card: card,
-        timestamp: now,
-        isHost: isHost
-      };
       
       // Set timeout to auto-play after battle window + buffer if no battle occurs
-      setTimeout(() => {
+      const timeoutId = setTimeout(() => {
         // Check if this pending play still exists and no battle started
         if (room.pendingPlays[playerId] && !room.activeBattle) {
           console.log(`⏰ Timeout: Auto-playing card for ${playerId} (no battle occurred)`);
-          socket.emit('play_card_now', { card: card });
+          const player = room.players[playerId];
+          if (player && player.socketId) {
+            io.to(player.socketId).emit('play_card_now', { card: card });
+          }
           delete room.pendingPlays[playerId];
         }
       }, BATTLE_WINDOW_MS + 100); // 500ms window + 100ms buffer
+      
+      room.pendingPlays[playerId] = {
+        card: card,
+        timestamp: now,
+        isHost: isHost,
+        timeout: timeoutId  // **FIX: Store timeout ID so we can clear it**
+      };
       
       console.log(`⏳ Pending play registered, will auto-play in ${BATTLE_WINDOW_MS + 100}ms if no battle. Pending count: ${Object.keys(room.pendingPlays).length}`);
     } else {
@@ -207,6 +218,16 @@ io.on('connection', (socket) => {
       for (const playerId in rooms[roomId].players) {
         if (rooms[roomId].players[playerId].socketId === socket.id) {
           delete rooms[roomId].players[playerId];
+        }
+      }
+      // **FIX: Also clear any pending timeouts for this player**
+      for (const playerId in rooms[roomId].pendingPlays) {
+        if (rooms[roomId].players[playerId] && rooms[roomId].players[playerId].socketId === socket.id) {
+          const pending = rooms[roomId].pendingPlays[playerId];
+          if (pending.timeout) {
+            clearTimeout(pending.timeout);
+          }
+          delete rooms[roomId].pendingPlays[playerId];
         }
       }
     }
