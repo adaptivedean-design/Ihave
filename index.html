@@ -47,26 +47,26 @@ button:hover{background:#16b7a7;}
 #playerArea{border-top:2px solid #16b7a7;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;position:relative;padding:10px 0;}
 #playerGrid{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;width:90%;display:none;} /* Hide old grid */
 #playerPiles{width:100%;height:100%;display:flex;flex-direction:column;position:relative;}
-#playerPilesTop{display:flex;gap:0;justify-content:center;width:100%;margin:0 auto;position:relative;height:50px;} /* Arc of organizing piles */
-#playerPilesTop .pile:nth-child(1){transform:translateY(30px) translateX(-280px);}
-#playerPilesTop .pile:nth-child(2){transform:translateY(15px) translateX(-200px);}
-#playerPilesTop .pile:nth-child(3){transform:translateY(5px) translateX(-120px);}
-#playerPilesTop .pile:nth-child(4){transform:translateY(0px) translateX(-40px);}
-#playerPilesTop .pile:nth-child(5){transform:translateY(0px) translateX(40px);}
-#playerPilesTop .pile:nth-child(6){transform:translateY(5px) translateX(120px);}
-#playerPilesTop .pile:nth-child(7){transform:translateY(15px) translateX(200px);}
-#playerPilesTop .pile:nth-child(8){transform:translateY(30px) translateX(280px);}
+#playerPilesTop{display:flex;gap:0;justify-content:center;width:100%;margin:0 auto;position:relative;height:280px;} /* Arc of organizing piles - increased height for arc */
+#playerPilesTop .pile:nth-child(1){transform:translateY(60px) translateX(-420px);}
+#playerPilesTop .pile:nth-child(2){transform:translateY(25px) translateX(-300px);}
+#playerPilesTop .pile:nth-child(3){transform:translateY(5px) translateX(-180px);}
+#playerPilesTop .pile:nth-child(4){transform:translateY(0px) translateX(-60px);}
+#playerPilesTop .pile:nth-child(5){transform:translateY(0px) translateX(60px);}
+#playerPilesTop .pile:nth-child(6){transform:translateY(5px) translateX(180px);}
+#playerPilesTop .pile:nth-child(7){transform:translateY(25px) translateX(300px);}
+#playerPilesTop .pile:nth-child(8){transform:translateY(60px) translateX(420px);}
 #playerPilesBottom{display:flex;justify-content:center;align-items:center;flex:1;} /* Unorganized cluster area */
 #opponentPiles{width:100%;height:100%;display:flex;flex-direction:column;position:relative;}
-#opponentPilesTop{display:flex;gap:0;justify-content:center;width:100%;margin:0 auto;position:relative;height:50px;} /* Arc of organizing piles - inverted */
-#opponentPilesTop .pile:nth-child(1){transform:translateY(-30px) translateX(-280px);}
-#opponentPilesTop .pile:nth-child(2){transform:translateY(-15px) translateX(-200px);}
-#opponentPilesTop .pile:nth-child(3){transform:translateY(-5px) translateX(-120px);}
-#opponentPilesTop .pile:nth-child(4){transform:translateY(0px) translateX(-40px);}
-#opponentPilesTop .pile:nth-child(5){transform:translateY(0px) translateX(40px);}
-#opponentPilesTop .pile:nth-child(6){transform:translateY(-5px) translateX(120px);}
-#opponentPilesTop .pile:nth-child(7){transform:translateY(-15px) translateX(200px);}
-#opponentPilesTop .pile:nth-child(8){transform:translateY(-30px) translateX(280px);}
+#opponentPilesTop{display:flex;gap:0;justify-content:center;width:100%;margin:0 auto;position:relative;height:280px;} /* Arc of organizing piles - inverted, increased height */
+#opponentPilesTop .pile:nth-child(1){transform:translateY(-60px) translateX(-420px);}
+#opponentPilesTop .pile:nth-child(2){transform:translateY(-25px) translateX(-300px);}
+#opponentPilesTop .pile:nth-child(3){transform:translateY(-5px) translateX(-180px);}
+#opponentPilesTop .pile:nth-child(4){transform:translateY(0px) translateX(-60px);}
+#opponentPilesTop .pile:nth-child(5){transform:translateY(0px) translateX(60px);}
+#opponentPilesTop .pile:nth-child(6){transform:translateY(-5px) translateX(180px);}
+#opponentPilesTop .pile:nth-child(7){transform:translateY(-25px) translateX(300px);}
+#opponentPilesTop .pile:nth-child(8){transform:translateY(-60px) translateX(420px);}
 #opponentPilesBottom{display:none;} /* HIDDEN - opponent's unorganized cards not visible */
 .pile{width:100px;height:240px;min-height:240px;border:2px dashed #16b7a7;border-radius:8px;background:rgba(189,246,224,0.2);transition:background 0.2s;padding:8px;display:flex;flex-direction:column;align-items:center;position:absolute;} /* Organizing piles - full size, positioned absolutely for arc */
 .pile.communal{width:auto;min-width:350px;min-height:220px;border:none;background:transparent;padding:20px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:0;} /* Unorganized cluster - no border */
@@ -95,9 +95,66 @@ button:hover{background:#16b7a7;}
 .deckFront,.deckBack{position:absolute;width:100%;height:100%;backface-visibility:hidden;display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:16px;padding:10px;overflow:hidden;}
 .deckFront img,.deckBack img{display:block;max-width:100%;max-height:100%;object-fit:contain;}
 .deckBack{transform:rotateY(180deg);}
+
+/* Card Arrangement Overlay - appears at game start */
+#cardOverlay{
+  display:none;
+  position:fixed;
+  top:0;
+  left:0;
+  width:100vw;
+  height:60vh;
+  background:linear-gradient(180deg, rgba(218,251,233,0.98) 0%, rgba(218,251,233,0.95) 100%);
+  z-index:200;
+  flex-direction:column;
+  align-items:center;
+  padding:40px 20px 20px 20px;
+  box-shadow:0 10px 40px rgba(0,72,112,0.3);
+  border-bottom:4px solid #16b7a7;
+}
+#cardOverlay.visible{display:flex;}
+#overlayTitle{
+  font-size:32px;
+  font-weight:700;
+  color:#004870;
+  margin-bottom:10px;
+  text-align:center;
+}
+#overlaySubtitle{
+  font-size:18px;
+  color:#23879f;
+  margin-bottom:30px;
+  text-align:center;
+}
+#overlayCards{
+  display:flex;
+  flex-wrap:wrap;
+  gap:15px;
+  justify-content:center;
+  align-items:flex-start;
+  max-width:1000px;
+  overflow-y:auto;
+  padding:20px;
+}
+#overlayCards .playerCard{
+  width:160px;
+  height:190px;
+  cursor:grab;
+}
+#overlayCards .playerCard:hover{
+  transform:scale(1.05) translateY(-5px);
+}
 </style>
 </head>
 <body>
+
+<!-- Card Arrangement Overlay (shows at game start) -->
+<div id="cardOverlay">
+<div id="overlayTitle">Drag and arrange what you got!</div>
+<div id="overlaySubtitle">Organize your cards into piles below, or leave them in the center</div>
+<div id="overlayCards"></div>
+</div>
+
 <div id="app">
 <img id="logo" src="https://i.ibb.co/C3KcP9cZ/Adaptivelogotrans.png" alt="Logo">
 <h1>I Have / Who Has</h1>
@@ -328,7 +385,50 @@ const communalPile = document.querySelector('[data-pile-id="player-communal"]');
 const allPlayerCards = document.querySelectorAll('.playerCard.cardInPile');
 allPlayerCards.forEach(card => card.remove());
 
+// Check if this is first render (game just started)
+const isFirstRender = myHand.length > 0 && allPlayerCards.length === 0 && !winner;
+const overlay = document.getElementById("cardOverlay");
+const overlayCards = document.getElementById("overlayCards");
+
+if(isFirstRender){
+// FIRST RENDER: Show cards in overlay
+console.log("First render - showing overlay with cards");
+overlayCards.innerHTML = ""; // Clear overlay
+overlay.classList.add("visible");
+
 myHand.forEach(card=>{
+// Create image element that IS the card (no wrapper div)
+const img = document.createElement("img");
+img.src = CARD_IMAGES.ihave[card.iHave] || "";
+img.alt = card.iHave;
+img.className = "playerCard cardInPile";
+img.draggable = true;
+img.dataset.cardId = card.id;
+
+// Size: 2x original (160px x 190px)
+img.style.width = "160px";
+img.style.height = "190px";
+img.style.objectFit = "contain";
+
+// Drag events - cards can be dragged from overlay to piles
+img.addEventListener('dragstart', handleDragStart);
+img.addEventListener('dragend', handleDragEnd);
+
+// Click to play (disabled in overlay - must organize first)
+img.onclick = (event) => {
+console.log("Card in overlay clicked - must organize first");
+};
+img.style.cursor = "grab";
+
+overlayCards.appendChild(img);
+});
+} else {
+// NORMAL RENDER: Place cards in communal pile (or they're already organized)
+myHand.forEach(card=>{
+// Check if card is already in a pile (organized)
+const existingCard = document.querySelector(`.cardInPile[data-card-id="${card.id}"]`);
+if(existingCard) return; // Card already placed, skip
+
 // Create image element that IS the card (no wrapper div)
 const img = document.createElement("img");
 img.src = CARD_IMAGES.ihave[card.iHave] || "";
@@ -357,7 +457,9 @@ if(communalPile){
 communalPile.appendChild(img);
 }
 });
-console.log("Cards rendered in piles:", communalPile ? communalPile.children.length - 1 : 0); // -1 for label
+}
+
+console.log("Cards rendered");
 }
 
 async function renderOpponent(opponentHand){
@@ -465,12 +567,16 @@ opponentCommunal.style.display = cardsInCommunal.length > 0 ? 'flex' : 'none';
 }
 
 async function tryPlay(card, cardElement){
+console.log("====== tryPlay START ======");
 console.log("tryPlay called with card:", card);
 console.log("winner:", winner);
 console.log("currentChain:", currentChain);
+console.log("socket connected?", socket && socket.connected);
+console.log("myHand length:", myHand.length);
 
 if(winner) {
 console.log("Game over, winner exists");
+console.log("====== tryPlay END (winner exists) ======");
 return;
 }
 
@@ -505,6 +611,7 @@ cardElement.classList.add('wrongCard');
 setTimeout(() => cardElement.classList.remove('wrongCard'), 400);
 }
 
+console.log("====== tryPlay END (wrong card) ======");
 return; // Wrong card, can't play
 } else {
 console.log("Chain broken! Target animal depleted, allowing any card to restart chain");
@@ -517,20 +624,22 @@ console.log("Chain broken! Target animal depleted, allowing any card to restart 
 // If chain exists but is not flipped, player must flip first
 if(currentChain && !currentChain.flipped) {
 console.log("Chain not flipped yet, must flip first");
+console.log("====== tryPlay END (must flip) ======");
 return;
 }
 
-console.log("Playing card...");
+console.log("✅ Card validated, proceeding to play...");
 
 // Check if socket is connected
 if(!socket || !socket.connected){
-console.error("Socket not connected! Falling back to immediate play");
+console.error("❌ Socket not connected! Falling back to immediate play");
 playCardNow(card);
+console.log("====== tryPlay END (socket fallback) ======");
 return;
 }
 
 // Send card play to WebSocket server for battle detection
-console.log("Sending card_played to server:", {roomId, playerId, card, isHost});
+console.log("📤 Sending card_played to server:", {roomId, playerId, card: card.iHave, isHost});
 socket.emit('card_played', {
 roomId: roomId,
 playerId: playerId,
@@ -538,7 +647,8 @@ card: card,
 isHost: isHost
 });
 
-console.log("card_played event sent, waiting for server response...");
+console.log("✅ card_played event sent, waiting for server response...");
+console.log("====== tryPlay END (waiting for server) ======");
 // Note: Server will either trigger battle_start or play_card_now
 // Don't play the card here - wait for server response
 }
@@ -584,10 +694,24 @@ let battleTimer = null;
 
 // WebSocket handler: Play card immediately (no battle)
 async function playCardNow(card){
-console.log("⚠️ playCardNow called with card:", card);
-console.trace("Call stack:"); // This will show what called this function
+console.log("========== playCardNow START ==========");
+console.log("⚠️ playCardNow called with card:", card.iHave, "ID:", card.id);
+console.log("   Current hand:", myHand.map(c => `${c.iHave}(${c.id})`).join(', '));
+
+// CHECK: Does this card exist in my hand?
+const cardExists = myHand.some(c => c.id === card.id);
+if(!cardExists){
+console.error("❌ CRITICAL: Card not in hand! This card was already played.");
+console.log("   Requested card ID:", card.id);
+console.log("   Current hand IDs:", myHand.map(c => c.id));
+console.log("========== playCardNow END (card not found) ==========");
+return; // ABORT - don't remove a card that's not there
+}
+
+console.log("✅ Card exists in hand, proceeding to remove it...");
 
 let newHand = myHand.filter(c => c.id !== card.id);
+console.log("   New hand length:", newHand.length, "(was", myHand.length, ")");
 myHand = newHand;
 
 // Remove card visually from pile (don't re-render entire hand)
@@ -659,6 +783,8 @@ setTimeout(() => {
 overlay.style.display = "none";
 }, 3000);
 }
+
+console.log("====== playCardNow END ======");
 }
 
 // WebSocket handler: Battle started
@@ -1074,8 +1200,8 @@ chainText.innerHTML="Waiting for flip...";
 currentChain=null;
 deck.classList.remove("flipped");
 deck.classList.remove("canFlip");
-document.querySelector(".deckFront").innerHTML="Ready to start!";
-chainText.innerHTML="Play any card to begin!";
+document.querySelector(".deckFront").innerHTML=""; // Empty - no "Ready to start" text
+chainText.innerHTML=""; // Empty initially
 }
 
 // Display scores
@@ -1196,10 +1322,37 @@ const pile = e.currentTarget;
 pile.classList.remove('dragOver');
 
 if(draggedCard){
+// Check if card is coming from overlay
+const overlay = document.getElementById("cardOverlay");
+const overlayCards = document.getElementById("overlayCards");
+const isFromOverlay = overlayCards.contains(draggedCard);
+
 pile.appendChild(draggedCard);
+
+// If card came from overlay, enable click-to-play
+if(isFromOverlay){
+const cardId = draggedCard.dataset.cardId;
+const card = myHand.find(c => c.id == cardId);
+if(card){
+draggedCard.onclick = (event) => {
+console.log("Card clicked:", card);
+tryPlay(card, event);
+};
+draggedCard.style.cursor = "pointer";
+}
+}
 
 // Save pile organization to Firebase
 savePileOrganization();
+
+// Check if overlay should be hidden (all cards moved out)
+if(overlay.classList.contains('visible')){
+const remainingCards = overlayCards.querySelectorAll('.cardInPile');
+if(remainingCards.length === 0){
+console.log("All cards organized - hiding overlay");
+overlay.classList.remove('visible');
+}
+}
 
 // Update communal pile visibility
 const communalPile = document.querySelector('[data-pile-id="player-communal"]');
@@ -1310,13 +1463,22 @@ handleBattleResult(result);
 });
 
 socket.on('play_card_now', ({ card }) => {
-console.log('▶️ Play card now (no battle):', card);
+console.log('▶️ SERVER SAYS: Play card now (no battle)');
+console.log('   Card:', card.iHave);
+console.log('   My hand before:', myHand.map(c => c.iHave));
 playCardNow(card);
+console.log('   My hand after:', myHand.map(c => c.iHave));
 });
 }
 
 async function startGame(){
 if(!isHost) return;
+
+// Hide overlay if visible (game restart)
+const overlay = document.getElementById("cardOverlay");
+overlay.classList.remove("visible");
+document.getElementById("overlayCards").innerHTML = "";
+
 let deck=makeDeck();
 let playersSnap=await get(ref(db,"rooms/"+roomId+"/players"));
 let ids=Object.keys(playersSnap.val());
