@@ -31,20 +31,20 @@ button:hover{background:#16b7a7;}
 #game{position:relative;}
 #players{font-size:14px;margin-top:10px;color:#004870;}
 #board{display:grid;grid-template-rows:160px 200px 1fr;height:650px;background:#c4f7e5;border-radius:12px;padding:10px;}
-#opponentArea{border-bottom:2px solid #16b7a7;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;position:relative;padding:10px 0;}
+#opponentArea{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;position:relative;padding:10px 0;}
 #opponentGrid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;width:90%;display:none;} /* Hide old grid */
 #opponentPiles{width:90%;display:flex;flex-direction:column-reverse;gap:15px;align-items:center;} /* column-reverse so bottom pile appears at top visually */
 #opponentPilesTop{display:flex;gap:8px;width:100%;justify-content:space-between;}
 #opponentPilesBottom{display:flex;justify-content:center;width:100%;}
 .opponentCard{background:#bdf6e0;height:45px;border-radius:6px;opacity:.95;border:2px solid #16b7a7;}
 #centerArea{display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;background:transparent;}
-#deck{background:rgba(255,255,255,0.88);width:190px;height:190px;border-radius:50%;display:flex;justify-content:center;align-items:center;text-align:center;padding:14px;cursor:pointer;transition:transform .08s,box-shadow .12s;position:relative;perspective:1000px;box-shadow:0 6px 24px rgba(0,72,112,0.18);border:2px solid rgba(22,183,167,0.55);}
+#deck{background:transparent;width:190px;height:190px;border-radius:0;display:flex;justify-content:center;align-items:center;text-align:center;padding:0;cursor:pointer;transition:transform .08s,filter .12s;position:relative;perspective:1000px;box-shadow:none;border:none;}
 #deck:hover{transform:scale(1.02);}
-#deck.canFlip{box-shadow:0 0 24px rgba(110,227,222,0.72);border-color:#6ee3de;}
-#chainText{margin-top:8px;font-size:14px;font-weight:600;text-align:center;color:#004870;min-height:20px;}
+#deck.canFlip{filter:drop-shadow(0 0 16px rgba(110,227,222,0.8));}
+#chainText{display:none;}
 #scoreBoard{position:absolute;top:20px;right:20px;background:rgba(0,72,112,0.8);padding:12px 16px;border-radius:8px;font-size:14px;border:2px solid #16b7a7;line-height:1.6;}
 #restartBtn{position:absolute;top:20px;left:20px;}
-#playerArea{border-top:2px solid #16b7a7;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;position:relative;padding:10px 0;}
+#playerArea{display:flex;flex-direction:column;justify-content:flex-start;align-items:center;position:relative;padding:10px 0;}
 #playerGrid{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;width:90%;display:none;} /* Hide old grid */
 #playerPiles{width:100%;height:100%;display:flex;flex-direction:column;position:relative;}
 #playerPilesTop{display:flex;gap:0;justify-content:center;width:100%;margin:0 auto;position:relative;height:170px;} /* Bottom half of ellipse - 8 piles */
