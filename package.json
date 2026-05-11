@@ -4,7 +4,8 @@
   "description": "WebSocket server for I Have Who Has battle mechanics",
   "main": "battle-server.js",
   "scripts": {
-    "start": "node battle-server.js"
+    "start": "node battle-server.js",
+    "preview": "node preview-server.js"
   },
   "dependencies": {
     "express": "^4.18.2",
