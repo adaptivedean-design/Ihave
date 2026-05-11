@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>I Have / Who Has</title>
+<title>Icebreaker</title>
 <style>
 body{margin:0;font-family:system-ui;background:#0f172a;color:#004870;display:flex;justify-content:center;align-items:center;min-height:100vh;}
 #app{width:min(1240px, calc(100vw - 40px));background:#dafbe9;padding:20px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);position:relative;}
@@ -159,23 +159,225 @@ button:hover{background:#16b7a7;}
 #roundWinnerOverlay.loss{background:linear-gradient(145deg, #004870, #235a72);}
 #roundWinnerText{position:relative;font-size:46px;font-weight:900;color:white;margin-bottom:14px;letter-spacing:0;text-shadow:0 5px 18px rgba(0,72,112,.35);}
 #roundWinnerSubtext{position:relative;font-size:20px;font-weight:650;color:#dafbe9;line-height:1.35;}
+
+/* Icebreaker visual redesign */
+:root{
+  --ice-900:#061827;
+  --ice-800:#0b2c44;
+  --ice-700:#134a63;
+  --ice-500:#2daec7;
+  --ice-300:#9eeaf0;
+  --frost:#e9fbff;
+  --glass:rgba(219,249,255,.18);
+  --glass-strong:rgba(235,253,255,.78);
+  --warm:#ff8a5b;
+  --glow:#ffd36e;
+  --turquoise:#50f0e6;
+}
+body{
+  color:var(--frost);
+  background:
+    radial-gradient(circle at 18% 18%, rgba(80,240,230,.22), transparent 26%),
+    radial-gradient(circle at 82% 76%, rgba(255,138,91,.18), transparent 24%),
+    linear-gradient(145deg, #03111d 0%, #082239 48%, #0d3e55 100%);
+  overflow-x:hidden;
+}
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  opacity:.34;
+  background-image:
+    radial-gradient(circle, rgba(233,251,255,.8) 0 1px, transparent 1px),
+    radial-gradient(circle, rgba(80,240,230,.5) 0 1px, transparent 1px);
+  background-size:44px 44px, 79px 79px;
+  animation:iceDrift 18s linear infinite;
+}
+@keyframes iceDrift{from{background-position:0 0,0 0;}to{background-position:90px -120px,-140px 90px;}}
+#app{
+  background:linear-gradient(145deg, rgba(229,251,255,.18), rgba(108,205,222,.12));
+  border:1px solid rgba(233,251,255,.28);
+  box-shadow:0 24px 80px rgba(0,0,0,.48), inset 0 0 0 1px rgba(255,255,255,.08);
+  backdrop-filter:blur(18px);
+}
+#logo{
+  width:190px;
+  height:72px;
+  padding:0;
+  border-radius:14px;
+  background:linear-gradient(135deg, rgba(233,251,255,.84), rgba(158,234,240,.34));
+  color:var(--ice-900);
+  box-shadow:0 16px 36px rgba(80,240,230,.22), inset 0 0 0 1px rgba(255,255,255,.62);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:28px;
+  font-weight:900;
+  letter-spacing:0;
+  text-transform:uppercase;
+  position:relative;
+  overflow:hidden;
+}
+#logo::before{
+  content:"";
+  position:absolute;
+  width:112%;
+  height:2px;
+  background:linear-gradient(90deg, transparent, var(--warm), var(--glow), transparent);
+  transform:rotate(-11deg);
+  box-shadow:0 0 16px rgba(255,138,91,.8);
+}
+#logo::after{content:"ICEBREAKER";position:relative;}
+body.in-game #logo{width:92px;height:46px;padding:0;font-size:0;background:rgba(233,251,255,.82);}
+body.in-game #logo::after{font-size:13px;}
+h1{
+  color:var(--frost);
+  font-size:44px;
+  text-shadow:0 0 24px rgba(80,240,230,.38);
+  margin-top:16px;
+}
+#home,#lobby{
+  color:var(--frost);
+  background:rgba(6,24,39,.34);
+  border:1px solid rgba(233,251,255,.18);
+  border-radius:14px;
+  padding:26px;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.06);
+}
+input{
+  background:rgba(233,251,255,.86);
+  color:var(--ice-900);
+  border:1px solid rgba(80,240,230,.45);
+}
+button{
+  background:linear-gradient(135deg, var(--ice-500), var(--turquoise));
+  color:var(--ice-900);
+  box-shadow:0 10px 24px rgba(80,240,230,.22);
+}
+button:hover{background:linear-gradient(135deg, var(--warm), var(--glow));}
+#players{color:var(--ice-300);}
+#board{
+  background:
+    linear-gradient(145deg, rgba(233,251,255,.42), rgba(80,240,230,.11)),
+    radial-gradient(circle at 50% 48%, rgba(255,138,91,.18), transparent 20%);
+  border:1px solid rgba(233,251,255,.3);
+  box-shadow:inset 0 0 40px rgba(255,255,255,.08),0 18px 45px rgba(0,0,0,.28);
+  overflow:hidden;
+  position:relative;
+}
+#board::before{
+  content:"";
+  position:absolute;
+  inset:14px 22px;
+  pointer-events:none;
+  opacity:.2;
+  background:
+    linear-gradient(118deg, transparent 0 47%, rgba(233,251,255,.8) 47.2% 47.5%, transparent 47.8%),
+    linear-gradient(32deg, transparent 0 56%, rgba(80,240,230,.56) 56.2% 56.5%, transparent 56.8%);
+}
+#centerArea::before{
+  content:"";
+  position:absolute;
+  width:520px;
+  height:2px;
+  background:linear-gradient(90deg, transparent, rgba(158,234,240,.5), rgba(255,138,91,.72), rgba(158,234,240,.5), transparent);
+  box-shadow:0 0 18px rgba(80,240,230,.35);
+}
+#deck{
+  width:178px;
+  height:178px;
+  filter:drop-shadow(0 0 22px rgba(80,240,230,.22));
+}
+#deck.canFlip{filter:drop-shadow(0 0 22px rgba(255,138,91,.75));}
+.deckInner,.deckFront,.deckBack{border-radius:20px;}
+.deckFront,.deckBack{
+  background:linear-gradient(145deg, rgba(235,253,255,.78), rgba(158,234,240,.28));
+  border:1px solid rgba(233,251,255,.74);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.35),0 14px 32px rgba(6,24,39,.32);
+}
+.deckFront::before,.deckBack::before{
+  content:"";
+  position:absolute;
+  inset:12px;
+  border-radius:16px;
+  pointer-events:none;
+  background:linear-gradient(128deg, transparent 0 44%, rgba(255,255,255,.55) 44.5% 45%, transparent 45.4%);
+}
+.deckFront img,.deckBack img{max-width:150px;max-height:150px;filter:saturate(.92) contrast(1.04);}
+.playerCard{
+  border-radius:14px;
+  background:linear-gradient(145deg, rgba(235,253,255,.64), rgba(158,234,240,.24));
+  box-shadow:0 10px 24px rgba(6,24,39,.22), inset 0 0 0 1px rgba(255,255,255,.55);
+  padding:3px;
+  filter:saturate(.9) contrast(1.04);
+}
+.playerCard:hover{box-shadow:0 0 22px rgba(255,138,91,.62),0 12px 28px rgba(6,24,39,.26);}
+.playerCard.pendingPlay{box-shadow:0 0 28px rgba(255,138,91,.78),0 0 12px rgba(255,211,110,.62);}
+#playerPilesTop .pile::after{
+  background:linear-gradient(90deg, transparent, rgba(158,234,240,.74), var(--warm), rgba(158,234,240,.74), transparent);
+  box-shadow:0 0 12px rgba(255,138,91,.38);
+}
+#cardOverlay{
+  background:linear-gradient(180deg, rgba(6,24,39,.94), rgba(11,44,68,.9));
+  border-bottom:1px solid rgba(233,251,255,.28);
+  box-shadow:0 16px 58px rgba(0,0,0,.46);
+}
+#overlayTitle{color:var(--frost);text-shadow:0 0 18px rgba(80,240,230,.4);}
+#overlaySubtitle{color:var(--ice-300);}
+#gameSidebar #scoreBoard{
+  background:rgba(6,24,39,.72);
+  color:var(--frost);
+  border-color:rgba(158,234,240,.46);
+  backdrop-filter:blur(10px);
+}
+#gameSidebar #scoreBoard b{color:var(--warm);}
+#gameSidebar #restartBtn{background:linear-gradient(135deg, var(--ice-700), var(--ice-500));border-color:var(--ice-300);color:var(--frost);}
+#battleScreen{
+  background:
+    radial-gradient(circle at 50% 45%, rgba(255,138,91,.22), transparent 18%),
+    linear-gradient(135deg, rgba(3,17,29,.98), rgba(13,62,85,.98)) !important;
+}
+#battleScreen::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:
+    linear-gradient(120deg, transparent 0 48%, rgba(233,251,255,.54) 48.2% 48.5%, transparent 48.8%),
+    linear-gradient(35deg, transparent 0 57%, rgba(255,138,91,.5) 57.2% 57.5%, transparent 57.8%);
+  opacity:.55;
+}
+#battleText{color:var(--glow) !important;text-shadow:0 0 42px rgba(255,138,91,.9) !important;}
+#battleButton{
+  background:radial-gradient(circle at 50% 38%, var(--frost), var(--ice-500) 44%, var(--ice-800) 100%) !important;
+  border-color:var(--warm) !important;
+  box-shadow:0 0 50px rgba(255,138,91,.65), inset 0 0 24px rgba(255,255,255,.35) !important;
+}
+#roundWinnerOverlay.win{background:linear-gradient(145deg, rgba(18,134,142,.96), rgba(255,138,91,.9));}
+#roundWinnerOverlay.loss{background:linear-gradient(145deg, rgba(6,24,39,.98), rgba(19,74,99,.96));}
+.chainBroken{animation:thinIcePulse .72s infinite !important;}
+@keyframes thinIcePulse{
+  0%,100%{background:rgba(158,234,240,.13);box-shadow:inset 0 0 0 1px rgba(233,251,255,.18);}
+  50%{background:rgba(158,234,240,.34);box-shadow:inset 0 0 0 2px rgba(255,138,91,.46),0 0 28px rgba(80,240,230,.25);}
+}
 </style>
 </head>
 <body>
 
 <!-- Card Arrangement Overlay (shows at game start) -->
 <div id="cardOverlay">
-<div id="overlayTitle">Drag and arrange what you got!</div>
-<div id="overlaySubtitle">Organize your cards into piles below</div>
+<div id="overlayTitle">Break the ice. Arrange your tiles.</div>
+<div id="overlaySubtitle">Group your frosted tiles into landing zones before the chain starts.</div>
 <div id="overlayCards"></div>
 </div>
 
 <div id="app">
-<img id="logo" src="https://i.ibb.co/C3KcP9cZ/Adaptivelogotrans.png" alt="Logo">
-<h1>I Have / Who Has</h1>
+<div id="logo" aria-label="Icebreaker"></div>
+<h1>Icebreaker</h1>
 
 <div id="home">
-Enter your name<br>
+Enter your name to thaw the room<br>
 <input id="nameInput" placeholder="name"><br>
 <button id="enterBtn">Enter</button>
 </div>
@@ -184,7 +386,7 @@ Enter your name<br>
 <div id="share"></div>
 <div id="players"></div>
 <br>
-<button id="startGameBtn">Start Game</button>
+<button id="startGameBtn">Start Icebreaker</button>
 </div>
 
 <div id="game">
@@ -223,7 +425,7 @@ Enter your name<br>
 
 <!-- Battle Screen -->
 <div id="battleScreen" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:linear-gradient(135deg, rgba(0,72,112,0.98), rgba(35,135,159,0.98));z-index:1000;flex-direction:column;justify-content:space-between;align-items:center;padding:40px 0;overflow:hidden;">
-<div id="battleText" style="font-size:80px;font-weight:900;color:#e4e09a;text-shadow:0 0 40px rgba(228,224,154,0.8);opacity:0;">BATTLE!</div>
+<div id="battleText" style="font-size:80px;font-weight:900;color:#e4e09a;text-shadow:0 0 40px rgba(228,224,154,0.8);opacity:0;">CRACK!</div>
 
 <!-- Tipping Scale Battle UI -->
 <div style="display:flex;flex-direction:column;align-items:center;gap:30px;width:600px;">
@@ -261,7 +463,7 @@ Enter your name<br>
 <!-- Centered Battle Button -->
 <div style="text-align:center;margin-bottom:20px;">
 <div id="battleButton" style="width:140px;height:140px;background:#23879f;border-radius:50%;box-shadow:0 20px 60px rgba(35,135,159,0.8);cursor:pointer;transition:transform 0.05s;margin:0 auto;user-select:none;border:4px solid #6ee3de;" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'"></div>
-<div style="font-size:20px;font-weight:600;margin-top:15px;color:#dafbe9;">CLICK!</div>
+<div style="font-size:20px;font-weight:600;margin-top:15px;color:#dafbe9;">SHATTER!</div>
 </div>
 
 <!-- Winner Announcement (hidden by default) -->
@@ -1570,7 +1772,7 @@ startBtn.style.display="inline-block";
 
 const link=location.origin+location.pathname+"?room="+roomId;
 if(isHost){
-document.getElementById("share").innerHTML="Send link to student:<br>"+link;
+document.getElementById("share").innerHTML="Send Icebreaker link:<br>"+link;
 } else {
 document.getElementById("share").innerHTML=""; // Student doesn't see link
 }
