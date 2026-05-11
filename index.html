@@ -293,6 +293,7 @@ let isHost=false;
 let myHand=[];
 let currentChain=null;
 let winner=null;
+let allPlayersReady=false;
 
 // Image URL mapping for cards
 const CARD_IMAGES = {
@@ -467,6 +468,7 @@ communalPile.appendChild(img);
 }
 
 console.log("Cards rendered");
+publishOrganizationReady().catch(err => console.error("Failed to publish organization readiness", err));
 }
 
 async function renderOpponent(opponentHand){
@@ -584,6 +586,18 @@ console.log("myHand length:", myHand.length);
 if(pendingCardId !== null) {
 console.log("A card play is already pending:", pendingCardId);
 console.log("====== tryPlay END (pending card) ======");
+return;
+}
+
+const roomSnap = await get(ref(db,"rooms/"+roomId));
+const roomData = roomSnap.val() || {};
+if(roomData.state === "playing" && !areAllPlayersReady(roomData)){
+console.log("Cards are locked until both players finish organizing into landing zones");
+if(cardElement){
+cardElement.classList.add('wrongCard');
+setTimeout(() => cardElement.classList.remove('wrongCard'), 400);
+}
+console.log("====== tryPlay END (waiting for organization) ======");
 return;
 }
 
@@ -1100,6 +1114,7 @@ roundWinnerShownFor = null;
 winner = null;
 myHand = [];
 currentChain = null;
+allPlayersReady = false;
 
 if(battleTimerInterval){
 clearInterval(battleTimerInterval);
@@ -1175,6 +1190,7 @@ if(data.players){
 playersDiv.innerHTML="Connected:<br>";
 for(const p in data.players){ playersDiv.innerHTML+=data.players[p].name+"<br>"; }
 }
+allPlayersReady = data.state === "playing" && areAllPlayersReady(data);
 
 if(data.state==="playing"){
 lobby.style.display="none";
@@ -1325,6 +1341,35 @@ opponentCommunal.dataset.pileId = "opponent-communal";
 opponentPilesBottom.appendChild(opponentCommunal);
 }
 
+function isLandingPile(pile){
+const pileId = pile.dataset.pileId || "";
+return pileId.startsWith("player-") && pileId !== "player-communal";
+}
+
+function isMyOrganizationComplete(){
+if(!myHand || myHand.length === 0) return false;
+const landedIds = new Set();
+document.querySelectorAll('[data-pile-id^="player-"]').forEach(pile => {
+if(!isLandingPile(pile)) return;
+pile.querySelectorAll('.cardInPile').forEach(card => landedIds.add(card.dataset.cardId));
+});
+return myHand.every(card => landedIds.has(String(card.id)));
+}
+
+function areAllPlayersReady(roomData){
+const players = roomData?.players || {};
+const ready = roomData?.organizationReady || {};
+const playerIds = Object.keys(players);
+return playerIds.length >= 2 && playerIds.every(id => ready[id] === true);
+}
+
+async function publishOrganizationReady(){
+if(!roomId || !playerId) return false;
+const ready = isMyOrganizationComplete();
+await set(ref(db, `rooms/${roomId}/organizationReady/${playerId}`), ready);
+return ready;
+}
+
 // Save current pile organization to Firebase
 async function savePileOrganization(){
 const pileOrganization = {};
@@ -1342,6 +1387,7 @@ pileOrganization[pileId] = cardIds;
 
 // Save to Firebase
 await set(ref(db, `rooms/${roomId}/pileOrganization/${playerId}`), pileOrganization);
+await publishOrganizationReady();
 }
 
 let draggedCard = null;
@@ -1546,6 +1592,7 @@ let deck=makeDeck();
 let playersSnap=await get(ref(db,"rooms/"+roomId+"/players"));
 let ids=Object.keys(playersSnap.val());
 let hands={};
+let organizationReady={};
 
 // Deal cards and convert arrays to objects for Firebase
 ids.forEach((id,i)=>{
@@ -1553,6 +1600,7 @@ let playerCards = deck.filter((_,idx)=>idx%ids.length===i);
 let handObj = {};
 playerCards.forEach((c, idx) => handObj[idx] = c);
 hands[id] = handObj;
+organizationReady[id] = false;
 });
 
 // Get existing scores or initialize
@@ -1568,6 +1616,8 @@ hands:hands,
 chain:null,
 winner:null,
 scores:scores,
+pileOrganization:null,
+organizationReady:organizationReady,
 roundStartedAt: Date.now()
 });
 if(socket && socket.connected){
