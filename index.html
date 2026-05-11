@@ -368,6 +368,43 @@ button:hover{background:linear-gradient(135deg, var(--warm), var(--glow));}
   box-shadow:0 8px 22px rgba(6,24,39,.18);
   z-index:3;
 }
+#chainTrail{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:min(720px, 82vw);
+  transform:translate(-50%, -50%);
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:8px;
+  pointer-events:none;
+  z-index:1;
+}
+.trailLink{
+  min-width:58px;
+  max-width:86px;
+  padding:7px 9px;
+  border-radius:12px;
+  color:var(--frost);
+  background:linear-gradient(145deg, rgba(6,24,39,.54), rgba(158,234,240,.16));
+  border:1px solid rgba(233,251,255,.22);
+  box-shadow:0 8px 18px rgba(6,24,39,.18), inset 0 0 0 1px rgba(255,255,255,.06);
+  font-size:11px;
+  font-weight:850;
+  text-align:center;
+  opacity:.42;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.trailLink.latest{
+  opacity:1;
+  color:var(--ice-900);
+  background:linear-gradient(145deg, rgba(233,251,255,.9), rgba(255,138,91,.52));
+  border-color:rgba(255,211,110,.55);
+  box-shadow:0 0 20px rgba(255,138,91,.35), inset 0 0 0 1px rgba(255,255,255,.4);
+}
 #thinIceBanner{
   position:absolute;
   top:14px;
@@ -516,6 +553,7 @@ Enter your name to thaw the room<br>
 <span class="chainSegment warmSegment"></span>
 <span class="chainNode nodeWarm"></span>
 </div>
+<div id="chainTrail" aria-label="Played chain trail"></div>
 <div id="deck">
 <div class="deckInner">
 <div class="deckFront">Waiting...</div>
@@ -1064,6 +1102,30 @@ status.textContent = message;
 }
 }
 
+function renderChainTrail(trail){
+const trailEl = document.getElementById("chainTrail");
+if(!trailEl) return;
+const links = Array.isArray(trail) ? trail.slice(-5) : [];
+trailEl.innerHTML = links.map((link, index) => {
+const label = `${link.iHave || "?"} -> ${link.whoHas || "?"}`;
+const latestClass = index === links.length - 1 ? " latest" : "";
+return `<span class="trailLink${latestClass}">${label}</span>`;
+}).join("");
+}
+
+async function appendChainTrail(card){
+const trailSnap = await get(ref(db,"rooms/"+roomId+"/chainTrail"));
+const trail = trailSnap.val() || [];
+const nextTrail = Array.isArray(trail) ? trail.slice(-4) : Object.values(trail).slice(-4);
+nextTrail.push({
+iHave: card.iHave,
+whoHas: card.whoHas,
+playedBy: playerId,
+at: Date.now()
+});
+await set(ref(db,"rooms/"+roomId+"/chainTrail"), nextTrail);
+}
+
 function showRoundResult(type, title, subtext){
 const overlay = document.getElementById("roundWinnerOverlay");
 const winnerText = document.getElementById("roundWinnerText");
@@ -1160,6 +1222,7 @@ whoHas: card.whoHas,
 flipped: false,
 playedBy: playerId
 });
+await appendChainTrail(card);
 await update(ref(db,"rooms/"+roomId),{chainBroken:false});
 pendingCardId = null;
 document.querySelectorAll('.pendingPlay').forEach(el => el.classList.remove('pendingPlay'));
@@ -1457,6 +1520,7 @@ whoHas: result.winnerCard.whoHas,
 flipped: false,
 playedBy: result.winner
 });
+await appendChainTrail(result.winnerCard);
 await update(ref(db,"rooms/"+roomId),{chainBroken:false});
 if(socket && socket.connected){
 socket.emit('chain_played', { roomId, playerId });
@@ -1541,6 +1605,7 @@ document.querySelector(".deckFront").innerHTML="";
 document.querySelector(".deckBack").innerHTML="";
 chainText.innerHTML="";
 setChainStatus("Waiting for the first break", "chain-idle");
+renderChainTrail([]);
 }
 
 function renderChainDisplay(chain){
@@ -1589,6 +1654,7 @@ for(const p in data.players){ playersDiv.innerHTML+=data.players[p].name+"<br>";
 }
 allPlayersReady = data.state === "playing" && areAllPlayersReady(data);
 setChainBrokenVisual(data.chainBroken);
+renderChainTrail(data.chainTrail);
 
 if(data.state==="playing"){
 lobby.style.display="none";
@@ -2016,6 +2082,7 @@ state:"playing",
 hands:hands,
 chain:null,
 chainBroken:false,
+chainTrail:null,
 winner:null,
 scores:scores,
 pileOrganization:null,
