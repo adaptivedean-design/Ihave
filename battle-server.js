@@ -30,7 +30,8 @@ io.on('connection', (socket) => {
       rooms[roomId] = {
         players: {},
         pendingPlays: {},
-        activeBattle: null
+        activeBattle: null,
+        awaitingFlip: false
       };
     }
     
@@ -58,6 +59,13 @@ io.on('connection', (socket) => {
     }
 
     const now = Date.now();
+    console.log(`Received at: ${now}`);
+
+    if (room.awaitingFlip) {
+      console.log(`Rejecting play from ${playerId}: chain is awaiting flip`);
+      socket.emit('play_rejected', { reason: 'awaiting_flip' });
+      return;
+    }
     
     console.log(`Current pending plays:`, Object.keys(room.pendingPlays).map(pid => ({
       playerId: pid,
@@ -128,11 +136,19 @@ io.on('connection', (socket) => {
       // Set timeout to auto-play after battle window + buffer if no battle occurs
       const timeoutId = setTimeout(() => {
         // Check if this pending play still exists and no battle started
-        if (room.pendingPlays[playerId] && !room.activeBattle) {
+        if (room.pendingPlays[playerId] && !room.activeBattle && !room.awaitingFlip) {
           console.log(`⏰ Timeout: Auto-playing card for ${playerId} (no battle occurred)`);
           const player = room.players[playerId];
           if (player && player.socketId) {
+            room.awaitingFlip = true;
             io.to(player.socketId).emit('play_card_now', { card: card });
+          }
+          delete room.pendingPlays[playerId];
+        } else if (room.pendingPlays[playerId] && room.awaitingFlip) {
+          console.log(`Rejecting pending play for ${playerId}: chain started before timeout`);
+          const player = room.players[playerId];
+          if (player && player.socketId) {
+            io.to(player.socketId).emit('play_rejected', { reason: 'awaiting_flip' });
           }
           delete room.pendingPlays[playerId];
         }
@@ -172,6 +188,32 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('chain_played', ({ roomId, playerId }) => {
+    const room = rooms[roomId];
+    if (!room) return;
+    room.awaitingFlip = true;
+    console.log(`Chain played by ${playerId}; room ${roomId} is awaiting flip`);
+  });
+
+  socket.on('chain_flipped', ({ roomId, playerId }) => {
+    const room = rooms[roomId];
+    if (!room) return;
+    room.awaitingFlip = false;
+    console.log(`Chain flipped by ${playerId}; room ${roomId} is accepting plays`);
+  });
+
+  socket.on('game_reset', ({ roomId, playerId }) => {
+    const room = rooms[roomId];
+    if (!room) return;
+    for (const pending of Object.values(room.pendingPlays)) {
+      if (pending.timeout) clearTimeout(pending.timeout);
+    }
+    room.pendingPlays = {};
+    room.activeBattle = null;
+    room.awaitingFlip = false;
+    console.log(`Game reset by ${playerId}; room ${roomId} is accepting plays`);
+  });
+
   // Battle ended (time's up)
   socket.on('battle_end', ({ roomId }) => {
     const room = rooms[roomId];
@@ -206,6 +248,7 @@ io.on('connection', (socket) => {
       effectiveClicks1: effectiveClicks1,
       effectiveClicks2: effectiveClicks2
     });
+    room.awaitingFlip = true;
     
     // Clear battle
     room.activeBattle = null;
@@ -215,14 +258,16 @@ io.on('connection', (socket) => {
     console.log('User disconnected:', socket.id);
     // Clean up player from rooms
     for (const roomId in rooms) {
+      const disconnectedPlayers = [];
       for (const playerId in rooms[roomId].players) {
         if (rooms[roomId].players[playerId].socketId === socket.id) {
+          disconnectedPlayers.push(playerId);
           delete rooms[roomId].players[playerId];
         }
       }
       // **FIX: Also clear any pending timeouts for this player**
-      for (const playerId in rooms[roomId].pendingPlays) {
-        if (rooms[roomId].players[playerId] && rooms[roomId].players[playerId].socketId === socket.id) {
+      for (const playerId of disconnectedPlayers) {
+        if (rooms[roomId].pendingPlays[playerId]) {
           const pending = rooms[roomId].pendingPlays[playerId];
           if (pending.timeout) {
             clearTimeout(pending.timeout);

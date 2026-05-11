@@ -38,10 +38,10 @@ button:hover{background:#16b7a7;}
 #opponentPilesBottom{display:flex;justify-content:center;width:100%;}
 .opponentCard{background:#bdf6e0;height:45px;border-radius:6px;opacity:.95;border:2px solid #16b7a7;}
 #centerArea{display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;background:transparent;}
-#deck{display:none;} /* REMOVED - no longer needed */
-#deck:hover{display:none;}
-#deck.canFlip{display:none;}
-#chainText{display:none;} /* Hidden - text removed per user request */
+#deck{background:linear-gradient(135deg, #23879f, #16b7a7);width:345px;height:207px;border-radius:10px;display:flex;justify-content:center;align-items:center;text-align:center;padding:15px;cursor:pointer;transition:transform .1s;position:relative;perspective:1000px;box-shadow:0 4px 20px rgba(35,135,159,0.4);}
+#deck:hover{transform:scale(1.03);}
+#deck.canFlip{box-shadow:0 0 30px rgba(110,227,222,0.8);border:2px solid #6ee3de;}
+#chainText{margin-top:12px;font-size:18px;font-weight:600;text-align:center;color:#004870;min-height:24px;}
 #scoreBoard{position:absolute;top:20px;right:20px;background:rgba(0,72,112,0.8);padding:12px 16px;border-radius:8px;font-size:14px;border:2px solid #16b7a7;line-height:1.6;}
 #restartBtn{position:absolute;top:20px;left:20px;}
 #playerArea{border-top:2px solid #16b7a7;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;position:relative;padding:10px 0;}
@@ -90,7 +90,11 @@ button:hover{background:#16b7a7;}
 .wrongCard{animation:shake 0.4s,flashRed 0.4s;}
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-10px);}75%{transform:translateX(10px);}}
 @keyframes flashRed{0%,100%{background:linear-gradient(135deg, #004870, #023047);}50%{background:#8b0000;border-color:#ff0000;}}
-/* Deck-related CSS removed - no longer needed */
+.deckInner{position:relative;width:100%;height:100%;transition:transform 0.6s;transform-style:preserve-3d;}
+#deck.flipped .deckInner{transform:rotateY(180deg);}
+.deckFront,.deckBack{position:absolute;width:100%;height:100%;backface-visibility:hidden;display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:16px;padding:10px;overflow:hidden;}
+.deckFront img,.deckBack img{display:block;max-width:100%;max-height:100%;object-fit:contain;}
+.deckBack{transform:rotateY(180deg);}
 
 /* Card Arrangement Overlay - appears at game start */
 #cardOverlay{
@@ -178,7 +182,13 @@ Enter your name<br>
 </div>
 </div>
 <div id="centerArea">
-<!-- Deck element removed - center is now empty space -->
+<div id="deck">
+<div class="deckInner">
+<div class="deckFront">Waiting...</div>
+<div class="deckBack"></div>
+</div>
+</div>
+<div id="chainText"></div>
 </div>
 <div id="playerArea">
 <div id="playerGrid"></div>
@@ -347,7 +357,10 @@ const game=document.getElementById("game");
 const playersDiv=document.getElementById("players");
 const startBtn=document.getElementById("startGameBtn");
 const restartBtn=document.getElementById("restartBtn");
-// deck, playerGrid, opponentGrid, chainText removed - no longer needed
+const chainText=document.getElementById("chainText");
+const deck=document.getElementById("deck");
+let pendingCardId=null;
+let roundWinnerShownFor=null;
 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a}
 
@@ -436,7 +449,7 @@ img.addEventListener('dragend', handleDragEnd);
 // Click to play (always enabled - game continues after winner)
 img.onclick = (event) => {
 console.log("Card clicked:", card);
-tryPlay(card, event);
+tryPlay(card, event.currentTarget);
 };
 img.style.cursor = "pointer";
 
@@ -561,9 +574,9 @@ console.log("currentChain:", currentChain);
 console.log("socket connected?", socket && socket.connected);
 console.log("myHand length:", myHand.length);
 
-if(winner) {
-console.log("Game over, winner exists");
-console.log("====== tryPlay END (winner exists) ======");
+if(pendingCardId !== null) {
+console.log("A card play is already pending:", pendingCardId);
+console.log("====== tryPlay END (pending card) ======");
 return;
 }
 
@@ -616,6 +629,7 @@ return;
 }
 
 console.log("✅ Card validated, proceeding to play...");
+pendingCardId = card.id;
 
 // Check if socket is connected
 if(!socket || !socket.connected){
@@ -640,7 +654,50 @@ console.log("====== tryPlay END (waiting for server) ======");
 // Don't play the card here - wait for server response
 }
 
-// flipCard function removed - deck element no longer exists
+async function anyPlayerHasTarget(targetAnimal){
+let handsSnap = await get(ref(db,"rooms/"+roomId+"/hands"));
+let allHands = handsSnap.val() || {};
+
+for(const pid in allHands){
+const hand = Object.values(allHands[pid] || {});
+if(hand.some(c => c.iHave === targetAnimal)){
+return true;
+}
+}
+
+return false;
+}
+
+async function flipCard(){
+console.log("flipCard called");
+console.log("currentChain:", currentChain);
+if(!currentChain || currentChain.flipped) {
+console.log("Can't flip - no chain or already flipped");
+return;
+}
+if(currentChain.playedBy!==playerId) {
+console.log("Can't flip - not your card");
+return;
+}
+console.log("Flipping card...");
+await update(ref(db,"rooms/"+roomId+"/chain"),{flipped:true});
+if(socket && socket.connected){
+socket.emit('chain_flipped', { roomId, playerId });
+}
+
+setTimeout(async () => {
+if(!currentChain || !currentChain.flipped) return;
+
+const targetAnimal = currentChain.whoHas;
+const targetExists = await anyPlayerHasTarget(targetAnimal);
+
+if(!targetExists){
+const playerArea = document.getElementById("playerArea");
+playerArea.classList.add("chainBroken");
+console.log("Chain break pulse started");
+}
+}, 500);
+}
 
 let battleAnimationShown = false;
 let battleActive = false;
@@ -663,6 +720,7 @@ console.error("❌ CRITICAL: Card not in hand! This card was already played.");
 console.log("   Requested card ID:", card.id);
 console.log("   Current hand IDs:", myHand.map(c => c.id));
 console.log("========== playCardNow END (card not found) ==========");
+pendingCardId = null;
 return; // ABORT - don't remove a card that's not there
 }
 
@@ -689,6 +747,10 @@ whoHas: card.whoHas,
 flipped: false,
 playedBy: playerId
 });
+pendingCardId = null;
+if(socket && socket.connected){
+socket.emit('chain_played', { roomId, playerId });
+}
 
 // Stop chain break pulse (card has been played)
 const playerArea = document.getElementById("playerArea");
@@ -758,6 +820,7 @@ if(battleTimerInterval){
 clearInterval(battleTimerInterval);
 battleTimerInterval = null;
 }
+pendingCardId = null;
 battleState = battle;
 battleClicks = 0;
 
@@ -953,18 +1016,13 @@ winnerAnnouncement.style.color = "#eff8d7";
 // Confetti effect (simple emoji rain)
 createConfetti();
 } else {
-// I LOST 😢
 const winnerDisplayName = document.getElementById(winnerIsHost ? "leftName" : "rightName").textContent;
-console.log("  - Showing: " + winnerDisplayName + " wins...");
-winnerAnnouncement.innerHTML = `
-<div style="text-align:center;">
-<div style="font-size:80px;margin-bottom:20px;">😢</div>
-<div style="font-size:48px;font-weight:700;">${winnerDisplayName} wins...</div>
-</div>
-`;
-winnerAnnouncement.style.color = "#94a3b8";
+console.log("  - Battle lost to " + winnerDisplayName + "; suppressing duplicate loser popup");
+winnerAnnouncement.innerHTML = "";
+winnerAnnouncement.style.opacity = "0";
 }
 
+if(iWon){
 winnerAnnouncement.style.opacity = "1";
 
 // Wait 3 seconds
@@ -973,6 +1031,7 @@ await new Promise(resolve => setTimeout(resolve, 3000));
 // Fade out
 winnerAnnouncement.style.opacity = "0";
 await new Promise(resolve => setTimeout(resolve, 500));
+}
 
 // Winner plays card
 if(result.winner === playerId){
@@ -997,6 +1056,9 @@ whoHas: result.winnerCard.whoHas,
 flipped: false,
 playedBy: result.winner
 });
+if(socket && socket.connected){
+socket.emit('chain_played', { roomId, playerId });
+}
 
 // Don't call renderHand() - card already removed visually above
 
@@ -1034,6 +1096,38 @@ battleClicks = 0;
 
 // OLD listenPendingPlay removed - battles now handled by WebSocket
 
+function renderChainDisplay(chain){
+const deckFront=document.querySelector(".deckFront");
+const deckBack=document.querySelector(".deckBack");
+if(!deckFront || !deckBack) return;
+
+const iHaveImg = CARD_IMAGES.ihave[chain.iHave];
+const whoHasImg = CARD_IMAGES.whas[chain.whoHas];
+
+deckFront.innerHTML = iHaveImg ?
+`<img src="${iHaveImg}" style="width:315px;height:177px;object-fit:contain;image-rendering:crisp-edges;">` :
+`<b>I HAVE</b><br>${chain.iHave}`;
+
+deckBack.innerHTML = whoHasImg ?
+`<img src="${whoHasImg}" style="width:315px;height:177px;object-fit:contain;image-rendering:crisp-edges;">` :
+`<b>WHO HAS</b><br>${chain.whoHas}?`;
+
+if(chain.flipped){
+deck.classList.add("flipped");
+deck.classList.remove("canFlip");
+chainText.innerHTML="Find and play your card!";
+} else {
+deck.classList.remove("flipped");
+if(chain.playedBy===playerId){
+deck.classList.add("canFlip");
+chainText.innerHTML="Click the center card to flip it!";
+} else {
+deck.classList.remove("canFlip");
+chainText.innerHTML="Waiting for flip...";
+}
+}
+}
+
 function listenRoom(){
 onValue(ref(db,"rooms/"+roomId),snap=>{
 let data=snap.val();
@@ -1063,7 +1157,8 @@ const winnerName = data.players[winner]?.name || "Someone";
 chainText.innerHTML=(winner===playerId)?`YOU WIN 🎉`:`${winnerName} wins!`;
 
 // Show announcement for loser too
-if(winner !== playerId){
+if(winner !== playerId && roundWinnerShownFor !== winner){
+roundWinnerShownFor = winner;
 const overlay = document.getElementById("roundWinnerOverlay");
 const winnerText = document.getElementById("roundWinnerText");
 const winnerSubtext = document.getElementById("roundWinnerSubtext");
@@ -1079,6 +1174,7 @@ overlay.style.display = "none";
 } else {
 // Reset winner when game restarts
 winner=null;
+roundWinnerShownFor=null;
 }
 
 if(data.hands && data.hands[playerId]){
@@ -1110,10 +1206,15 @@ renderOpponent(opponentHand);
 
 if(data.chain){
 currentChain=data.chain;
-// Deck display removed - chain tracking continues in background for game logic
+renderChainDisplay(data.chain);
 } else {
 // No chain yet - game just started
 currentChain=null;
+deck.classList.remove("flipped");
+deck.classList.remove("canFlip");
+document.querySelector(".deckFront").innerHTML="";
+document.querySelector(".deckBack").innerHTML="";
+chainText.innerHTML="";
 }
 
 // Display scores
@@ -1248,7 +1349,7 @@ const card = myHand.find(c => c.id == cardId);
 if(card){
 draggedCard.onclick = (event) => {
 console.log("Card clicked:", card);
-tryPlay(card, event);
+tryPlay(card, event.currentTarget);
 };
 draggedCard.style.cursor = "pointer";
 }
@@ -1361,6 +1462,7 @@ console.warn('⚠️ Disconnected from battle server:', reason);
 
 socket.on('battle_start', (battle) => {
 console.log('🎮 Battle started!', battle);
+pendingCardId = null;
 handleBattleStart(battle);
 });
 
@@ -1381,6 +1483,11 @@ console.log('   My hand before:', myHand.map(c => c.iHave));
 playCardNow(card);
 console.log('   My hand after:', myHand.map(c => c.iHave));
 });
+
+socket.on('play_rejected', ({ reason }) => {
+console.warn('Card play rejected by server:', reason);
+pendingCardId = null;
+});
 }
 
 async function startGame(){
@@ -1390,6 +1497,8 @@ if(!isHost) return;
 const overlay = document.getElementById("cardOverlay");
 overlay.classList.remove("visible");
 document.getElementById("overlayCards").innerHTML = "";
+pendingCardId = null;
+roundWinnerShownFor = null;
 
 let deck=makeDeck();
 let playersSnap=await get(ref(db,"rooms/"+roomId+"/players"));
@@ -1418,9 +1527,11 @@ chain:null,
 winner:null,
 scores:scores
 });
+if(socket && socket.connected){
+socket.emit('game_reset', { roomId, playerId });
 }
-
-// deck.onclick removed - deck element no longer exists
+}
+deck.onclick=flipCard;
 document.getElementById("enterBtn").onclick=enterGame;
 startBtn.onclick=startGame;
 restartBtn.onclick=startGame; // Reuse startGame function for restart
