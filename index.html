@@ -678,18 +678,34 @@ console.log("====== tryPlay END (waiting for server) ======");
 // Don't play the card here - wait for server response
 }
 
-async function anyPlayerHasTarget(targetAnimal){
-let handsSnap = await get(ref(db,"rooms/"+roomId+"/hands"));
-let allHands = handsSnap.val() || {};
-
-for(const pid in allHands){
-const hand = Object.values(allHands[pid] || {});
-if(hand.some(c => c.iHave === targetAnimal)){
-return true;
+function getAllRemainingCards(hands){
+const allCards = [];
+for(const pid in (hands || {})){
+allCards.push(...Object.values(hands[pid] || {}));
 }
+return allCards;
 }
 
+async function shouldShowChainBreak(targetAnimal){
+let roomSnap = await get(ref(db,"rooms/"+roomId));
+let roomData = roomSnap.val() || {};
+
+if(roomData.winner){
+console.log("Round already has a winner; suppressing chain break pulse");
 return false;
+}
+
+const allCards = getAllRemainingCards(roomData.hands);
+if(allCards.length === 0){
+console.log("No cards remain; suppressing chain break pulse");
+return false;
+}
+
+if(allCards.some(c => c.iHave === targetAnimal)){
+return false;
+}
+
+return true;
 }
 
 async function flipCard(){
@@ -713,9 +729,9 @@ setTimeout(async () => {
 if(!currentChain || !currentChain.flipped) return;
 
 const targetAnimal = currentChain.whoHas;
-const targetExists = await anyPlayerHasTarget(targetAnimal);
+const shouldFlash = await shouldShowChainBreak(targetAnimal);
 
-if(!targetExists){
+if(shouldFlash){
 const playerArea = document.getElementById("playerArea");
 playerArea.classList.add("chainBroken");
 console.log("Chain break pulse started");
