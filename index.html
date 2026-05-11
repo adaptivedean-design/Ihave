@@ -47,7 +47,7 @@ button:hover{background:#16b7a7;}
 #playerArea{display:flex;flex-direction:column;justify-content:flex-start;align-items:center;position:relative;padding:10px 0;}
 #playerGrid{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;width:90%;display:none;} /* Hide old grid */
 #playerPiles{width:100%;height:100%;display:flex;flex-direction:column;position:relative;}
-#playerPilesTop{display:flex;gap:0;justify-content:center;width:100%;margin:0 auto;position:relative;height:230px;} /* Bottom half of ellipse - 8 piles */
+#playerPilesTop{display:flex;gap:0;justify-content:center;width:100%;margin:0 auto;position:relative;height:230px;transform:translateY(-28px);} /* Bottom half of ellipse - 8 piles */
 #playerPilesTop .pile:nth-child(1){transform:translateX(-540px) translateY(0px);}
 #playerPilesTop .pile:nth-child(2){transform:translateX(-386px) translateY(42px);}
 #playerPilesTop .pile:nth-child(3){transform:translateX(-232px) translateY(76px);}
@@ -58,23 +58,23 @@ button:hover{background:#16b7a7;}
 #playerPilesTop .pile:nth-child(8){transform:translateX(540px) translateY(0px);}
 #playerPilesBottom{display:flex;justify-content:center;align-items:center;flex:1;} /* Unorganized cluster area */
 #opponentPiles{width:100%;height:100%;display:flex;flex-direction:column;position:relative;}
-#opponentPilesTop{display:flex;gap:0;justify-content:center;width:100%;margin:0 auto;position:relative;height:230px;} /* Top half of ellipse - 8 piles */
-#opponentPilesTop .pile:nth-child(1){transform:translateX(540px) translateY(0px);}
-#opponentPilesTop .pile:nth-child(2){transform:translateX(386px) translateY(-42px);}
-#opponentPilesTop .pile:nth-child(3){transform:translateX(232px) translateY(-76px);}
-#opponentPilesTop .pile:nth-child(4){transform:translateX(78px) translateY(-96px);}
-#opponentPilesTop .pile:nth-child(5){transform:translateX(-78px) translateY(-96px);}
-#opponentPilesTop .pile:nth-child(6){transform:translateX(-232px) translateY(-76px);}
-#opponentPilesTop .pile:nth-child(7){transform:translateX(-386px) translateY(-42px);}
-#opponentPilesTop .pile:nth-child(8){transform:translateX(-540px) translateY(0px);}
+#opponentPilesTop{display:flex;gap:0;justify-content:center;width:100%;margin:0 auto;position:relative;height:190px;transform:translateY(30px);} /* Top half of ellipse - 8 piles */
+#opponentPilesTop .pile:nth-child(1){transform:translateX(500px) translateY(0px);}
+#opponentPilesTop .pile:nth-child(2){transform:translateX(356px) translateY(-26px);}
+#opponentPilesTop .pile:nth-child(3){transform:translateX(212px) translateY(-48px);}
+#opponentPilesTop .pile:nth-child(4){transform:translateX(70px) translateY(-62px);}
+#opponentPilesTop .pile:nth-child(5){transform:translateX(-70px) translateY(-62px);}
+#opponentPilesTop .pile:nth-child(6){transform:translateX(-212px) translateY(-48px);}
+#opponentPilesTop .pile:nth-child(7){transform:translateX(-356px) translateY(-26px);}
+#opponentPilesTop .pile:nth-child(8){transform:translateX(-500px) translateY(0px);}
 #opponentPilesBottom{display:none;} /* HIDDEN - opponent's unorganized cards not visible */
-.pile{width:144px;height:198px;min-height:198px;border:none;border-radius:8px;background:rgba(22,183,167,0.07);box-shadow:inset 0 0 0 1px rgba(22,183,167,0.16);transition:background 0.12s,box-shadow 0.12s;padding:6px;display:flex;flex-direction:column;align-items:center;position:absolute;} /* Organizing piles - full size, positioned absolutely for arc */
-#opponentPilesTop .pile{width:118px;height:172px;min-height:172px;}
-.pile.communal{width:auto;min-width:350px;min-height:180px;border:none;background:transparent;padding:16px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:0;} /* Unorganized cluster - no border */
+.pile{width:144px;height:198px;min-height:198px;border:none;border-radius:8px;background:transparent;box-shadow:none;transition:background 0.12s,box-shadow 0.12s;padding:6px;display:flex;flex-direction:column;align-items:center;position:absolute;} /* Organizing piles - full size, positioned absolutely for arc */
+#opponentPilesTop .pile{width:106px;height:150px;min-height:150px;}
+.pile.communal{width:auto;min-width:350px;min-height:180px;border:none;background:transparent;box-shadow:none;padding:16px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:0;position:relative;} /* Unorganized cluster - no border */
 .pile.dragOver{background:rgba(110,227,222,0.24);box-shadow:inset 0 0 0 2px #6ee3de,0 0 18px rgba(110,227,222,0.35);}
 /* Cards in organizing piles - vertical stack */
 .pile:not(.communal) .cardInPile{margin-left:0;margin-top:-118px;}
-#opponentPilesTop .pile:not(.communal) .cardInPile{margin-top:-98px;}
+#opponentPilesTop .pile:not(.communal) .cardInPile{margin-top:-86px;}
 .pile:not(.communal) .cardInPile:first-child{margin-top:0;}
 /* Cards in communal cluster - slight random overlap for messy look */
 .pile.communal .cardInPile{margin:-64px;position:relative;}
@@ -85,7 +85,7 @@ button:hover{background:#16b7a7;}
 .cardInPile:hover{z-index:10;transform:translateY(-10px);} /* Lift card on hover */
 .playerCard{border-radius:8px;cursor:pointer;transition:transform .04s,box-shadow .06s;border:none;display:block;object-fit:contain;} /* No borders - images stand alone */
 .pile .playerCard{width:134px !important;height:160px !important;}
-#opponentPilesTop .pile .playerCard{width:112px !important;height:133px !important;}
+#opponentPilesTop .pile .playerCard{width:98px !important;height:116px !important;}
 .playerCard:hover{transform:scale(1.06);box-shadow:0 0 16px rgba(35,135,159,0.62);} /* Glow effect instead of border */
 .playerCard.pendingPlay{filter:brightness(1.08);transform:scale(0.96);box-shadow:0 0 18px rgba(110,227,222,0.72);}
 .playerCard.wrong,.playerCard.wrongCard{animation:shake 0.4s;box-shadow:0 0 20px rgba(255,107,107,0.9) !important;} /* Red glow for wrong card */
