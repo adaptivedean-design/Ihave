@@ -152,7 +152,7 @@ io.on('connection', (socket) => {
           }
           delete room.pendingPlays[playerId];
         }
-      }, BATTLE_WINDOW_MS + 100); // 500ms window + 100ms buffer
+      }, BATTLE_WINDOW_MS);
       
       room.pendingPlays[playerId] = {
         card: card,
@@ -161,7 +161,7 @@ io.on('connection', (socket) => {
         timeout: timeoutId  // **FIX: Store timeout ID so we can clear it**
       };
       
-      console.log(`⏳ Pending play registered, will auto-play in ${BATTLE_WINDOW_MS + 100}ms if no battle. Pending count: ${Object.keys(room.pendingPlays).length}`);
+      console.log(`⏳ Pending play registered, will auto-play in ${BATTLE_WINDOW_MS}ms if no battle. Pending count: ${Object.keys(room.pendingPlays).length}`);
     } else {
       console.log(`⚠️ Battle already active, ignoring card play`);
     }
