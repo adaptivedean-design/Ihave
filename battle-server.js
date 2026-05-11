@@ -17,7 +17,8 @@ const io = new Server(server, {
 // Store active rooms and their state
 const rooms = {};
 
-const BATTLE_WINDOW_MS = 500; // Battle detection window
+const BATTLE_WINDOW_MS = 900; // Forgiving battle detection window
+const AUTO_PLAY_DELAY_MS = BATTLE_WINDOW_MS + 100; // Give edge-of-window plays time to arrive
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
@@ -78,7 +79,7 @@ io.on('connection', (socket) => {
       const age = now - pending.timestamp;
       console.log(`Checking pending play from ${pid}, age: ${age}ms`);
       
-      if (age < BATTLE_WINDOW_MS) {
+      if (age <= BATTLE_WINDOW_MS) {
         // Found a pending play within time window
         if (pid !== playerId) {
           // Different player - normal battle
@@ -133,7 +134,7 @@ io.on('connection', (socket) => {
       // No battle - add to pending
       console.log(`No battle opponent found, adding to pending plays`);
       
-      // Set timeout to auto-play after battle window + buffer if no battle occurs
+      // Set timeout to auto-play just after the battle window if no battle occurs
       const timeoutId = setTimeout(() => {
         // Check if this pending play still exists and no battle started
         if (room.pendingPlays[playerId] && !room.activeBattle && !room.awaitingFlip) {
@@ -152,7 +153,7 @@ io.on('connection', (socket) => {
           }
           delete room.pendingPlays[playerId];
         }
-      }, BATTLE_WINDOW_MS);
+      }, AUTO_PLAY_DELAY_MS);
       
       room.pendingPlays[playerId] = {
         card: card,
