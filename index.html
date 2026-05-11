@@ -392,13 +392,20 @@ button:hover{background:linear-gradient(135deg, var(--warm), var(--glow));}
 @keyframes chainStress{0%,100%{opacity:.75;}50%{opacity:1;}}
 .playerCard{
   border-radius:14px;
-  background:linear-gradient(145deg, rgba(235,253,255,.64), rgba(158,234,240,.24));
-  box-shadow:0 10px 24px rgba(6,24,39,.22), inset 0 0 0 1px rgba(255,255,255,.55);
-  padding:3px;
-  filter:saturate(.9) contrast(1.04);
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.52), transparent 34%),
+    linear-gradient(145deg, rgba(235,253,255,.68), rgba(158,234,240,.2));
+  box-shadow:0 10px 24px rgba(6,24,39,.22), inset 0 0 0 1px rgba(255,255,255,.58), inset 0 -12px 22px rgba(80,240,230,.12);
+  padding:4px;
+  border:1px solid rgba(233,251,255,.42);
+  box-sizing:border-box;
+  filter:saturate(.88) contrast(1.05) drop-shadow(0 0 5px rgba(158,234,240,.24));
 }
-.playerCard:hover{box-shadow:0 0 22px rgba(255,138,91,.62),0 12px 28px rgba(6,24,39,.26);}
-.playerCard.pendingPlay{box-shadow:0 0 28px rgba(255,138,91,.78),0 0 12px rgba(255,211,110,.62);}
+.pile .playerCard{border-radius:16px;}
+#opponentPilesTop .pile .playerCard{border-radius:12px;padding:3px;}
+.playerCard:hover{box-shadow:0 0 22px rgba(255,138,91,.62),0 12px 28px rgba(6,24,39,.26), inset 0 0 0 1px rgba(255,211,110,.45);}
+.playerCard.pendingPlay{box-shadow:0 0 28px rgba(255,138,91,.78),0 0 12px rgba(255,211,110,.62), inset 0 0 0 2px rgba(255,211,110,.72);}
+.cardInPile.dragging{opacity:.72;filter:saturate(.95) contrast(1.08) drop-shadow(0 0 18px rgba(255,138,91,.72));}
 #playerPilesTop .pile::after{
   background:linear-gradient(90deg, transparent, rgba(158,234,240,.74), var(--warm), rgba(158,234,240,.74), transparent);
   box-shadow:0 0 12px rgba(255,138,91,.38);
