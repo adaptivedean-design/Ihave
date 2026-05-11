@@ -6,7 +6,7 @@
 <title>I Have / Who Has</title>
 <style>
 body{margin:0;font-family:system-ui;background:#0f172a;color:#004870;display:flex;justify-content:center;align-items:center;min-height:100vh;}
-#app{width:1100px;background:#dafbe9;padding:20px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);position:relative;}
+#app{width:min(1240px, calc(100vw - 40px));background:#dafbe9;padding:20px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);position:relative;}
 #logo{width:180px;height:180px;object-fit:contain;background:white;border-radius:50%;padding:20px;box-shadow:0 8px 24px rgba(0,72,112,0.3);margin:0 auto;display:block;transition:all 0.3s;}
 body.in-game #logo{width:80px;height:80px;padding:10px;position:fixed;left:20px;top:25px;z-index:100;margin:0;transform:none;}
 body.in-game h1{display:none;}
@@ -47,32 +47,34 @@ button:hover{background:#16b7a7;}
 #playerArea{display:flex;flex-direction:column;justify-content:flex-start;align-items:center;position:relative;padding:10px 0;}
 #playerGrid{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;width:90%;display:none;} /* Hide old grid */
 #playerPiles{width:100%;height:100%;display:flex;flex-direction:column;position:relative;}
-#playerPilesTop{display:flex;gap:0;justify-content:center;width:100%;margin:0 auto;position:relative;height:170px;} /* Bottom half of ellipse - 8 piles */
-#playerPilesTop .pile:nth-child(1){transform:translateX(-420px) translateY(0px);}
-#playerPilesTop .pile:nth-child(2){transform:translateX(-300px) translateY(28px);}
-#playerPilesTop .pile:nth-child(3){transform:translateX(-180px) translateY(50px);}
-#playerPilesTop .pile:nth-child(4){transform:translateX(-60px) translateY(62px);}
-#playerPilesTop .pile:nth-child(5){transform:translateX(60px) translateY(62px);}
-#playerPilesTop .pile:nth-child(6){transform:translateX(180px) translateY(50px);}
-#playerPilesTop .pile:nth-child(7){transform:translateX(300px) translateY(28px);}
-#playerPilesTop .pile:nth-child(8){transform:translateX(420px) translateY(0px);}
+#playerPilesTop{display:flex;gap:0;justify-content:center;width:100%;margin:0 auto;position:relative;height:230px;} /* Bottom half of ellipse - 8 piles */
+#playerPilesTop .pile:nth-child(1){transform:translateX(-540px) translateY(0px);}
+#playerPilesTop .pile:nth-child(2){transform:translateX(-386px) translateY(42px);}
+#playerPilesTop .pile:nth-child(3){transform:translateX(-232px) translateY(76px);}
+#playerPilesTop .pile:nth-child(4){transform:translateX(-78px) translateY(96px);}
+#playerPilesTop .pile:nth-child(5){transform:translateX(78px) translateY(96px);}
+#playerPilesTop .pile:nth-child(6){transform:translateX(232px) translateY(76px);}
+#playerPilesTop .pile:nth-child(7){transform:translateX(386px) translateY(42px);}
+#playerPilesTop .pile:nth-child(8){transform:translateX(540px) translateY(0px);}
 #playerPilesBottom{display:flex;justify-content:center;align-items:center;flex:1;} /* Unorganized cluster area */
 #opponentPiles{width:100%;height:100%;display:flex;flex-direction:column;position:relative;}
-#opponentPilesTop{display:flex;gap:0;justify-content:center;width:100%;margin:0 auto;position:relative;height:170px;} /* Top half of ellipse - 8 piles */
-#opponentPilesTop .pile:nth-child(1){transform:translateX(420px) translateY(0px);}
-#opponentPilesTop .pile:nth-child(2){transform:translateX(300px) translateY(-28px);}
-#opponentPilesTop .pile:nth-child(3){transform:translateX(180px) translateY(-50px);}
-#opponentPilesTop .pile:nth-child(4){transform:translateX(60px) translateY(-62px);}
-#opponentPilesTop .pile:nth-child(5){transform:translateX(-60px) translateY(-62px);}
-#opponentPilesTop .pile:nth-child(6){transform:translateX(-180px) translateY(-50px);}
-#opponentPilesTop .pile:nth-child(7){transform:translateX(-300px) translateY(-28px);}
-#opponentPilesTop .pile:nth-child(8){transform:translateX(-420px) translateY(0px);}
+#opponentPilesTop{display:flex;gap:0;justify-content:center;width:100%;margin:0 auto;position:relative;height:230px;} /* Top half of ellipse - 8 piles */
+#opponentPilesTop .pile:nth-child(1){transform:translateX(540px) translateY(0px);}
+#opponentPilesTop .pile:nth-child(2){transform:translateX(386px) translateY(-42px);}
+#opponentPilesTop .pile:nth-child(3){transform:translateX(232px) translateY(-76px);}
+#opponentPilesTop .pile:nth-child(4){transform:translateX(78px) translateY(-96px);}
+#opponentPilesTop .pile:nth-child(5){transform:translateX(-78px) translateY(-96px);}
+#opponentPilesTop .pile:nth-child(6){transform:translateX(-232px) translateY(-76px);}
+#opponentPilesTop .pile:nth-child(7){transform:translateX(-386px) translateY(-42px);}
+#opponentPilesTop .pile:nth-child(8){transform:translateX(-540px) translateY(0px);}
 #opponentPilesBottom{display:none;} /* HIDDEN - opponent's unorganized cards not visible */
-.pile{width:118px;height:172px;min-height:172px;border:2px dashed #16b7a7;border-radius:8px;background:rgba(189,246,224,0.18);transition:background 0.12s,border-color 0.12s;padding:6px;display:flex;flex-direction:column;align-items:center;position:absolute;} /* Organizing piles - full size, positioned absolutely for arc */
+.pile{width:144px;height:198px;min-height:198px;border:none;border-radius:8px;background:rgba(22,183,167,0.07);box-shadow:inset 0 0 0 1px rgba(22,183,167,0.16);transition:background 0.12s,box-shadow 0.12s;padding:6px;display:flex;flex-direction:column;align-items:center;position:absolute;} /* Organizing piles - full size, positioned absolutely for arc */
+#opponentPilesTop .pile{width:118px;height:172px;min-height:172px;}
 .pile.communal{width:auto;min-width:350px;min-height:180px;border:none;background:transparent;padding:16px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:0;} /* Unorganized cluster - no border */
-.pile.dragOver{background:rgba(110,227,222,0.5);border-color:#6ee3de;border-style:solid;}
+.pile.dragOver{background:rgba(110,227,222,0.24);box-shadow:inset 0 0 0 2px #6ee3de,0 0 18px rgba(110,227,222,0.35);}
 /* Cards in organizing piles - vertical stack */
-.pile:not(.communal) .cardInPile{margin-left:0;margin-top:-98px;}
+.pile:not(.communal) .cardInPile{margin-left:0;margin-top:-118px;}
+#opponentPilesTop .pile:not(.communal) .cardInPile{margin-top:-98px;}
 .pile:not(.communal) .cardInPile:first-child{margin-top:0;}
 /* Cards in communal cluster - slight random overlap for messy look */
 .pile.communal .cardInPile{margin:-64px;position:relative;}
@@ -82,7 +84,8 @@ button:hover{background:#16b7a7;}
 .cardInPile.dragging{opacity:0.5;cursor:grabbing;}
 .cardInPile:hover{z-index:10;transform:translateY(-10px);} /* Lift card on hover */
 .playerCard{border-radius:8px;cursor:pointer;transition:transform .04s,box-shadow .06s;border:none;display:block;object-fit:contain;} /* No borders - images stand alone */
-.pile .playerCard{width:112px !important;height:133px !important;}
+.pile .playerCard{width:134px !important;height:160px !important;}
+#opponentPilesTop .pile .playerCard{width:112px !important;height:133px !important;}
 .playerCard:hover{transform:scale(1.06);box-shadow:0 0 16px rgba(35,135,159,0.62);} /* Glow effect instead of border */
 .playerCard.pendingPlay{filter:brightness(1.08);transform:scale(0.96);box-shadow:0 0 18px rgba(110,227,222,0.72);}
 .playerCard.wrong,.playerCard.wrongCard{animation:shake 0.4s;box-shadow:0 0 20px rgba(255,107,107,0.9) !important;} /* Red glow for wrong card */
