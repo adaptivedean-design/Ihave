@@ -363,6 +363,7 @@ const chainText=document.getElementById("chainText");
 const deck=document.getElementById("deck");
 let pendingCardId=null;
 let roundWinnerShownFor=null;
+let currentRoundStartedAt=null;
 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a}
 
@@ -763,34 +764,14 @@ socket.emit('chain_played', { roomId, playerId });
 const playerArea = document.getElementById("playerArea");
 playerArea.classList.remove("chainBroken");
 
-// Check if chain is now broken (target animal depleted)
-const targetAnimal = card.whoHas;
-let handsSnap = await get(ref(db,"rooms/"+roomId+"/hands"));
-let allHands = handsSnap.val() || {};
-
-let targetExists = false;
-for(const pid in allHands){
-const hand = Object.values(allHands[pid]);
-if(hand.some(c => c.iHave === targetAnimal)){
-targetExists = true;
-break;
-}
-}
-
-if(!targetExists){
-// Chain is broken! Flash notification
-console.log("⚠️ CHAIN BROKEN! Target animal depleted:", targetAnimal);
-const playerArea = document.getElementById("playerArea");
-const opponentArea = document.getElementById("opponentArea");
-playerArea.style.background = "#e4e09a";
-opponentArea.style.background = "#e4e09a";
-setTimeout(() => {
-playerArea.style.background = "";
-opponentArea.style.background = "";
-}, 800);
-}
-
 if(newHand.length === 0){
+const existingWinnerSnap = await get(ref(db,"rooms/"+roomId+"/winner"));
+if(existingWinnerSnap.val()){
+console.log("Hand completed after round winner already exists; no score or win overlay");
+console.log("====== playCardNow END ======");
+return;
+}
+
 let scoresSnap = await get(ref(db,"rooms/"+roomId+"/scores"));
 let scores = scoresSnap.val() || {};
 if(!scores[playerId]) scores[playerId] = 0;
@@ -1108,6 +1089,47 @@ battleClicks = 0;
 
 // OLD listenPendingPlay removed - battles now handled by WebSocket
 
+function resetLocalRoundState(roundStartedAt){
+currentRoundStartedAt = roundStartedAt;
+pendingCardId = null;
+roundWinnerShownFor = null;
+winner = null;
+myHand = [];
+currentChain = null;
+
+if(battleTimerInterval){
+clearInterval(battleTimerInterval);
+battleTimerInterval = null;
+}
+battleState = null;
+battleClicks = 0;
+
+document.getElementById("battleScreen").style.display = "none";
+document.body.style.overflow = "auto";
+document.getElementById("roundWinnerOverlay").style.display = "none";
+document.getElementById("winnerAnnouncement").style.opacity = "0";
+document.getElementById("overlayCards").innerHTML = "";
+document.getElementById("cardOverlay").classList.remove("visible");
+document.querySelectorAll('.pendingPlay').forEach(el => el.classList.remove('pendingPlay'));
+document.querySelectorAll('.playerCard.cardInPile').forEach(el => el.remove());
+
+["playerPilesTop","playerPilesBottom","opponentPilesTop","opponentPilesBottom"].forEach(id => {
+const el = document.getElementById(id);
+if(el) el.innerHTML = "";
+});
+
+const playerArea = document.getElementById("playerArea");
+const opponentArea = document.getElementById("opponentArea");
+playerArea.classList.remove("chainBroken");
+playerArea.style.background = "";
+opponentArea.style.background = "";
+deck.classList.remove("flipped");
+deck.classList.remove("canFlip");
+document.querySelector(".deckFront").innerHTML="";
+document.querySelector(".deckBack").innerHTML="";
+chainText.innerHTML="";
+}
+
 function renderChainDisplay(chain){
 const deckFront=document.querySelector(".deckFront");
 const deckBack=document.querySelector(".deckBack");
@@ -1150,10 +1172,13 @@ playersDiv.innerHTML="Connected:<br>";
 for(const p in data.players){ playersDiv.innerHTML+=data.players[p].name+"<br>"; }
 }
 
-if(data.state==="playing"){ 
-lobby.style.display="none"; 
+if(data.state==="playing"){
+lobby.style.display="none";
 game.style.display="block";
 document.body.classList.add("in-game"); // Add class for logo repositioning
+if(data.roundStartedAt && data.roundStartedAt !== currentRoundStartedAt){
+resetLocalRoundState(data.roundStartedAt);
+}
 // Show restart button for host when in game
 if(isHost){
 document.getElementById("restartBtn").style.display="inline-block";
@@ -1538,7 +1563,8 @@ state:"playing",
 hands:hands,
 chain:null,
 winner:null,
-scores:scores
+scores:scores,
+roundStartedAt: Date.now()
 });
 if(socket && socket.connected){
 socket.emit('game_reset', { roomId, playerId });
