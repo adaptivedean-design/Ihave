@@ -284,10 +284,56 @@ button:hover{background:linear-gradient(135deg, var(--warm), var(--glow));}
   background:linear-gradient(90deg, transparent, rgba(158,234,240,.5), rgba(255,138,91,.72), rgba(158,234,240,.5), transparent);
   box-shadow:0 0 18px rgba(80,240,230,.35);
 }
+#chainLane{
+  position:absolute;
+  left:50%;
+  top:50%;
+  width:min(620px, 72vw);
+  transform:translate(-50%, -50%);
+  display:grid;
+  grid-template-columns:28px 1fr 38px 1fr 28px;
+  align-items:center;
+  gap:10px;
+  pointer-events:none;
+  z-index:0;
+  opacity:.92;
+}
+.chainNode{
+  display:block;
+  aspect-ratio:1;
+  border-radius:50%;
+  background:radial-gradient(circle at 40% 35%, var(--frost), var(--ice-300) 44%, rgba(19,74,99,.72));
+  border:1px solid rgba(233,251,255,.74);
+  box-shadow:0 0 22px rgba(80,240,230,.34), inset 0 0 10px rgba(255,255,255,.5);
+}
+.nodeActive{
+  width:38px;
+  box-shadow:0 0 28px rgba(255,138,91,.56), inset 0 0 12px rgba(255,255,255,.56);
+}
+.nodeWarm{background:radial-gradient(circle at 45% 38%, var(--glow), var(--warm) 46%, rgba(19,74,99,.68));}
+.chainSegment{
+  height:6px;
+  border-radius:999px;
+  background:linear-gradient(90deg, rgba(158,234,240,.14), rgba(233,251,255,.72), rgba(80,240,230,.38));
+  box-shadow:0 0 14px rgba(80,240,230,.28);
+  position:relative;
+  overflow:hidden;
+}
+.chainSegment::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.8), transparent);
+  transform:translateX(-100%);
+  animation:chainGlint 2.4s ease-in-out infinite;
+}
+.warmSegment{background:linear-gradient(90deg, rgba(80,240,230,.28), rgba(255,138,91,.7), rgba(255,211,110,.42));}
+@keyframes chainGlint{50%{transform:translateX(100%);}100%{transform:translateX(100%);}}
 #deck{
   width:178px;
   height:178px;
   filter:drop-shadow(0 0 22px rgba(80,240,230,.22));
+  z-index:2;
 }
 #deck.canFlip{filter:drop-shadow(0 0 22px rgba(255,138,91,.75));}
 .deckInner,.deckFront,.deckBack{border-radius:20px;}
@@ -305,6 +351,45 @@ button:hover{background:linear-gradient(135deg, var(--warm), var(--glow));}
   background:linear-gradient(128deg, transparent 0 44%, rgba(255,255,255,.55) 44.5% 45%, transparent 45.4%);
 }
 .deckFront img,.deckBack img{max-width:150px;max-height:150px;filter:saturate(.92) contrast(1.04);}
+#chainStatus{
+  position:absolute;
+  bottom:12px;
+  left:50%;
+  transform:translateX(-50%);
+  min-width:210px;
+  padding:6px 14px;
+  border-radius:999px;
+  background:rgba(6,24,39,.48);
+  border:1px solid rgba(233,251,255,.24);
+  color:var(--ice-300);
+  font-size:13px;
+  font-weight:750;
+  text-align:center;
+  box-shadow:0 8px 22px rgba(6,24,39,.18);
+  z-index:3;
+}
+#thinIceBanner{
+  position:absolute;
+  top:14px;
+  left:50%;
+  transform:translateX(-50%) translateY(-8px);
+  opacity:0;
+  pointer-events:none;
+  padding:7px 16px;
+  border-radius:999px;
+  background:linear-gradient(135deg, rgba(255,138,91,.92), rgba(255,211,110,.84));
+  color:var(--ice-900);
+  font-size:15px;
+  font-weight:900;
+  box-shadow:0 0 24px rgba(255,138,91,.5);
+  transition:opacity .16s, transform .16s;
+  z-index:4;
+}
+#centerArea.chain-ready #chainStatus{color:var(--warm);}
+#centerArea.chain-open #chainStatus{color:var(--glow);}
+#centerArea.chain-broken #thinIceBanner{opacity:1;transform:translateX(-50%) translateY(0);}
+#centerArea.chain-broken #chainLane{filter:drop-shadow(0 0 16px rgba(255,138,91,.55));animation:chainStress .72s infinite;}
+@keyframes chainStress{0%,100%{opacity:.75;}50%{opacity:1;}}
 .playerCard{
   border-radius:14px;
   background:linear-gradient(145deg, rgba(235,253,255,.64), rgba(158,234,240,.24));
@@ -347,6 +432,24 @@ button:hover{background:linear-gradient(135deg, var(--warm), var(--glow));}
     linear-gradient(120deg, transparent 0 48%, rgba(233,251,255,.54) 48.2% 48.5%, transparent 48.8%),
     linear-gradient(35deg, transparent 0 57%, rgba(255,138,91,.5) 57.2% 57.5%, transparent 57.8%);
   opacity:.55;
+}
+#crackField{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  opacity:.42;
+  background:
+    linear-gradient(103deg, transparent 0 44%, rgba(233,251,255,.75) 44.12% 44.32%, transparent 44.55%),
+    linear-gradient(72deg, transparent 0 49%, rgba(80,240,230,.62) 49.15% 49.36%, transparent 49.6%),
+    linear-gradient(141deg, transparent 0 58%, rgba(255,138,91,.6) 58.1% 58.28%, transparent 58.5%);
+  transform:scale(.86);
+  transition:opacity .08s, transform .08s, filter .08s;
+  filter:drop-shadow(0 0 12px rgba(233,251,255,.35));
+}
+#battleScreen.pressure #crackField{
+  opacity:.9;
+  transform:scale(1.03);
+  filter:drop-shadow(0 0 22px rgba(255,138,91,.62));
 }
 #battleText{color:var(--glow) !important;text-shadow:0 0 42px rgba(255,138,91,.9) !important;}
 #battleButton{
@@ -399,12 +502,21 @@ Enter your name to thaw the room<br>
 </div>
 </div>
 <div id="centerArea">
+<div id="chainLane" aria-hidden="true">
+<span class="chainNode nodeCold"></span>
+<span class="chainSegment"></span>
+<span class="chainNode nodeActive"></span>
+<span class="chainSegment warmSegment"></span>
+<span class="chainNode nodeWarm"></span>
+</div>
 <div id="deck">
 <div class="deckInner">
 <div class="deckFront">Waiting...</div>
 <div class="deckBack"></div>
 </div>
 </div>
+<div id="chainStatus">Waiting for the first break</div>
+<div id="thinIceBanner">Thin Ice!</div>
 <div id="chainText"></div>
 </div>
 <div id="playerArea">
@@ -425,6 +537,7 @@ Enter your name to thaw the room<br>
 
 <!-- Battle Screen -->
 <div id="battleScreen" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:linear-gradient(135deg, rgba(0,72,112,0.98), rgba(35,135,159,0.98));z-index:1000;flex-direction:column;justify-content:space-between;align-items:center;padding:40px 0;overflow:hidden;">
+<div id="crackField" aria-hidden="true"></div>
 <div id="battleText" style="font-size:80px;font-weight:900;color:#e4e09a;text-shadow:0 0 40px rgba(228,224,154,0.8);opacity:0;">CRACK!</div>
 
 <!-- Tipping Scale Battle UI -->
@@ -926,6 +1039,22 @@ const opponentArea = document.getElementById("opponentArea");
 if(!area) return;
 area.classList.toggle("chainBroken", Boolean(isBroken));
 });
+const centerArea = document.getElementById("centerArea");
+if(centerArea){
+centerArea.classList.toggle("chain-broken", Boolean(isBroken));
+}
+}
+
+function setChainStatus(message, state){
+const centerArea = document.getElementById("centerArea");
+const status = document.getElementById("chainStatus");
+if(centerArea){
+centerArea.classList.remove("chain-idle", "chain-ready", "chain-open");
+if(state) centerArea.classList.add(state);
+}
+if(status){
+status.textContent = message;
+}
 }
 
 function showRoundResult(type, title, subtext){
@@ -1085,6 +1214,7 @@ battleClicks = 0;
 // Show battle UI
 const battleScreen = document.getElementById("battleScreen");
 battleScreen.style.display = "flex";
+battleScreen.classList.remove("pressure");
 document.body.style.overflow = "hidden";
 
 // Reset all UI elements to default state
@@ -1178,6 +1308,8 @@ if(remaining <= 0) return;
 
 battleClicks++;
 console.log("Battle click:", battleClicks);
+battleScreen.classList.add("pressure");
+setTimeout(() => battleScreen.classList.remove("pressure"), 90);
 
 // Send click to server
 socket.emit('battle_click', { roomId, playerId });
@@ -1265,7 +1397,7 @@ console.log("  - Showing: YOU WON!");
 winnerAnnouncement.innerHTML = `
 <div style="text-align:center;">
 <div style="font-size:80px;margin-bottom:20px;">🎉</div>
-<div style="font-size:64px;font-weight:900;">YOU WON!</div>
+<div style="font-size:64px;font-weight:900;">YOU BROKE THROUGH</div>
 <div style="font-size:40px;margin-top:10px;">✨ 🎊 ✨</div>
 </div>
 `;
@@ -1280,7 +1412,7 @@ winnerAnnouncement.innerHTML = `
 <div style="text-align:center;">
 <div style="font-size:80px;margin-bottom:20px;">😢</div>
 <div style="font-size:64px;font-weight:900;">YOU LOST</div>
-<div style="font-size:28px;margin-top:10px;">${winnerDisplayName} wins this battle</div>
+<div style="font-size:28px;margin-top:10px;">${winnerDisplayName} broke through first</div>
 </div>
 `;
 winnerAnnouncement.style.color = "#dbe7f0";
@@ -1401,6 +1533,7 @@ deck.classList.remove("canFlip");
 document.querySelector(".deckFront").innerHTML="";
 document.querySelector(".deckBack").innerHTML="";
 chainText.innerHTML="";
+setChainStatus("Waiting for the first break", "chain-idle");
 }
 
 function renderChainDisplay(chain){
@@ -1423,14 +1556,17 @@ if(chain.flipped){
 deck.classList.add("flipped");
 deck.classList.remove("canFlip");
 chainText.innerHTML="Find and play your card!";
+setChainStatus(`Find ${chain.whoHas} to keep the ice moving`, "chain-open");
 } else {
 deck.classList.remove("flipped");
 if(chain.playedBy===playerId){
 deck.classList.add("canFlip");
 chainText.innerHTML="Click the center card to flip it!";
+setChainStatus("Crack the tile to reveal the next link", "chain-ready");
 } else {
 deck.classList.remove("canFlip");
 chainText.innerHTML="Waiting for flip...";
+setChainStatus("Waiting for the reveal", "chain-ready");
 }
 }
 }
@@ -1529,6 +1665,7 @@ deck.classList.remove("canFlip");
 document.querySelector(".deckFront").innerHTML="";
 document.querySelector(".deckBack").innerHTML="";
 chainText.innerHTML="";
+setChainStatus("Waiting for the first break", "chain-idle");
 }
 
 // Display scores
