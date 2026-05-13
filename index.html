@@ -1,4 +1,4 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -159,6 +159,106 @@ button:hover{background:#16b7a7;}
 #roundWinnerOverlay.loss{background:linear-gradient(145deg, #004870, #235a72);}
 #roundWinnerText{position:relative;font-size:46px;font-weight:900;color:white;margin-bottom:14px;letter-spacing:0;text-shadow:0 5px 18px rgba(0,72,112,.35);}
 #roundWinnerSubtext{position:relative;font-size:20px;font-weight:650;color:#dafbe9;line-height:1.35;}
+
+/* Battle UI polish */
+#battleScreen{
+  background:radial-gradient(circle at 50% 42%, rgba(228,224,154,.18), transparent 18%),linear-gradient(145deg, rgba(0,40,62,.98), rgba(0,72,112,.98) 44%, rgba(35,135,159,.96)) !important;
+  padding:34px 0 !important;
+}
+#battleScreen::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:linear-gradient(120deg, transparent 0 47%, rgba(110,227,222,.42) 47.2% 47.5%, transparent 47.8%),linear-gradient(38deg, transparent 0 58%, rgba(228,224,154,.34) 58.2% 58.5%, transparent 58.8%);
+  opacity:.35;
+}
+#battleBackdrop{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:radial-gradient(circle at 50% 50%, rgba(110,227,222,.22), transparent 24%);
+  transform:scale(.95);
+  opacity:.65;
+  transition:transform .08s,opacity .08s;
+}
+#battleScreen.battlePress #battleBackdrop{transform:scale(1.04);opacity:1;}
+#battleText{
+  position:relative;
+  z-index:2;
+  font-size:76px !important;
+  color:#eff8d7 !important;
+  letter-spacing:0 !important;
+  text-shadow:0 0 24px rgba(228,224,154,.78),0 10px 28px rgba(0,0,0,.25) !important;
+}
+#battlePanel{
+  position:relative;
+  z-index:2;
+  width:min(720px, calc(100vw - 36px)) !important;
+  padding:22px 28px 26px 28px;
+  border-radius:18px;
+  border:1px solid rgba(218,251,233,.28);
+  background:rgba(0,72,112,.42);
+  box-shadow:0 22px 70px rgba(0,0,0,.3),inset 0 0 0 1px rgba(255,255,255,.06);
+  backdrop-filter:blur(12px);
+}
+#battleTimer{
+  width:78px;
+  height:78px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin:0 auto;
+  border-radius:50%;
+  background:linear-gradient(145deg, rgba(239,248,215,.95), rgba(110,227,222,.72));
+  color:#004870 !important;
+  font-size:42px !important;
+  box-shadow:0 0 26px rgba(110,227,222,.44),inset 0 0 0 2px rgba(255,255,255,.42);
+  text-shadow:none !important;
+}
+#battleMatchup{padding:0 8px !important;}
+#leftName,#rightName{
+  min-height:42px;
+  padding:8px 10px;
+  border-radius:10px;
+  background:rgba(218,251,233,.12);
+  border:1px solid rgba(218,251,233,.18);
+  font-size:22px !important;
+  color:#eff8d7 !important;
+  text-shadow:0 0 16px rgba(110,227,222,.34);
+}
+#battleScaleWrap{height:190px !important;}
+#battleScaleWrap svg{filter:drop-shadow(0 20px 26px rgba(0,0,0,.24));}
+#battleScaleWrap path{fill:#6ee3de;stroke:#eff8d7;}
+#battleScaleWrap circle{fill:#004870;stroke:#e4e09a;}
+#scaleBeam line{stroke:#eff8d7;stroke-width:8;}
+#scaleBeam rect{rx:10;stroke:#eff8d7;stroke-width:2.5;}
+#scaleBeam rect:first-of-type{fill:#6ee3de;}
+#scaleBeam rect:last-of-type{fill:#e4e09a;}
+#battleButton{
+  width:150px !important;
+  height:150px !important;
+  background:radial-gradient(circle at 50% 36%, #eff8d7, #6ee3de 42%, #23879f 72%) !important;
+  border:5px solid #e4e09a !important;
+  box-shadow:0 0 42px rgba(228,224,154,.38),0 18px 48px rgba(0,0,0,.34),inset 0 0 20px rgba(255,255,255,.38) !important;
+}
+#battleButton:hover{transform:scale(1.04);}
+#battleActionLabel{
+  color:#eff8d7 !important;
+  font-size:18px !important;
+  letter-spacing:0;
+  text-transform:uppercase;
+  text-shadow:0 0 16px rgba(110,227,222,.58);
+}
+#winnerAnnouncement{
+  width:min(680px, calc(100vw - 40px));
+  padding:28px;
+  border-radius:18px;
+  background:rgba(0,72,112,.72);
+  border:1px solid rgba(218,251,233,.24);
+  box-shadow:0 22px 70px rgba(0,0,0,.36);
+  backdrop-filter:blur(12px);
+}
 </style>
 </head>
 <body>
@@ -218,24 +318,25 @@ Enter your name<br>
 <!-- Game Sidebar (appears during game) -->
 <div id="gameSidebar">
 <div id="scoreBoard"></div>
-<button id="restartBtn" style="display:none;">↻</button>
+<button id="restartBtn" style="display:none;">â†»</button>
 </div>
 
 <!-- Battle Screen -->
 <div id="battleScreen" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:linear-gradient(135deg, rgba(0,72,112,0.98), rgba(35,135,159,0.98));z-index:1000;flex-direction:column;justify-content:space-between;align-items:center;padding:40px 0;overflow:hidden;">
+<div id="battleBackdrop" aria-hidden="true"></div>
 <div id="battleText" style="font-size:80px;font-weight:900;color:#e4e09a;text-shadow:0 0 40px rgba(228,224,154,0.8);opacity:0;">BATTLE!</div>
 
 <!-- Tipping Scale Battle UI -->
-<div style="display:flex;flex-direction:column;align-items:center;gap:30px;width:600px;">
+<div id="battlePanel" style="display:flex;flex-direction:column;align-items:center;gap:30px;width:600px;">
 <div id="battleTimer" style="font-size:48px;font-weight:700;color:#eff8d7;text-shadow:0 0 20px rgba(239,248,215,0.5);">5</div>
 
-<div style="display:flex;align-items:flex-end;justify-content:space-between;width:100%;padding:0 40px;">
+<div id="battleMatchup" style="display:flex;align-items:flex-end;justify-content:space-between;width:100%;padding:0 40px;">
 <div style="text-align:center;flex:0 0 140px;">
 <div id="leftName" style="font-size:28px;font-weight:700;color:#6ee3de;"></div>
 </div>
 
 <!-- SVG Tipping Scale -->
-<div style="flex:1;display:flex;justify-content:center;align-items:flex-end;height:200px;">
+<div id="battleScaleWrap" style="flex:1;display:flex;justify-content:center;align-items:flex-end;height:200px;">
 <svg width="400" height="200" viewBox="0 0 400 200" style="overflow:visible;">
 <!-- Fulcrum/Stand -->
 <path d="M 180 180 L 200 200 L 220 180 Z" fill="#50d3df" stroke="#16b7a7" stroke-width="2"/>
@@ -261,7 +362,7 @@ Enter your name<br>
 <!-- Centered Battle Button -->
 <div style="text-align:center;margin-bottom:20px;">
 <div id="battleButton" style="width:140px;height:140px;background:#23879f;border-radius:50%;box-shadow:0 20px 60px rgba(35,135,159,0.8);cursor:pointer;transition:transform 0.05s;margin:0 auto;user-select:none;border:4px solid #6ee3de;" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'"></div>
-<div style="font-size:20px;font-weight:600;margin-top:15px;color:#dafbe9;">CLICK!</div>
+<div id="battleActionLabel" style="font-size:20px;font-weight:600;margin-top:15px;color:#dafbe9;">CLICK FAST</div>
 </div>
 
 <!-- Winner Announcement (hidden by default) -->
@@ -614,15 +715,15 @@ return;
 if(currentChain && currentChain.flipped){
 // Check if card matches the target
 const matchesTarget = card.iHave === currentChain.whoHas;
-  
+
 if(!matchesTarget){
 // Card doesn't match - check if chain is broken (no cards with target animal left)
 const targetAnimal = currentChain.whoHas;
-    
+
 // Get all hands from Firebase to check if target animal still exists
 let handsSnap = await get(ref(db,"rooms/"+roomId+"/hands"));
 let allHands = handsSnap.val() || {};
-    
+
 let targetExists = false;
 for(const playerId in allHands){
 const hand = Object.values(allHands[playerId]);
@@ -631,7 +732,7 @@ targetExists = true;
 break;
 }
 }
-    
+
 if(targetExists){
 console.log("Card doesn't match chain and target still exists in play");
 
@@ -658,7 +759,7 @@ console.log("====== tryPlay END (must flip) ======");
 return;
 }
 
-console.log("✅ Card validated, proceeding to play...");
+console.log("âœ… Card validated, proceeding to play...");
 pendingCardId = card.id;
 if(cardElement){
 cardElement.classList.add('pendingPlay');
@@ -666,14 +767,14 @@ cardElement.classList.add('pendingPlay');
 
 // Check if socket is connected
 if(!socket || !socket.connected){
-console.error("❌ Socket not connected! Falling back to immediate play");
+console.error("âŒ Socket not connected! Falling back to immediate play");
 playCardNow(card);
 console.log("====== tryPlay END (socket fallback) ======");
 return;
 }
 
 // Send card play to WebSocket server for battle detection
-console.log("📤 Sending card_played to server:", {roomId, playerId, card: card.iHave, isHost});
+console.log("ðŸ“¤ Sending card_played to server:", {roomId, playerId, card: card.iHave, isHost});
 socket.emit('card_played', {
 roomId: roomId,
 playerId: playerId,
@@ -681,7 +782,7 @@ card: card,
 isHost: isHost
 });
 
-console.log("✅ card_played event sent, waiting for server response...");
+console.log("âœ… card_played event sent, waiting for server response...");
 console.log("====== tryPlay END (waiting for server) ======");
 // Note: Server will either trigger battle_start or play_card_now
 // Don't play the card here - wait for server response
@@ -784,13 +885,13 @@ let battleTimer = null;
 // WebSocket handler: Play card immediately (no battle)
 async function playCardNow(card){
 console.log("========== playCardNow START ==========");
-console.log("⚠️ playCardNow called with card:", card.iHave, "ID:", card.id);
+console.log("âš ï¸ playCardNow called with card:", card.iHave, "ID:", card.id);
 console.log("   Current hand:", myHand.map(c => `${c.iHave}(${c.id})`).join(', '));
 
 // CHECK: Does this card exist in my hand?
 const cardExists = myHand.some(c => c.id === card.id);
 if(!cardExists){
-console.error("❌ CRITICAL: Card not in hand! This card was already played.");
+console.error("âŒ CRITICAL: Card not in hand! This card was already played.");
 console.log("   Requested card ID:", card.id);
 console.log("   Current hand IDs:", myHand.map(c => c.id));
 console.log("========== playCardNow END (card not found) ==========");
@@ -799,7 +900,7 @@ document.querySelectorAll('.pendingPlay').forEach(el => el.classList.remove('pen
 return; // ABORT - don't remove a card that's not there
 }
 
-console.log("✅ Card exists in hand, proceeding to remove it...");
+console.log("âœ… Card exists in hand, proceeding to remove it...");
 
 let newHand = myHand.filter(c => c.id !== card.id);
 console.log("   New hand length:", newHand.length, "(was", myHand.length, ")");
@@ -848,7 +949,7 @@ const overlay = document.getElementById("roundWinnerOverlay");
 const winnerText = document.getElementById("roundWinnerText");
 const winnerSubtext = document.getElementById("roundWinnerSubtext");
 
-winnerText.textContent = "🎉 YOU WIN! 🎉";
+winnerText.textContent = "ðŸŽ‰ YOU WIN! ðŸŽ‰";
 winnerSubtext.textContent = "First to empty your hand!";
 overlay.classList.remove("loss");
 overlay.classList.add("win");
@@ -883,6 +984,7 @@ battleClicks = 0;
 // Show battle UI
 const battleScreen = document.getElementById("battleScreen");
 battleScreen.style.display = "flex";
+battleScreen.classList.remove("battlePress");
 document.body.style.overflow = "hidden";
 
 // Reset all UI elements to default state
@@ -976,6 +1078,8 @@ if(remaining <= 0) return;
 
 battleClicks++;
 console.log("Battle click:", battleClicks);
+battleScreen.classList.add("battlePress");
+setTimeout(() => battleScreen.classList.remove("battlePress"), 90);
 
 // Send click to server
 socket.emit('battle_click', { roomId, playerId });
@@ -1014,8 +1118,8 @@ scaleBeam.style.transform = `rotate(${tiltAngle}deg)`;
 
 // WebSocket handler: Battle result
 async function handleBattleResult(result){
-console.log("🏆 handleBattleResult", result);
-console.log("🔍 Debug info:");
+console.log("ðŸ† handleBattleResult", result);
+console.log("ðŸ” Debug info:");
 console.log("  - I am:", playerId, "isHost:", isHost);
 console.log("  - Battle winner:", result.winner);
 console.log("  - battleState.hostPlayerId:", battleState.hostPlayerId);
@@ -1058,16 +1162,23 @@ await new Promise(resolve => setTimeout(resolve, 800));
 const winnerAnnouncement = document.getElementById("winnerAnnouncement");
 
 if(iWon){
-// I WON! 🎉
+// I WON! ðŸŽ‰
 console.log("  - Showing: YOU WON!");
 winnerAnnouncement.innerHTML = `
 <div style="text-align:center;">
-<div style="font-size:80px;margin-bottom:20px;">🎉</div>
+<div style="font-size:80px;margin-bottom:20px;">ðŸŽ‰</div>
 <div style="font-size:64px;font-weight:900;">YOU WON!</div>
-<div style="font-size:40px;margin-top:10px;">✨ 🎊 ✨</div>
+<div style="font-size:40px;margin-top:10px;">âœ¨ ðŸŽŠ âœ¨</div>
 </div>
 `;
 winnerAnnouncement.style.color = "#eff8d7";
+winnerAnnouncement.innerHTML = `
+<div style="text-align:center;">
+<div style="font-size:22px;font-weight:800;margin-bottom:10px;color:#e4e09a;">BATTLE WON</div>
+<div style="font-size:64px;font-weight:900;">YOU WON!</div>
+<div style="font-size:24px;margin-top:10px;color:#6ee3de;">Fastest reaction takes the card</div>
+</div>
+`;
 
 // Confetti effect (simple emoji rain)
 createConfetti();
@@ -1076,13 +1187,25 @@ const winnerDisplayName = document.getElementById(winnerIsHost ? "leftName" : "r
 console.log("  - Showing: YOU LOST");
 winnerAnnouncement.innerHTML = `
 <div style="text-align:center;">
-<div style="font-size:80px;margin-bottom:20px;">😢</div>
+<div style="font-size:80px;margin-bottom:20px;">ðŸ˜¢</div>
 <div style="font-size:64px;font-weight:900;">YOU LOST</div>
 <div style="font-size:28px;margin-top:10px;">${winnerDisplayName} wins this battle</div>
 </div>
 `;
 winnerAnnouncement.style.color = "#dbe7f0";
+winnerAnnouncement.innerHTML = `
+<div style="text-align:center;">
+<div style="font-size:22px;font-weight:800;margin-bottom:10px;color:#6ee3de;">BATTLE LOST</div>
+<div style="font-size:64px;font-weight:900;">YOU LOST</div>
+<div style="font-size:28px;margin-top:10px;">${winnerDisplayName} wins this battle</div>
+</div>
+`;
 }
+
+winnerAnnouncement.style.opacity = "1";
+
+// Wait 3 seconds
+await new Promise(resolve => setTimeout(resolve, 3000));
 
 winnerAnnouncement.style.opacity = "1";
 
@@ -1135,7 +1258,7 @@ const overlay = document.getElementById("roundWinnerOverlay");
 const winnerText = document.getElementById("roundWinnerText");
 const winnerSubtext = document.getElementById("roundWinnerSubtext");
 
-winnerText.textContent = "🎉 YOU WIN! 🎉";
+winnerText.textContent = "ðŸŽ‰ YOU WIN! ðŸŽ‰";
 winnerSubtext.textContent = "First to empty your hand!";
 overlay.classList.remove("loss");
 overlay.classList.add("win");
@@ -1152,6 +1275,7 @@ console.log("Lost battle, keeping card");
 
 // Hide battle screen
 document.getElementById("battleScreen").style.display = "none";
+document.getElementById("battleScreen").classList.remove("battlePress");
 document.body.style.overflow = "auto";
 battleState = null;
 battleClicks = 0;
@@ -1176,6 +1300,7 @@ battleState = null;
 battleClicks = 0;
 
 document.getElementById("battleScreen").style.display = "none";
+document.getElementById("battleScreen").classList.remove("battlePress");
 document.body.style.overflow = "auto";
 document.getElementById("roundWinnerOverlay").style.display = "none";
 document.getElementById("winnerAnnouncement").style.opacity = "0";
@@ -1264,7 +1389,7 @@ document.body.classList.remove("in-game"); // Remove class when not in game
 if(data.winner){
 winner=data.winner;
 const winnerName = data.players[winner]?.name || "Someone";
-chainText.innerHTML=(winner===playerId)?`YOU WIN 🎉`:`${winnerName} wins!`;
+chainText.innerHTML=(winner===playerId)?`YOU WIN ðŸŽ‰`:`${winnerName} wins!`;
 
 // Show announcement for loser too
 if(winner !== playerId && roundWinnerShownFor !== winner){
@@ -1273,7 +1398,7 @@ const overlay = document.getElementById("roundWinnerOverlay");
 const winnerText = document.getElementById("roundWinnerText");
 const winnerSubtext = document.getElementById("roundWinnerSubtext");
 
-winnerText.textContent = "😢 YOU LOST";
+winnerText.textContent = "ðŸ˜¢ YOU LOST";
 winnerSubtext.textContent = `${winnerName} finished first! Complete your chain.`;
 overlay.classList.remove("win");
 overlay.classList.add("loss");
@@ -1525,13 +1650,13 @@ communalPile.style.display = 'flex';
 // Confetti celebration animation
 function createConfetti(){
 const battleScreen = document.getElementById("battleScreen");
-const emojis = ['🎉', '✨', '🎊', '⭐', '💫', '🌟'];
+const emojis = ['ðŸŽ‰', 'âœ¨', 'ðŸŽŠ', 'â­', 'ðŸ’«', 'ðŸŒŸ'];
 const colors = ['#e4e09a', '#6ee3de', '#50d3df', '#eff8d7'];
 
 for(let i = 0; i < 30; i++){
 const confetti = document.createElement('div');
 const isEmoji = Math.random() > 0.5;
-confetti.textContent = isEmoji ? emojis[Math.floor(Math.random() * emojis.length)] : '●';
+confetti.textContent = isEmoji ? emojis[Math.floor(Math.random() * emojis.length)] : 'â—';
 confetti.style.position = 'absolute';
 confetti.style.left = Math.random() * 100 + '%';
 confetti.style.top = '-50px';
@@ -1589,37 +1714,37 @@ reconnection: true
 });
 
 socket.on('connect', () => {
-console.log('✅ Connected to battle server, socket ID:', socket.id);
+console.log('âœ… Connected to battle server, socket ID:', socket.id);
 socket.emit('join_room', { roomId, playerId, isHost });
 console.log('Sent join_room:', { roomId, playerId, isHost });
 });
 
 socket.on('connect_error', (error) => {
-console.error('❌ Connection error:', error);
+console.error('âŒ Connection error:', error);
 });
 
 socket.on('disconnect', (reason) => {
-console.warn('⚠️ Disconnected from battle server:', reason);
+console.warn('âš ï¸ Disconnected from battle server:', reason);
 });
 
 socket.on('battle_start', (battle) => {
-console.log('🎮 Battle started!', battle);
+console.log('ðŸŽ® Battle started!', battle);
 pendingCardId = null;
 handleBattleStart(battle);
 });
 
 socket.on('battle_update', ({ clicks1, clicks2 }) => {
-console.log('🔄 Battle update:', clicks1, 'vs', clicks2);
+console.log('ðŸ”„ Battle update:', clicks1, 'vs', clicks2);
 updateBattleClicks(clicks1, clicks2);
 });
 
 socket.on('battle_result', (result) => {
-console.log('🏆 Battle result:', result);
+console.log('ðŸ† Battle result:', result);
 handleBattleResult(result);
 });
 
 socket.on('play_card_now', ({ card }) => {
-console.log('▶️ SERVER SAYS: Play card now (no battle)');
+console.log('â–¶ï¸ SERVER SAYS: Play card now (no battle)');
 console.log('   Card:', card.iHave);
 console.log('   My hand before:', myHand.map(c => c.iHave));
 playCardNow(card);
