@@ -15,7 +15,7 @@ body.in-game #gameSidebar{display:flex;}
 #gameSidebar #scoreBoard{position:static;transform:none;background:rgba(255,255,255,0.95);padding:8px 12px;border-radius:8px;border:2px solid #16b7a7;font-size:12px;color:#004870;width:110px;text-align:left;}
 #gameSidebar #scoreBoard > div{display:flex;justify-content:space-between;align-items:center;margin:3px 0;}
 #gameSidebar #scoreBoard b{color:#23879f;}
-#gameSidebar #restartBtn{position:static;width:40px;height:40px;border-radius:50%;background:#23879f;border:2px solid #16b7a7;cursor:pointer;font-size:24px;padding:0;display:flex;align-items:center;justify-content:center;color:white;}
+#gameSidebar #restartBtn{position:static;width:40px;height:40px;border-radius:50%;background:#23879f;border:2px solid #16b7a7;cursor:pointer;font-size:24px;line-height:1;padding:0;display:flex;align-items:center;justify-content:center;color:white;font-family:Arial, Helvetica, sans-serif;}
 #gameSidebar #restartBtn:hover{background:#16b7a7;transform:rotate(180deg);transition:all 0.3s;}
 #home{text-align:center;max-width:400px;margin:0 auto;}
 #home input{width:100%;max-width:300px;margin:10px auto;display:block;}
@@ -319,7 +319,7 @@ Enter your name<br>
 <!-- Game Sidebar (appears during game) -->
 <div id="gameSidebar">
 <div id="scoreBoard"></div>
-<button id="restartBtn" style="display:none;">â†»</button>
+<button id="restartBtn" type="button" aria-label="Restart game" title="Restart game" style="display:none;">&#8635;</button>
 </div>
 
 <!-- Battle Screen -->
@@ -1380,10 +1380,13 @@ resetLocalRoundState(data.roundStartedAt);
 }
 // Show restart button for host when in game
 if(isHost){
-document.getElementById("restartBtn").style.display="inline-block";
+document.getElementById("restartBtn").style.display="flex";
+} else {
+document.getElementById("restartBtn").style.display="none";
 }
 } else {
 document.body.classList.remove("in-game"); // Remove class when not in game
+document.getElementById("restartBtn").style.display="none";
 }
 
 // Check winner status BEFORE rendering hands
