@@ -110,42 +110,44 @@ button:hover{background:#16b7a7;}
 #cardOverlay{
   display:none;
   position:fixed;
-  top:0;
-  left:0;
-  width:100vw;
-  height:44vh;
-  background:linear-gradient(180deg, rgba(218,251,233,0.98) 0%, rgba(218,251,233,0.95) 100%);
+  top:50%;
+  left:50%;
+  width:min(820px, calc(100vw - 48px));
+  min-height:196px;
+  background:rgba(218,251,233,0.96);
   z-index:200;
   flex-direction:column;
   align-items:center;
-  padding:18px 20px 12px 20px;
-  box-shadow:0 10px 40px rgba(0,72,112,0.3);
-  border-bottom:4px solid #16b7a7;
+  justify-content:center;
+  padding:10px 18px 12px 18px;
+  border-radius:16px;
+  transform:translate(-50%, -58%);
+  box-shadow:0 14px 44px rgba(0,72,112,0.26);
+  border:2px solid rgba(22,183,167,.72);
 }
 #cardOverlay.visible{display:flex;}
 #overlayTitle{
-  font-size:24px;
+  font-size:16px;
   font-weight:700;
   color:#004870;
-  margin-bottom:4px;
+  margin-bottom:2px;
   text-align:center;
 }
 #overlaySubtitle{
-  font-size:14px;
+  font-size:12px;
   color:#23879f;
-  margin-bottom:10px;
+  margin-bottom:4px;
   text-align:center;
 }
 #overlayCards{
   display:flex;
-  flex-wrap:wrap;
+  flex-wrap:nowrap;
   gap:12px;
   justify-content:center;
-  align-items:flex-start;
-  max-width:1000px;
-  max-height:calc(44vh - 72px);
-  overflow-y:auto;
-  padding:10px 20px 14px 20px;
+  align-items:center;
+  width:100%;
+  overflow:hidden;
+  padding:4px 8px 2px 8px;
 }
 #overlayCards .playerCard{
   width:142px;
@@ -159,8 +161,8 @@ button:hover{background:#16b7a7;}
   display:none;
   position:fixed;
   left:50%;
-  bottom:22px;
-  transform:translateX(-50%);
+  top:50%;
+  transform:translate(-50%, 122px);
   z-index:260;
   align-items:center;
   gap:12px;
@@ -540,12 +542,75 @@ let latestRoomData=null;
 let countdownRenderInterval=null;
 const COUNTDOWN_DURATION_MS=4000;
 let lastAnimatedChainKey=null;
+let localReadySubmitted=false;
+const OVERLAY_CARD_LIMIT=5;
 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a}
 
 function makeDeck(){
   // Return a shuffled copy of the predefined deck
   return shuffle([...DECK_THEME.cards]);
+}
+
+function createPlayerCardImage(card, inOverlay=false){
+const img = document.createElement("img");
+img.src = CARD_IMAGES.ihave[card.iHave] || "";
+img.alt = card.iHave;
+img.className = "playerCard cardInPile";
+img.draggable = true;
+img.dataset.cardId = card.id;
+img.style.width = inOverlay ? "142px" : "160px";
+img.style.height = inOverlay ? "169px" : "190px";
+img.style.objectFit = "contain";
+img.addEventListener('dragstart', handleDragStart);
+img.addEventListener('dragend', handleDragEnd);
+
+if(inOverlay){
+img.onclick = () => console.log("Card in overlay clicked - must organize first");
+img.style.cursor = "grab";
+} else {
+img.onclick = (event) => {
+console.log("Card clicked:", card);
+tryPlay(card, event.currentTarget);
+};
+img.style.cursor = "pointer";
+}
+return img;
+}
+
+function isCardInLandingPile(cardId){
+let found = false;
+document.querySelectorAll('[data-pile-id^="player-"]').forEach(pile => {
+if(found || !isLandingPile(pile)) return;
+if(pile.querySelector(`.cardInPile[data-card-id="${cardId}"]`)) found = true;
+});
+return found;
+}
+
+function refreshArrangementOverlay(){
+const overlay = document.getElementById("cardOverlay");
+const overlayCards = document.getElementById("overlayCards");
+if(!myHand || myHand.length === 0 || winner || isMyOrganizationComplete()){
+overlayCards.innerHTML = "";
+overlay.classList.remove("visible");
+updateReadyPanel(latestRoomData);
+return;
+}
+
+const remainingCards = myHand.filter(card => !isCardInLandingPile(card.id));
+overlayCards.innerHTML = "";
+
+if(remainingCards.length === 0){
+overlay.classList.remove("visible");
+updateReadyPanel(latestRoomData);
+return;
+}
+
+remainingCards.slice(0, OVERLAY_CARD_LIMIT).forEach(card => {
+overlayCards.appendChild(createPlayerCardImage(card, true));
+});
+overlay.classList.add("visible");
+updateReadyPanel(latestRoomData);
 }
 
 function renderHand(){
@@ -557,50 +622,24 @@ if(playerPilesTop.children.length === 0){
 createPiles();
 }
 
-// Get the communal pile for initial placement (users can organize later)
 const communalPile = document.querySelector('[data-pile-id="player-communal"]');
+const handIds = new Set(myHand.map(card => String(card.id)));
 
-// Clear ALL cards from ALL piles (not just communal)
-const allPlayerCards = document.querySelectorAll('.playerCard.cardInPile');
-allPlayerCards.forEach(card => card.remove());
+// Remove only cards that left my hand. Preserve arranged piles after a play.
+document.querySelectorAll('#playerPiles .playerCard.cardInPile, #overlayCards .playerCard.cardInPile').forEach(cardEl => {
+if(!handIds.has(String(cardEl.dataset.cardId))){
+cardEl.remove();
+}
+});
 
 // Check if this is first render (game just started)
-const isFirstRender = myHand.length > 0 && allPlayerCards.length === 0 && !winner;
-const overlay = document.getElementById("cardOverlay");
-const overlayCards = document.getElementById("overlayCards");
+const existingCards = document.querySelectorAll('#playerPiles .playerCard.cardInPile, #overlayCards .playerCard.cardInPile');
+const isFirstRender = myHand.length > 0 && existingCards.length === 0 && !winner;
 
 if(isFirstRender){
 // FIRST RENDER: Show cards in overlay
 console.log("First render - showing overlay with cards");
-overlayCards.innerHTML = ""; // Clear overlay
-overlay.classList.add("visible");
-
-myHand.forEach(card=>{
-// Create image element that IS the card (no wrapper div)
-const img = document.createElement("img");
-img.src = CARD_IMAGES.ihave[card.iHave] || "";
-img.alt = card.iHave;
-img.className = "playerCard cardInPile";
-img.draggable = true;
-img.dataset.cardId = card.id;
-
-// Compact overlay size so the pile targets remain accessible.
-img.style.width = "142px";
-img.style.height = "169px";
-img.style.objectFit = "contain";
-
-// Drag events - cards can be dragged from overlay to piles
-img.addEventListener('dragstart', handleDragStart);
-img.addEventListener('dragend', handleDragEnd);
-
-// Click to play (disabled in overlay - must organize first)
-img.onclick = (event) => {
-console.log("Card in overlay clicked - must organize first");
-};
-img.style.cursor = "grab";
-
-overlayCards.appendChild(img);
-});
+refreshArrangementOverlay();
 } else {
 // NORMAL RENDER: Place cards in communal pile (or they're already organized)
 myHand.forEach(card=>{
@@ -608,34 +647,11 @@ myHand.forEach(card=>{
 const existingCard = document.querySelector(`.cardInPile[data-card-id="${card.id}"]`);
 if(existingCard) return; // Card already placed, skip
 
-// Create image element that IS the card (no wrapper div)
-const img = document.createElement("img");
-img.src = CARD_IMAGES.ihave[card.iHave] || "";
-img.alt = card.iHave;
-img.className = "playerCard cardInPile";
-img.draggable = true;
-img.dataset.cardId = card.id;
-
-// Size: 2x original (160px x 190px)
-img.style.width = "160px";
-img.style.height = "190px";
-img.style.objectFit = "contain";
-
-// Drag events
-img.addEventListener('dragstart', handleDragStart);
-img.addEventListener('dragend', handleDragEnd);
-
-// Click to play (always enabled - game continues after winner)
-img.onclick = (event) => {
-console.log("Card clicked:", card);
-tryPlay(card, event.currentTarget);
-};
-img.style.cursor = "pointer";
-
 if(communalPile){
-communalPile.appendChild(img);
+communalPile.appendChild(createPlayerCardImage(card, false));
 }
 });
+refreshArrangementOverlay();
 }
 
 console.log("Cards rendered");
@@ -1425,6 +1441,7 @@ currentChain = null;
 allPlayersReady = false;
 latestRoomData = null;
 lastAnimatedChainKey = null;
+localReadySubmitted = false;
 if(countdownRenderInterval){
 clearInterval(countdownRenderInterval);
 countdownRenderInterval = null;
@@ -1703,9 +1720,11 @@ return roomData?.state === "playing" && hasCountdownFinished(roomData);
 }
 
 async function startCountdownIfNeeded(roomData){
-if(!isHost || !roomId || roomData?.state !== "playing") return;
-if(!areAllPlayersReady(roomData) || roomData?.countdownStartedAt) return;
-await set(ref(db, `rooms/${roomId}/countdownStartedAt`), Date.now());
+if(!isHost || !roomId || roomData?.state !== "playing") return null;
+if(!areAllPlayersReady(roomData) || roomData?.countdownStartedAt) return Number(roomData?.countdownStartedAt || 0) || null;
+const startedAt = Date.now();
+await set(ref(db, `rooms/${roomId}/countdownStartedAt`), startedAt);
+return startedAt;
 }
 
 function renderCountdown(roomData){
@@ -1762,17 +1781,19 @@ return;
 }
 
 const ready = roomData.organizationReady || {};
-const myReady = ready[playerId] === true;
+const myReady = ready[playerId] === true || localReadySubmitted;
+if(ready[playerId] === true) localReadySubmitted = true;
 const organized = isMyOrganizationComplete();
-panel.style.display = "flex";
 
 if(myReady){
+panel.style.display = areAllPlayersReady(roomData) ? "none" : "flex";
 button.disabled = true;
 button.textContent = "Ready";
 status.textContent = areAllPlayersReady(roomData) ? "Starting..." : "Waiting for the other player";
 return;
 }
 
+panel.style.display = "flex";
 button.disabled = !organized;
 button.textContent = "Ready to go";
 status.textContent = organized ? "All set?" : "Arrange all your cards first";
@@ -1784,9 +1805,19 @@ if(!isMyOrganizationComplete()){
 updateReadyPanel(latestRoomData);
 return;
 }
+localReadySubmitted = true;
 await set(ref(db, `rooms/${roomId}/organizationReady/${playerId}`), true);
 document.getElementById("readyBtn").disabled = true;
 document.getElementById("readyStatus").textContent = "Waiting for the other player";
+document.getElementById("readyPanel").style.display = "none";
+const roomSnap = await get(ref(db,"rooms/"+roomId));
+const roomData = roomSnap.val();
+if(roomData){
+latestRoomData = roomData;
+const startedAt = await startCountdownIfNeeded(roomData);
+if(startedAt && !roomData.countdownStartedAt) roomData.countdownStartedAt = startedAt;
+renderCountdown(roomData);
+}
 }
 
 // Save current pile organization to Firebase
@@ -1806,7 +1837,7 @@ pileOrganization[pileId] = cardIds;
 
 // Save to Firebase
 await set(ref(db, `rooms/${roomId}/pileOrganization/${playerId}`), pileOrganization);
-if(!allPlayersReady){
+if(!allPlayersReady && !localReadySubmitted){
 await set(ref(db, `rooms/${roomId}/organizationReady/${playerId}`), false);
 }
 updateReadyPanel(latestRoomData);
@@ -1869,11 +1900,7 @@ savePileOrganization();
 
 // Check if overlay should be hidden (all cards moved out)
 if(overlay.classList.contains('visible')){
-const remainingCards = overlayCards.querySelectorAll('.cardInPile');
-if(remainingCards.length === 0){
-console.log("All cards organized - hiding overlay");
-overlay.classList.remove('visible');
-}
+refreshArrangementOverlay();
 }
 
 // Update communal pile visibility
