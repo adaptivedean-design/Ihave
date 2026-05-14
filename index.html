@@ -92,7 +92,7 @@ button:hover{background:#16b7a7;}
 .playerCard:hover{box-shadow:0 0 16px rgba(35,135,159,0.62);} /* Glow effect instead of border */
 .playerCard.pendingPlay{filter:brightness(1.08);box-shadow:0 0 18px rgba(110,227,222,0.72);}
 .playerCard.wrong,.playerCard.wrongCard{animation:shake 0.4s;box-shadow:0 0 20px rgba(255,107,107,0.9) !important;} /* Red glow for wrong card */
-.cardFlyClone{position:fixed;z-index:930;pointer-events:none;object-fit:contain;border-radius:8px;filter:drop-shadow(0 18px 28px rgba(0,72,112,.32));transition:transform .42s cubic-bezier(.16,.84,.22,1),opacity .42s ease;}
+.cardFlyClone{position:fixed;z-index:930;pointer-events:none;object-fit:contain;border-radius:8px;background:transparent !important;border:none !important;box-shadow:none !important;filter:none !important;will-change:transform,opacity;transition:transform .58s cubic-bezier(.18,.88,.2,1),opacity .58s ease;}
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
 @keyframes dropRailPulse{0%,100%{opacity:.38;transform:scaleX(.82);}50%{opacity:.95;transform:scaleX(1);}}
 @keyframes chainBreakPulse{0%,100%{background:rgba(228,224,154,0.3);}50%{background:rgba(228,224,154,0.7);}} /* Pulse yellow */
@@ -101,6 +101,7 @@ button:hover{background:#16b7a7;}
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-10px);}75%{transform:translateX(10px);}}
 @keyframes flashRed{0%,100%{background:linear-gradient(135deg, #004870, #023047);}50%{background:#8b0000;border-color:#ff0000;}}
 .deckInner{position:relative;width:100%;height:100%;transition:transform 0.6s;transform-style:preserve-3d;z-index:1;}
+#deck.chainArriving .deckInner{opacity:0;transition:opacity .08s,transform 0.6s;}
 #deck.flipped .deckInner{transform:rotateY(180deg);}
 .deckFront,.deckBack{position:absolute;width:100%;height:100%;backface-visibility:hidden;display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:14px;padding:8px;overflow:hidden;}
 .deckFront img,.deckBack img{display:block;width:172px;height:172px;max-width:none;max-height:none;object-fit:contain;image-rendering:auto;image-rendering:-webkit-optimize-contrast;backface-visibility:hidden;}
@@ -214,9 +215,20 @@ button:hover{background:#16b7a7;}
 
 /* Battle UI polish */
 #battleScreen{
+  top:50% !important;
+  left:50% !important;
+  width:min(920px, calc(100vw - 56px)) !important;
+  height:min(720px, calc(100vh - 64px)) !important;
+  transform:translate(-50%, -50%) scale(.98);
+  border-radius:24px;
   background:radial-gradient(circle at 50% 42%, rgba(228,224,154,.18), transparent 18%),linear-gradient(145deg, rgba(0,40,62,.98), rgba(0,72,112,.98) 44%, rgba(35,135,159,.96)) !important;
-  padding:34px 0 !important;
+  padding:24px 0 !important;
+  box-shadow:0 28px 90px rgba(0,0,0,.46),0 0 0 1px rgba(218,251,233,.24);
+  opacity:0;
+  transition:opacity .22s ease,transform .22s ease;
 }
+#battleScreen::after{content:"";position:fixed;inset:calc((100vh - min(720px, calc(100vh - 64px))) / -2) calc((100vw - min(920px, calc(100vw - 56px))) / -2);z-index:-2;background:rgba(0,24,38,.46);backdrop-filter:blur(2px);pointer-events:none;}
+#battleScreen.visible{opacity:1;transform:translate(-50%, -50%) scale(1);}
 #battleScreen::before{
   content:"";
   position:absolute;
@@ -238,7 +250,7 @@ button:hover{background:#16b7a7;}
 #battleText{
   position:relative;
   z-index:2;
-  font-size:76px !important;
+  font-size:58px !important;
   color:#eff8d7 !important;
   letter-spacing:0 !important;
   text-shadow:0 0 24px rgba(228,224,154,.78),0 10px 28px rgba(0,0,0,.25) !important;
@@ -246,8 +258,8 @@ button:hover{background:#16b7a7;}
 #battlePanel{
   position:relative;
   z-index:2;
-  width:min(720px, calc(100vw - 36px)) !important;
-  padding:22px 28px 26px 28px;
+  width:min(680px, calc(100vw - 92px)) !important;
+  padding:18px 24px 22px 24px;
   border-radius:18px;
   border:1px solid rgba(218,251,233,.28);
   background:rgba(0,72,112,.42);
@@ -542,6 +554,8 @@ let latestRoomData=null;
 let countdownRenderInterval=null;
 const COUNTDOWN_DURATION_MS=4000;
 let lastAnimatedChainKey=null;
+let lastChainArrivalKey=null;
+let localMovementStartedFor=null;
 let localReadySubmitted=false;
 const OVERLAY_CARD_LIMIT=5;
 
@@ -841,6 +855,8 @@ pendingCardId = card.id;
 if(cardElement){
 cardElement.classList.add('pendingPlay');
 }
+localMovementStartedFor = card.id;
+animateCardToCenter(card, playerId);
 
 // Check if socket is connected
 if(!socket || !socket.connected){
@@ -928,23 +944,21 @@ return scope ? scope.querySelector(selector) : null;
 }
 
 function animateCardToCenter(card, playedBy){
-return new Promise(resolve => {
 const source = findVisibleCardElement(card.id, playedBy);
 const target = deck;
 if(!source || !target){
-resolve();
 return;
 }
 
 const sourceRect = source.getBoundingClientRect();
 const targetRect = target.getBoundingClientRect();
 if(!sourceRect.width || !sourceRect.height || !targetRect.width || !targetRect.height){
-resolve();
 return;
 }
 
 const clone = source.cloneNode(true);
 clone.classList.add("cardFlyClone");
+clone.classList.remove("pendingPlay", "wrong", "wrongCard", "dragging");
 clone.style.left = `${sourceRect.left}px`;
 clone.style.top = `${sourceRect.top}px`;
 clone.style.width = `${sourceRect.width}px`;
@@ -952,29 +966,44 @@ clone.style.height = `${sourceRect.height}px`;
 clone.style.margin = "0";
 clone.style.opacity = "1";
 clone.style.transform = "translate3d(0,0,0) scale(1)";
+clone.style.background = "transparent";
+clone.style.border = "none";
+clone.style.boxShadow = "none";
 document.body.appendChild(clone);
 
 const dx = targetRect.left + targetRect.width / 2 - (sourceRect.left + sourceRect.width / 2);
 const dy = targetRect.top + targetRect.height / 2 - (sourceRect.top + sourceRect.height / 2);
 const scale = Math.min(1.18, Math.max(0.72, targetRect.height / sourceRect.height));
 
-requestAnimationFrame(() => {
+requestAnimationFrame(() => requestAnimationFrame(() => {
 clone.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(${scale})`;
 clone.style.opacity = "0.9";
-});
+}));
 
 setTimeout(() => {
 clone.remove();
-resolve();
-}, 460);
-});
+}, 640);
+}
+
+function holdDeckForMovement(chain){
+if(!chain || chain.cardId === undefined || chain.cardId === null) return;
+const key = `${chain.playedBy || ""}-${chain.cardId}-${chain.playedAt || chain.iHave || ""}`;
+if(key === lastChainArrivalKey) return;
+lastChainArrivalKey = key;
+deck.classList.add("chainArriving");
+setTimeout(() => deck.classList.remove("chainArriving"), 560);
 }
 
 function animateChainIfNeeded(chain){
 if(!chain || chain.cardId === undefined || chain.cardId === null) return;
 const key = `${chain.playedBy || ""}-${chain.cardId}-${chain.playedAt || chain.iHave || ""}`;
+holdDeckForMovement(chain);
 if(key === lastAnimatedChainKey) return;
 lastAnimatedChainKey = key;
+if(chain.playedBy === playerId && String(localMovementStartedFor) === String(chain.cardId)){
+localMovementStartedFor = null;
+return;
+}
 animateCardToCenter({ id: chain.cardId, iHave: chain.iHave }, chain.playedBy);
 }
 
@@ -1045,7 +1074,10 @@ console.log("âœ… Card exists in hand, proceeding to remove it...");
 
 const playedAt = Date.now();
 lastAnimatedChainKey = `${playerId}-${card.id}-${playedAt}`;
+if(String(localMovementStartedFor) !== String(card.id)){
 animateCardToCenter(card, playerId);
+}
+localMovementStartedFor = null;
 
 let newHand = myHand.filter(c => c.id !== card.id);
 console.log("   New hand length:", newHand.length, "(was", myHand.length, ")");
@@ -1126,13 +1158,18 @@ battleTimerInterval = null;
 }
 pendingCardId = null;
 document.querySelectorAll('.pendingPlay').forEach(el => el.classList.remove('pendingPlay'));
+localMovementStartedFor = null;
 battleState = battle;
 battleClicks = 0;
+if(battle.card1) animateCardToCenter(battle.card1, battle.player1);
+if(battle.card2) animateCardToCenter(battle.card2, battle.player2);
+localMovementStartedFor = null;
 
 // Show battle UI
 const battleScreen = document.getElementById("battleScreen");
 battleScreen.style.display = "flex";
-battleScreen.classList.remove("battlePress");
+battleScreen.classList.remove("battlePress", "visible");
+requestAnimationFrame(() => battleScreen.classList.add("visible"));
 document.body.style.overflow = "hidden";
 
 // Reset all UI elements to default state
@@ -1352,17 +1389,14 @@ winnerAnnouncement.innerHTML = `
 
 winnerAnnouncement.style.opacity = "1";
 
-// Wait 3 seconds
-await new Promise(resolve => setTimeout(resolve, 3000));
-
-winnerAnnouncement.style.opacity = "1";
-
-// Wait 3 seconds
-await new Promise(resolve => setTimeout(resolve, 3000));
+// Keep the result visible briefly, then dismiss the battle overlay.
+await new Promise(resolve => setTimeout(resolve, 1800));
 
 // Fade out
 winnerAnnouncement.style.opacity = "0";
-await new Promise(resolve => setTimeout(resolve, 500));
+const battleScreen = document.getElementById("battleScreen");
+battleScreen.classList.remove("visible");
+await new Promise(resolve => setTimeout(resolve, 300));
 
 // Winner plays card
 if(result.winner === playerId){
@@ -1385,7 +1419,9 @@ await update(ref(db,"rooms/"+roomId+"/chain"),{
 iHave: result.winnerCard.iHave,
 whoHas: result.winnerCard.whoHas,
 flipped: false,
-playedBy: result.winner
+playedBy: result.winner,
+cardId: result.winnerCard.id,
+playedAt: Date.now()
 });
 await update(ref(db,"rooms/"+roomId),{chainBroken:false});
 if(socket && socket.connected){
@@ -1423,7 +1459,7 @@ console.log("Lost battle, keeping card");
 
 // Hide battle screen
 document.getElementById("battleScreen").style.display = "none";
-document.getElementById("battleScreen").classList.remove("battlePress");
+document.getElementById("battleScreen").classList.remove("battlePress", "visible");
 document.body.style.overflow = "auto";
 battleState = null;
 battleClicks = 0;
@@ -1441,6 +1477,8 @@ currentChain = null;
 allPlayersReady = false;
 latestRoomData = null;
 lastAnimatedChainKey = null;
+lastChainArrivalKey = null;
+localMovementStartedFor = null;
 localReadySubmitted = false;
 if(countdownRenderInterval){
 clearInterval(countdownRenderInterval);
@@ -1455,7 +1493,7 @@ battleState = null;
 battleClicks = 0;
 
 document.getElementById("battleScreen").style.display = "none";
-document.getElementById("battleScreen").classList.remove("battlePress");
+document.getElementById("battleScreen").classList.remove("battlePress", "visible");
 document.body.style.overflow = "auto";
 document.getElementById("roundWinnerOverlay").style.display = "none";
 document.getElementById("winnerAnnouncement").style.opacity = "0";
@@ -2023,6 +2061,7 @@ console.log('   My hand after:', myHand.map(c => c.iHave));
 socket.on('play_rejected', ({ reason }) => {
 console.warn('Card play rejected by server:', reason);
 pendingCardId = null;
+localMovementStartedFor = null;
 document.querySelectorAll('.pendingPlay').forEach(el => el.classList.remove('pendingPlay'));
 });
 }
