@@ -92,6 +92,7 @@ button:hover{background:#16b7a7;}
 .playerCard:hover{transform:scale(1.06);box-shadow:0 0 16px rgba(35,135,159,0.62);} /* Glow effect instead of border */
 .playerCard.pendingPlay{filter:brightness(1.08);transform:scale(0.96);box-shadow:0 0 18px rgba(110,227,222,0.72);}
 .playerCard.wrong,.playerCard.wrongCard{animation:shake 0.4s;box-shadow:0 0 20px rgba(255,107,107,0.9) !important;} /* Red glow for wrong card */
+.cardFlyClone{position:fixed;z-index:930;pointer-events:none;object-fit:contain;border-radius:8px;filter:drop-shadow(0 18px 28px rgba(0,72,112,.32));transition:transform .42s cubic-bezier(.16,.84,.22,1),opacity .42s ease;}
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
 @keyframes dropRailPulse{0%,100%{opacity:.38;transform:scaleX(.82);}50%{opacity:.95;transform:scaleX(1);}}
 @keyframes chainBreakPulse{0%,100%{background:rgba(228,224,154,0.3);}50%{background:rgba(228,224,154,0.7);}} /* Pulse yellow */
@@ -538,6 +539,7 @@ let currentRoundStartedAt=null;
 let latestRoomData=null;
 let countdownRenderInterval=null;
 const COUNTDOWN_DURATION_MS=4000;
+let lastAnimatedChainKey=null;
 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a}
 
@@ -902,6 +904,64 @@ overlay.style.display = "none";
 }, 3000);
 }
 
+function findVisibleCardElement(cardId, playedBy){
+if(cardId === undefined || cardId === null) return null;
+const selector = `.cardInPile[data-card-id="${cardId}"]`;
+const scope = playedBy === playerId ? document : document.getElementById("opponentPiles");
+return scope ? scope.querySelector(selector) : null;
+}
+
+function animateCardToCenter(card, playedBy){
+return new Promise(resolve => {
+const source = findVisibleCardElement(card.id, playedBy);
+const target = deck;
+if(!source || !target){
+resolve();
+return;
+}
+
+const sourceRect = source.getBoundingClientRect();
+const targetRect = target.getBoundingClientRect();
+if(!sourceRect.width || !sourceRect.height || !targetRect.width || !targetRect.height){
+resolve();
+return;
+}
+
+const clone = source.cloneNode(true);
+clone.classList.add("cardFlyClone");
+clone.style.left = `${sourceRect.left}px`;
+clone.style.top = `${sourceRect.top}px`;
+clone.style.width = `${sourceRect.width}px`;
+clone.style.height = `${sourceRect.height}px`;
+clone.style.margin = "0";
+clone.style.opacity = "1";
+clone.style.transform = "translate3d(0,0,0) scale(1)";
+document.body.appendChild(clone);
+
+const dx = targetRect.left + targetRect.width / 2 - (sourceRect.left + sourceRect.width / 2);
+const dy = targetRect.top + targetRect.height / 2 - (sourceRect.top + sourceRect.height / 2);
+const scale = Math.min(1.18, Math.max(0.72, targetRect.height / sourceRect.height));
+
+requestAnimationFrame(() => {
+clone.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(${scale})`;
+clone.style.opacity = "0.9";
+});
+
+setTimeout(() => {
+clone.remove();
+resolve();
+}, 460);
+});
+}
+
+function animateChainIfNeeded(chain){
+if(!chain || chain.cardId === undefined || chain.cardId === null) return;
+const key = `${chain.playedBy || ""}-${chain.cardId}-${chain.playedAt || chain.iHave || ""}`;
+if(key === lastAnimatedChainKey) return;
+lastAnimatedChainKey = key;
+animateCardToCenter({ id: chain.cardId, iHave: chain.iHave }, chain.playedBy);
+}
+
 async function flipCard(){
 console.log("flipCard called");
 console.log("currentChain:", currentChain);
@@ -967,9 +1027,23 @@ return; // ABORT - don't remove a card that's not there
 
 console.log("âœ… Card exists in hand, proceeding to remove it...");
 
+const playedAt = Date.now();
+lastAnimatedChainKey = `${playerId}-${card.id}-${playedAt}`;
+animateCardToCenter(card, playerId);
+
 let newHand = myHand.filter(c => c.id !== card.id);
 console.log("   New hand length:", newHand.length, "(was", myHand.length, ")");
 myHand = newHand;
+
+await update(ref(db,"rooms/"+roomId+"/chain"),{
+iHave: card.iHave,
+whoHas: card.whoHas,
+flipped: false,
+playedBy: playerId,
+cardId: card.id,
+playedAt: playedAt
+});
+await update(ref(db,"rooms/"+roomId),{chainBroken:false});
 
 // Remove card visually from pile (don't re-render entire hand)
 const cardElements = document.querySelectorAll('.cardInPile');
@@ -982,13 +1056,6 @@ el.remove();
 let handObj = {};
 newHand.forEach((c, idx) => handObj[idx] = c);
 await set(ref(db,"rooms/"+roomId+"/hands/"+playerId), handObj);
-await update(ref(db,"rooms/"+roomId+"/chain"),{
-iHave: card.iHave,
-whoHas: card.whoHas,
-flipped: false,
-playedBy: playerId
-});
-await update(ref(db,"rooms/"+roomId),{chainBroken:false});
 pendingCardId = null;
 document.querySelectorAll('.pendingPlay').forEach(el => el.classList.remove('pendingPlay'));
 if(socket && socket.connected){
@@ -1357,6 +1424,7 @@ myHand = [];
 currentChain = null;
 allPlayersReady = false;
 latestRoomData = null;
+lastAnimatedChainKey = null;
 if(countdownRenderInterval){
 clearInterval(countdownRenderInterval);
 countdownRenderInterval = null;
@@ -1444,6 +1512,7 @@ allPlayersReady = data.state === "playing" && areAllPlayersReady(data);
 startCountdownIfNeeded(data);
 renderCountdown(data);
 setChainBrokenVisual(data.chainBroken);
+animateChainIfNeeded(data.chain);
 
 if(data.state==="playing"){
 lobby.style.display="none";
