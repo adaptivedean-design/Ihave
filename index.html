@@ -154,6 +154,54 @@ button:hover{background:#16b7a7;}
 #overlayCards .playerCard:hover{
   transform:scale(1.05) translateY(-5px);
 }
+#readyPanel{
+  display:none;
+  position:fixed;
+  left:50%;
+  bottom:22px;
+  transform:translateX(-50%);
+  z-index:260;
+  align-items:center;
+  gap:12px;
+  padding:10px 14px;
+  border-radius:14px;
+  background:rgba(0,72,112,.92);
+  border:1px solid rgba(110,227,222,.42);
+  box-shadow:0 14px 42px rgba(0,72,112,.34);
+  color:#dafbe9;
+}
+#readyStatus{font-size:14px;font-weight:650;color:#eff8d7;white-space:nowrap;}
+#readyBtn{
+  margin:0;
+  padding:10px 18px;
+  border-radius:999px;
+  background:#16b7a7;
+  color:white;
+  border:2px solid rgba(218,251,233,.72);
+  box-shadow:0 0 18px rgba(110,227,222,.35);
+}
+#readyBtn:disabled{cursor:not-allowed;opacity:.58;background:#23879f;box-shadow:none;}
+#countdownOverlay{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:950;
+  align-items:center;
+  justify-content:center;
+  pointer-events:none;
+  background:radial-gradient(circle at center, rgba(110,227,222,.18), rgba(0,72,112,.12) 34%, transparent 58%);
+}
+#countdownText{
+  min-width:180px;
+  text-align:center;
+  font-size:96px;
+  font-weight:950;
+  color:#eff8d7;
+  text-shadow:0 0 26px rgba(0,72,112,.78),0 0 38px rgba(110,227,222,.72);
+  transform:scale(1);
+  animation:countdownPop .95s ease-out infinite;
+}
+@keyframes countdownPop{0%{opacity:.15;transform:scale(.72);}22%{opacity:1;transform:scale(1.04);}100%{opacity:.88;transform:scale(1);}}
 #roundWinnerOverlay{display:none;position:fixed;top:50%;left:50%;transform:translate(-50%, -50%);min-width:340px;max-width:min(560px, calc(100vw - 48px));padding:42px 52px;border-radius:18px;z-index:10000;text-align:center;overflow:hidden;background:linear-gradient(145deg, rgba(0,72,112,.98), rgba(35,135,159,.96));box-shadow:0 24px 70px rgba(0,72,112,.42),0 0 0 1px rgba(218,251,233,.42) inset;}
 #roundWinnerOverlay::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 20% 15%, rgba(228,224,154,.32), transparent 34%),radial-gradient(circle at 82% 20%, rgba(110,227,222,.36), transparent 30%);pointer-events:none;}
 #roundWinnerOverlay.win{background:linear-gradient(145deg, #23879f, #16b7a7);}
@@ -269,6 +317,13 @@ button:hover{background:#16b7a7;}
 <div id="overlayTitle">Drag and arrange what you got!</div>
 <div id="overlaySubtitle">Organize your cards into piles below</div>
 <div id="overlayCards"></div>
+</div>
+<div id="readyPanel">
+<div id="readyStatus">Arrange all your cards first</div>
+<button id="readyBtn" type="button" disabled>Ready to go</button>
+</div>
+<div id="countdownOverlay" aria-live="polite" aria-atomic="true">
+<div id="countdownText">3</div>
 </div>
 
 <div id="app">
@@ -480,6 +535,9 @@ const deck=document.getElementById("deck");
 let pendingCardId=null;
 let roundWinnerShownFor=null;
 let currentRoundStartedAt=null;
+let latestRoomData=null;
+let countdownRenderInterval=null;
+const COUNTDOWN_DURATION_MS=4000;
 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a}
 
@@ -579,7 +637,7 @@ communalPile.appendChild(img);
 }
 
 console.log("Cards rendered");
-publishOrganizationReady().catch(err => console.error("Failed to publish organization readiness", err));
+updateReadyPanel(latestRoomData);
 }
 
 async function renderOpponent(opponentHand){
@@ -702,13 +760,13 @@ return;
 
 const roomSnap = await get(ref(db,"rooms/"+roomId));
 const roomData = roomSnap.val() || {};
-if(roomData.state === "playing" && !areAllPlayersReady(roomData)){
-console.log("Cards are locked until both players finish organizing into landing zones");
+if(roomData.state === "playing" && !roomData.winner && !isRoundPlayable(roomData)){
+console.log("Cards are locked until both players are ready and the countdown finishes");
 if(cardElement){
 cardElement.classList.add('wrongCard');
 setTimeout(() => cardElement.classList.remove('wrongCard'), 400);
 }
-console.log("====== tryPlay END (waiting for organization) ======");
+console.log("====== tryPlay END (waiting for ready countdown) ======");
 return;
 }
 
@@ -849,6 +907,12 @@ console.log("flipCard called");
 console.log("currentChain:", currentChain);
 if(!currentChain || currentChain.flipped) {
 console.log("Can't flip - no chain or already flipped");
+return;
+}
+const roomSnap = await get(ref(db,"rooms/"+roomId));
+const roomData = roomSnap.val() || {};
+if(roomData.state === "playing" && !roomData.winner && !isRoundPlayable(roomData)){
+console.log("Can't flip - countdown has not finished");
 return;
 }
 if(currentChain.playedBy!==playerId) {
@@ -1292,6 +1356,11 @@ winner = null;
 myHand = [];
 currentChain = null;
 allPlayersReady = false;
+latestRoomData = null;
+if(countdownRenderInterval){
+clearInterval(countdownRenderInterval);
+countdownRenderInterval = null;
+}
 
 if(battleTimerInterval){
 clearInterval(battleTimerInterval);
@@ -1307,6 +1376,8 @@ document.getElementById("roundWinnerOverlay").style.display = "none";
 document.getElementById("winnerAnnouncement").style.opacity = "0";
 document.getElementById("overlayCards").innerHTML = "";
 document.getElementById("cardOverlay").classList.remove("visible");
+document.getElementById("readyPanel").style.display = "none";
+document.getElementById("countdownOverlay").style.display = "none";
 document.querySelectorAll('.pendingPlay').forEach(el => el.classList.remove('pendingPlay'));
 document.querySelectorAll('.playerCard.cardInPile').forEach(el => el.remove());
 
@@ -1363,12 +1434,15 @@ function listenRoom(){
 onValue(ref(db,"rooms/"+roomId),snap=>{
 let data=snap.val();
 if(!data) return;
+latestRoomData = data;
 
 if(data.players){
 playersDiv.innerHTML="Connected:<br>";
 for(const p in data.players){ playersDiv.innerHTML+=data.players[p].name+"<br>"; }
 }
 allPlayersReady = data.state === "playing" && areAllPlayersReady(data);
+startCountdownIfNeeded(data);
+renderCountdown(data);
 setChainBrokenVisual(data.chainBroken);
 
 if(data.state==="playing"){
@@ -1470,6 +1544,8 @@ scores.push(`<div><span>${playerName}:</span><b>${playerScore}</b></div>`);
 scoreBoard.innerHTML = scores.join('');
 }
 
+updateReadyPanel(data);
+
 // OLD Firebase battle system removed - now using WebSocket
 });
 }
@@ -1547,11 +1623,101 @@ const playerIds = Object.keys(players);
 return playerIds.length >= 2 && playerIds.every(id => ready[id] === true);
 }
 
-async function publishOrganizationReady(){
-if(!roomId || !playerId) return false;
-const ready = isMyOrganizationComplete();
-await set(ref(db, `rooms/${roomId}/organizationReady/${playerId}`), ready);
-return ready;
+function hasCountdownFinished(roomData){
+if(!areAllPlayersReady(roomData)) return false;
+const startedAt = Number(roomData?.countdownStartedAt || 0);
+return startedAt > 0 && Date.now() - startedAt >= COUNTDOWN_DURATION_MS;
+}
+
+function isRoundPlayable(roomData){
+return roomData?.state === "playing" && hasCountdownFinished(roomData);
+}
+
+async function startCountdownIfNeeded(roomData){
+if(!isHost || !roomId || roomData?.state !== "playing") return;
+if(!areAllPlayersReady(roomData) || roomData?.countdownStartedAt) return;
+await set(ref(db, `rooms/${roomId}/countdownStartedAt`), Date.now());
+}
+
+function renderCountdown(roomData){
+const overlay = document.getElementById("countdownOverlay");
+const text = document.getElementById("countdownText");
+if(countdownRenderInterval){
+clearInterval(countdownRenderInterval);
+countdownRenderInterval = null;
+}
+
+if(roomData?.state !== "playing" || !areAllPlayersReady(roomData) || !roomData.countdownStartedAt || roomData.winner){
+overlay.style.display = "none";
+return;
+}
+
+const updateCountdown = () => {
+const elapsed = Date.now() - Number(roomData.countdownStartedAt);
+if(elapsed < 0){
+text.textContent = "3";
+overlay.style.display = "flex";
+return;
+}
+if(elapsed < 1000){
+text.textContent = "3";
+} else if(elapsed < 2000){
+text.textContent = "2";
+} else if(elapsed < 3000){
+text.textContent = "1";
+} else if(elapsed < COUNTDOWN_DURATION_MS){
+text.textContent = "GO";
+} else {
+overlay.style.display = "none";
+if(countdownRenderInterval){
+clearInterval(countdownRenderInterval);
+countdownRenderInterval = null;
+}
+updateReadyPanel(latestRoomData);
+return;
+}
+overlay.style.display = "flex";
+};
+
+updateCountdown();
+countdownRenderInterval = setInterval(updateCountdown, 120);
+}
+
+function updateReadyPanel(roomData){
+const panel = document.getElementById("readyPanel");
+const button = document.getElementById("readyBtn");
+const status = document.getElementById("readyStatus");
+if(!roomData || roomData.state !== "playing" || roomData.winner || hasCountdownFinished(roomData)){
+panel.style.display = "none";
+return;
+}
+
+const ready = roomData.organizationReady || {};
+const myReady = ready[playerId] === true;
+const organized = isMyOrganizationComplete();
+panel.style.display = "flex";
+
+if(myReady){
+button.disabled = true;
+button.textContent = "Ready";
+status.textContent = areAllPlayersReady(roomData) ? "Starting..." : "Waiting for the other player";
+return;
+}
+
+button.disabled = !organized;
+button.textContent = "Ready to go";
+status.textContent = organized ? "All set?" : "Arrange all your cards first";
+}
+
+async function handleReadyClick(){
+if(!roomId || !playerId) return;
+if(!isMyOrganizationComplete()){
+updateReadyPanel(latestRoomData);
+return;
+}
+await set(ref(db, `rooms/${roomId}/organizationReady/${playerId}`), true);
+document.getElementById("readyBtn").disabled = true;
+document.getElementById("readyStatus").textContent = "Waiting for the other player";
 }
 
 // Save current pile organization to Firebase
@@ -1571,7 +1737,10 @@ pileOrganization[pileId] = cardIds;
 
 // Save to Firebase
 await set(ref(db, `rooms/${roomId}/pileOrganization/${playerId}`), pileOrganization);
-await publishOrganizationReady();
+if(!allPlayersReady){
+await set(ref(db, `rooms/${roomId}/organizationReady/${playerId}`), false);
+}
+updateReadyPanel(latestRoomData);
 }
 
 let draggedCard = null;
@@ -1800,6 +1969,7 @@ hands:hands,
 chain:null,
 chainBroken:false,
 winner:null,
+countdownStartedAt:null,
 scores:scores,
 pileOrganization:null,
 organizationReady:organizationReady,
@@ -1813,6 +1983,7 @@ deck.onclick=flipCard;
 document.getElementById("enterBtn").onclick=enterGame;
 startBtn.onclick=startGame;
 restartBtn.onclick=startGame; // Reuse startGame function for restart
+document.getElementById("readyBtn").onclick=handleReadyClick;
 </script>
 </body>
 </html>
