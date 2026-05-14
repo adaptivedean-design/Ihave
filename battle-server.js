@@ -67,6 +67,12 @@ io.on('connection', (socket) => {
       socket.emit('play_rejected', { reason: 'awaiting_flip' });
       return;
     }
+
+    io.to(roomId).emit('card_play_intent', {
+      playerId,
+      card,
+      timestamp: now
+    });
     
     console.log(`Current pending plays:`, Object.keys(room.pendingPlays).map(pid => ({
       playerId: pid,

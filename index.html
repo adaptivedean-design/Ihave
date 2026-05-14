@@ -38,6 +38,8 @@ button:hover{background:#16b7a7;}
 #opponentPilesBottom{display:flex;justify-content:center;width:100%;}
 .opponentCard{background:#bdf6e0;height:45px;border-radius:6px;opacity:.95;border:2px solid #16b7a7;}
 #centerArea{display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;background:transparent;}
+#centerArea.battleImpact::after{content:"";position:absolute;width:210px;height:210px;border-radius:50%;background:radial-gradient(circle, rgba(228,224,154,.95), rgba(110,227,222,.48) 32%, transparent 68%);opacity:0;pointer-events:none;animation:battleImpactFlash .48s ease-out;}
+body.battleShake #app{animation:battleScreenShake .34s ease-out;}
 #deck{background:transparent;width:190px;height:190px;border-radius:0;display:flex;justify-content:center;align-items:center;text-align:center;padding:0;cursor:pointer;transition:transform .08s;position:relative;perspective:1000px;box-shadow:none;border:none;isolation:isolate;}
 #deck::after{content:"";position:absolute;inset:8px;border-radius:18px;pointer-events:none;opacity:0;box-shadow:0 0 0 2px rgba(110,227,222,0.48),0 0 24px rgba(110,227,222,0.72);transition:opacity .12s;z-index:0;}
 #deck:hover{transform:scale(1.02);}
@@ -90,18 +92,20 @@ button:hover{background:#16b7a7;}
 .pile .playerCard{width:142px !important;height:142px !important;}
 #opponentPilesTop .pile .playerCard{width:104px !important;height:104px !important;}
 .playerCard:hover{box-shadow:0 0 16px rgba(35,135,159,0.62);} /* Glow effect instead of border */
-.playerCard.pendingPlay{filter:brightness(1.08);box-shadow:0 0 18px rgba(110,227,222,0.72);}
+.playerCard.pendingPlay{filter:brightness(1.08);}
 .playerCard.wrong,.playerCard.wrongCard{animation:shake 0.4s;box-shadow:0 0 20px rgba(255,107,107,0.9) !important;} /* Red glow for wrong card */
 .cardFlyClone{position:fixed;z-index:930;pointer-events:none;object-fit:contain;border-radius:8px;background:transparent !important;border:none !important;box-shadow:none !important;filter:none !important;will-change:transform,opacity;transition:transform .58s cubic-bezier(.18,.88,.2,1),opacity .58s ease;}
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
 @keyframes dropRailPulse{0%,100%{opacity:.38;transform:scaleX(.82);}50%{opacity:.95;transform:scaleX(1);}}
 @keyframes chainBreakPulse{0%,100%{background:rgba(228,224,154,0.3);}50%{background:rgba(228,224,154,0.7);}} /* Pulse yellow */
-.chainBroken{animation:chainBreakPulse 1s infinite;} /* Apply to playerArea when chain breaks */
+@keyframes battleImpactFlash{0%{opacity:0;transform:scale(.35);}28%{opacity:1;transform:scale(1);}100%{opacity:0;transform:scale(1.55);}}
+@keyframes battleScreenShake{0%,100%{transform:translateX(0);}20%{transform:translateX(-7px);}42%{transform:translateX(6px);}64%{transform:translateX(-4px);}82%{transform:translateX(3px);}}
+.chainBroken{animation:chainBreakPulse 1s infinite;}
+.cardInPile.chainBroken{box-shadow:0 0 18px rgba(228,224,154,0.9),0 0 0 2px rgba(228,224,154,0.62);border-radius:8px;}
 .wrongCard{animation:shake 0.4s,flashRed 0.4s;}
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-10px);}75%{transform:translateX(10px);}}
 @keyframes flashRed{0%,100%{background:linear-gradient(135deg, #004870, #023047);}50%{background:#8b0000;border-color:#ff0000;}}
 .deckInner{position:relative;width:100%;height:100%;transition:transform 0.6s;transform-style:preserve-3d;z-index:1;}
-#deck.chainArriving .deckInner{opacity:0;transition:opacity .08s,transform 0.6s;}
 #deck.flipped .deckInner{transform:rotateY(180deg);}
 .deckFront,.deckBack{position:absolute;width:100%;height:100%;backface-visibility:hidden;display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:14px;padding:8px;overflow:hidden;}
 .deckFront img,.deckBack img{display:block;width:172px;height:172px;max-width:none;max-height:none;object-fit:contain;image-rendering:auto;image-rendering:-webkit-optimize-contrast;backface-visibility:hidden;}
@@ -554,7 +558,6 @@ let latestRoomData=null;
 let countdownRenderInterval=null;
 const COUNTDOWN_DURATION_MS=4000;
 let lastAnimatedChainKey=null;
-let lastChainArrivalKey=null;
 let localMovementStartedFor=null;
 let localReadySubmitted=false;
 const OVERLAY_CARD_LIMIT=5;
@@ -734,8 +737,8 @@ img.className = "playerCard cardInPile";
 img.dataset.cardId = card.id;
 
 // Match square source artwork to avoid browser distortion.
-img.style.width = "160px";
-img.style.height = "160px";
+img.style.width = "104px";
+img.style.height = "104px";
 img.style.objectFit = "contain";
 img.style.cursor = "default";
 img.style.opacity = "0.9";
@@ -760,8 +763,8 @@ img.className = "playerCard cardInPile";
 img.dataset.cardId = card.id;
 
 // Match square source artwork to avoid browser distortion.
-img.style.width = "160px";
-img.style.height = "160px";
+img.style.width = "104px";
+img.style.height = "104px";
 img.style.objectFit = "contain";
 img.style.cursor = "default";
 img.style.opacity = "0.9";
@@ -912,12 +915,11 @@ return true;
 }
 
 function setChainBrokenVisual(isBroken){
-const playerArea = document.getElementById("playerArea");
-const opponentArea = document.getElementById("opponentArea");
-[playerArea, opponentArea].forEach(area => {
-if(!area) return;
-area.classList.toggle("chainBroken", Boolean(isBroken));
-});
+document.getElementById("playerArea")?.classList.remove("chainBroken");
+document.getElementById("opponentArea")?.classList.remove("chainBroken");
+document.querySelectorAll('.cardInPile.chainBroken').forEach(card => card.classList.remove('chainBroken'));
+if(!isBroken) return;
+document.querySelectorAll('#playerPiles .cardInPile').forEach(card => card.classList.add('chainBroken'));
 }
 
 function showRoundResult(type, title, subtext){
@@ -985,19 +987,9 @@ clone.remove();
 }, 640);
 }
 
-function holdDeckForMovement(chain){
-if(!chain || chain.cardId === undefined || chain.cardId === null) return;
-const key = `${chain.playedBy || ""}-${chain.cardId}-${chain.playedAt || chain.iHave || ""}`;
-if(key === lastChainArrivalKey) return;
-lastChainArrivalKey = key;
-deck.classList.add("chainArriving");
-setTimeout(() => deck.classList.remove("chainArriving"), 560);
-}
-
 function animateChainIfNeeded(chain){
 if(!chain || chain.cardId === undefined || chain.cardId === null) return;
 const key = `${chain.playedBy || ""}-${chain.cardId}-${chain.playedAt || chain.iHave || ""}`;
-holdDeckForMovement(chain);
 if(key === lastAnimatedChainKey) return;
 lastAnimatedChainKey = key;
 if(chain.playedBy === playerId && String(localMovementStartedFor) === String(chain.cardId)){
@@ -1005,6 +997,19 @@ localMovementStartedFor = null;
 return;
 }
 animateCardToCenter({ id: chain.cardId, iHave: chain.iHave }, chain.playedBy);
+}
+
+function triggerBattleImpact(){
+const centerArea = document.getElementById("centerArea");
+centerArea?.classList.remove("battleImpact");
+document.body.classList.remove("battleShake");
+void centerArea?.offsetWidth;
+centerArea?.classList.add("battleImpact");
+document.body.classList.add("battleShake");
+setTimeout(() => {
+centerArea?.classList.remove("battleImpact");
+document.body.classList.remove("battleShake");
+}, 520);
 }
 
 async function flipCard(){
@@ -1129,7 +1134,7 @@ const overlay = document.getElementById("roundWinnerOverlay");
 const winnerText = document.getElementById("roundWinnerText");
 const winnerSubtext = document.getElementById("roundWinnerSubtext");
 
-winnerText.textContent = "ðŸŽ‰ YOU WIN! ðŸŽ‰";
+winnerText.textContent = "YOU WIN!";
 winnerSubtext.textContent = "First to empty your hand!";
 overlay.classList.remove("loss");
 overlay.classList.add("win");
@@ -1164,12 +1169,13 @@ battleClicks = 0;
 if(battle.card1) animateCardToCenter(battle.card1, battle.player1);
 if(battle.card2) animateCardToCenter(battle.card2, battle.player2);
 localMovementStartedFor = null;
+triggerBattleImpact();
 
 // Show battle UI
 const battleScreen = document.getElementById("battleScreen");
 battleScreen.style.display = "flex";
 battleScreen.classList.remove("battlePress", "visible");
-requestAnimationFrame(() => battleScreen.classList.add("visible"));
+setTimeout(() => requestAnimationFrame(() => battleScreen.classList.add("visible")), 260);
 document.body.style.overflow = "hidden";
 
 // Reset all UI elements to default state
@@ -1442,7 +1448,7 @@ const overlay = document.getElementById("roundWinnerOverlay");
 const winnerText = document.getElementById("roundWinnerText");
 const winnerSubtext = document.getElementById("roundWinnerSubtext");
 
-winnerText.textContent = "ðŸŽ‰ YOU WIN! ðŸŽ‰";
+winnerText.textContent = "YOU WIN!";
 winnerSubtext.textContent = "First to empty your hand!";
 overlay.classList.remove("loss");
 overlay.classList.add("win");
@@ -1477,7 +1483,6 @@ currentChain = null;
 allPlayersReady = false;
 latestRoomData = null;
 lastAnimatedChainKey = null;
-lastChainArrivalKey = null;
 localMovementStartedFor = null;
 localReadySubmitted = false;
 if(countdownRenderInterval){
@@ -1591,7 +1596,7 @@ document.getElementById("restartBtn").style.display="none";
 if(data.winner){
 winner=data.winner;
 const winnerName = data.players[winner]?.name || "Someone";
-chainText.innerHTML=(winner===playerId)?`YOU WIN ðŸŽ‰`:`${winnerName} wins!`;
+chainText.innerHTML=(winner===playerId)?`YOU WIN`:`${winnerName} wins!`;
 
 // Show announcement for loser too
 if(winner !== playerId && roundWinnerShownFor !== winner){
@@ -1600,7 +1605,7 @@ const overlay = document.getElementById("roundWinnerOverlay");
 const winnerText = document.getElementById("roundWinnerText");
 const winnerSubtext = document.getElementById("roundWinnerSubtext");
 
-winnerText.textContent = "ðŸ˜¢ YOU LOST";
+winnerText.textContent = "YOU LOST";
 winnerSubtext.textContent = `${winnerName} finished first! Complete your chain.`;
 overlay.classList.remove("win");
 overlay.classList.add("loss");
@@ -1744,7 +1749,7 @@ function areAllPlayersReady(roomData){
 const players = roomData?.players || {};
 const ready = roomData?.organizationReady || {};
 const playerIds = Object.keys(players);
-return playerIds.length >= 2 && playerIds.every(id => ready[id] === true);
+return playerIds.length >= 2 && playerIds.every(id => ready[id] === true || (id === playerId && localReadySubmitted));
 }
 
 function hasCountdownFinished(roomData){
@@ -1957,18 +1962,18 @@ communalPile.style.display = 'flex';
 // Confetti celebration animation
 function createConfetti(){
 const battleScreen = document.getElementById("battleScreen");
-const emojis = ['ðŸŽ‰', 'âœ¨', 'ðŸŽŠ', 'â­', 'ðŸ’«', 'ðŸŒŸ'];
 const colors = ['#e4e09a', '#6ee3de', '#50d3df', '#eff8d7'];
 
 for(let i = 0; i < 30; i++){
 const confetti = document.createElement('div');
-const isEmoji = Math.random() > 0.5;
-confetti.textContent = isEmoji ? emojis[Math.floor(Math.random() * emojis.length)] : 'â—';
 confetti.style.position = 'absolute';
 confetti.style.left = Math.random() * 100 + '%';
 confetti.style.top = '-50px';
-confetti.style.fontSize = (20 + Math.random() * 30) + 'px';
-if(!isEmoji) confetti.style.color = colors[Math.floor(Math.random() * colors.length)];
+const size = 6 + Math.random() * 8;
+confetti.style.width = size + 'px';
+confetti.style.height = size + 'px';
+confetti.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+confetti.style.background = colors[Math.floor(Math.random() * colors.length)];
 confetti.style.opacity = '0.8';
 confetti.style.pointerEvents = 'none';
 confetti.style.zIndex = '1001';
@@ -2048,6 +2053,12 @@ updateBattleClicks(clicks1, clicks2);
 socket.on('battle_result', (result) => {
 console.log('ðŸ† Battle result:', result);
 handleBattleResult(result);
+});
+
+socket.on('card_play_intent', ({ playerId: intentPlayerId, card }) => {
+if(!card) return;
+if(intentPlayerId === playerId && String(localMovementStartedFor) === String(card.id)) return;
+animateCardToCenter(card, intentPlayerId);
 });
 
 socket.on('play_card_now', ({ card }) => {
