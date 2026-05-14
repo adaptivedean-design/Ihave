@@ -76,8 +76,8 @@ button:hover{background:#16b7a7;}
 #playerPilesTop .pile::after{content:"";position:absolute;left:18px;right:18px;bottom:9px;height:3px;border-radius:999px;background:linear-gradient(90deg, transparent, rgba(35,135,159,0.72), rgba(110,227,222,0.92), rgba(35,135,159,0.72), transparent);box-shadow:0 0 10px rgba(110,227,222,0.45);animation:dropRailPulse 1.8s ease-in-out infinite;pointer-events:none;}
 #playerPilesTop .pile.dragOver::after{height:5px;background:linear-gradient(90deg, transparent, #e4e09a, #6ee3de, #e4e09a, transparent);box-shadow:0 0 16px rgba(110,227,222,0.85);}
 /* Cards in organizing piles - vertical stack */
-.pile:not(.communal) .cardInPile{margin-left:0;margin-top:-118px;}
-#opponentPilesTop .pile:not(.communal) .cardInPile{margin-top:-86px;}
+.pile:not(.communal) .cardInPile{margin-left:0;margin-top:-102px;}
+#opponentPilesTop .pile:not(.communal) .cardInPile{margin-top:-74px;}
 .pile:not(.communal) .cardInPile:first-child{margin-top:0;}
 /* Cards in communal cluster - slight random overlap for messy look */
 .pile.communal .cardInPile{margin:-64px;position:relative;}
@@ -85,12 +85,12 @@ button:hover{background:#16b7a7;}
 /* General card styles */
 .cardInPile{position:relative;cursor:grab;touch-action:manipulation;user-select:none;-webkit-user-drag:element;}
 .cardInPile.dragging{opacity:0.5;cursor:grabbing;}
-.cardInPile:hover{z-index:10;transform:translateY(-10px);} /* Lift card on hover */
+.cardInPile:hover{z-index:10;} /* Keep hover crisp; glow lives on the image */
 .playerCard{border-radius:8px;cursor:pointer;transition:transform .04s,box-shadow .06s;border:none;display:block;object-fit:contain;image-rendering:auto;image-rendering:-webkit-optimize-contrast;backface-visibility:hidden;} /* No borders - images stand alone */
-.pile .playerCard{width:134px !important;height:160px !important;}
-#opponentPilesTop .pile .playerCard{width:98px !important;height:116px !important;}
-.playerCard:hover{transform:scale(1.06);box-shadow:0 0 16px rgba(35,135,159,0.62);} /* Glow effect instead of border */
-.playerCard.pendingPlay{filter:brightness(1.08);transform:scale(0.96);box-shadow:0 0 18px rgba(110,227,222,0.72);}
+.pile .playerCard{width:142px !important;height:142px !important;}
+#opponentPilesTop .pile .playerCard{width:104px !important;height:104px !important;}
+.playerCard:hover{box-shadow:0 0 16px rgba(35,135,159,0.62);} /* Glow effect instead of border */
+.playerCard.pendingPlay{filter:brightness(1.08);box-shadow:0 0 18px rgba(110,227,222,0.72);}
 .playerCard.wrong,.playerCard.wrongCard{animation:shake 0.4s;box-shadow:0 0 20px rgba(255,107,107,0.9) !important;} /* Red glow for wrong card */
 .cardFlyClone{position:fixed;z-index:930;pointer-events:none;object-fit:contain;border-radius:8px;filter:drop-shadow(0 18px 28px rgba(0,72,112,.32));transition:transform .42s cubic-bezier(.16,.84,.22,1),opacity .42s ease;}
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
@@ -103,7 +103,7 @@ button:hover{background:#16b7a7;}
 .deckInner{position:relative;width:100%;height:100%;transition:transform 0.6s;transform-style:preserve-3d;z-index:1;}
 #deck.flipped .deckInner{transform:rotateY(180deg);}
 .deckFront,.deckBack{position:absolute;width:100%;height:100%;backface-visibility:hidden;display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:14px;padding:8px;overflow:hidden;}
-.deckFront img,.deckBack img{display:block;width:158px;height:188px;max-width:none;max-height:none;object-fit:contain;image-rendering:auto;image-rendering:-webkit-optimize-contrast;backface-visibility:hidden;}
+.deckFront img,.deckBack img{display:block;width:172px;height:172px;max-width:none;max-height:none;object-fit:contain;image-rendering:auto;image-rendering:-webkit-optimize-contrast;backface-visibility:hidden;}
 .deckBack{transform:rotateY(180deg);}
 
 /* Card Arrangement Overlay - appears at game start */
@@ -121,7 +121,7 @@ button:hover{background:#16b7a7;}
   justify-content:center;
   padding:10px 18px 12px 18px;
   border-radius:16px;
-  transform:translate(-50%, -58%);
+  transform:translate(-50%, calc(-58% - 76px));
   box-shadow:0 14px 44px rgba(0,72,112,0.26);
   border:2px solid rgba(22,183,167,.72);
 }
@@ -151,18 +151,18 @@ button:hover{background:#16b7a7;}
 }
 #overlayCards .playerCard{
   width:142px;
-  height:169px;
+  height:142px;
   cursor:grab;
 }
 #overlayCards .playerCard:hover{
-  transform:scale(1.05) translateY(-5px);
+  box-shadow:0 0 16px rgba(35,135,159,0.42);
 }
 #readyPanel{
   display:none;
   position:fixed;
   left:50%;
   top:50%;
-  transform:translate(-50%, 122px);
+  transform:translate(-50%, 46px);
   z-index:260;
   align-items:center;
   gap:12px;
@@ -560,7 +560,7 @@ img.className = "playerCard cardInPile";
 img.draggable = true;
 img.dataset.cardId = card.id;
 img.style.width = inOverlay ? "142px" : "160px";
-img.style.height = inOverlay ? "169px" : "190px";
+img.style.height = inOverlay ? "142px" : "160px";
 img.style.objectFit = "contain";
 img.addEventListener('dragstart', handleDragStart);
 img.addEventListener('dragend', handleDragEnd);
@@ -719,9 +719,9 @@ img.alt = card.iHave;
 img.className = "playerCard cardInPile";
 img.dataset.cardId = card.id;
 
-// Size: 2x (160px x 190px)
+// Match square source artwork to avoid browser distortion.
 img.style.width = "160px";
-img.style.height = "190px";
+img.style.height = "160px";
 img.style.objectFit = "contain";
 img.style.cursor = "default";
 img.style.opacity = "0.9";
@@ -745,9 +745,9 @@ img.alt = card.iHave;
 img.className = "playerCard cardInPile";
 img.dataset.cardId = card.id;
 
-// Size: 2x (160px x 190px)
+// Match square source artwork to avoid browser distortion.
 img.style.width = "160px";
-img.style.height = "190px";
+img.style.height = "160px";
 img.style.objectFit = "contain";
 img.style.cursor = "default";
 img.style.opacity = "0.9";
