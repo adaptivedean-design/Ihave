@@ -7,7 +7,7 @@
 <style>
 body{margin:0;font-family:system-ui;background:#0f172a;color:#004870;display:flex;justify-content:center;align-items:center;min-height:100vh;}
 #app{width:min(1240px, calc(100vw - 40px));background:#dafbe9;padding:20px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);position:relative;}
-#logo{width:180px;height:180px;object-fit:contain;background:white;border-radius:50%;padding:20px;box-shadow:0 8px 24px rgba(0,72,112,0.3);margin:0 auto;display:block;transition:all 0.3s;}
+#logo{width:180px;height:180px;object-fit:contain;background:white;border-radius:50%;padding:20px;box-shadow:0 8px 24px rgba(0,72,112,0.3);margin:0 auto;display:block;transition:all 0.3s;image-rendering:auto;image-rendering:-webkit-optimize-contrast;backface-visibility:hidden;}
 body.in-game #logo{width:80px;height:80px;padding:10px;position:fixed;left:20px;top:25px;z-index:100;margin:0;transform:none;}
 body.in-game h1{display:none;}
 #gameSidebar{position:fixed;left:20px;top:144px;display:none;flex-direction:column;gap:15px;align-items:center;z-index:100;}
@@ -38,9 +38,10 @@ button:hover{background:#16b7a7;}
 #opponentPilesBottom{display:flex;justify-content:center;width:100%;}
 .opponentCard{background:#bdf6e0;height:45px;border-radius:6px;opacity:.95;border:2px solid #16b7a7;}
 #centerArea{display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;background:transparent;}
-#deck{background:transparent;width:190px;height:190px;border-radius:0;display:flex;justify-content:center;align-items:center;text-align:center;padding:0;cursor:pointer;transition:transform .08s,filter .12s;position:relative;perspective:1000px;box-shadow:none;border:none;}
+#deck{background:transparent;width:190px;height:190px;border-radius:0;display:flex;justify-content:center;align-items:center;text-align:center;padding:0;cursor:pointer;transition:transform .08s;position:relative;perspective:1000px;box-shadow:none;border:none;isolation:isolate;}
+#deck::after{content:"";position:absolute;inset:8px;border-radius:18px;pointer-events:none;opacity:0;box-shadow:0 0 0 2px rgba(110,227,222,0.48),0 0 24px rgba(110,227,222,0.72);transition:opacity .12s;z-index:0;}
 #deck:hover{transform:scale(1.02);}
-#deck.canFlip{filter:drop-shadow(0 0 16px rgba(110,227,222,0.8));}
+#deck.canFlip::after{opacity:1;}
 #chainText{display:none;}
 #scoreBoard{position:absolute;top:20px;right:20px;background:rgba(0,72,112,0.8);padding:12px 16px;border-radius:8px;font-size:14px;border:2px solid #16b7a7;line-height:1.6;}
 #restartBtn{position:absolute;top:20px;left:20px;}
@@ -85,7 +86,7 @@ button:hover{background:#16b7a7;}
 .cardInPile{position:relative;cursor:grab;touch-action:manipulation;user-select:none;-webkit-user-drag:element;}
 .cardInPile.dragging{opacity:0.5;cursor:grabbing;}
 .cardInPile:hover{z-index:10;transform:translateY(-10px);} /* Lift card on hover */
-.playerCard{border-radius:8px;cursor:pointer;transition:transform .04s,box-shadow .06s;border:none;display:block;object-fit:contain;} /* No borders - images stand alone */
+.playerCard{border-radius:8px;cursor:pointer;transition:transform .04s,box-shadow .06s;border:none;display:block;object-fit:contain;image-rendering:auto;image-rendering:-webkit-optimize-contrast;backface-visibility:hidden;} /* No borders - images stand alone */
 .pile .playerCard{width:134px !important;height:160px !important;}
 #opponentPilesTop .pile .playerCard{width:98px !important;height:116px !important;}
 .playerCard:hover{transform:scale(1.06);box-shadow:0 0 16px rgba(35,135,159,0.62);} /* Glow effect instead of border */
@@ -98,10 +99,10 @@ button:hover{background:#16b7a7;}
 .wrongCard{animation:shake 0.4s,flashRed 0.4s;}
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-10px);}75%{transform:translateX(10px);}}
 @keyframes flashRed{0%,100%{background:linear-gradient(135deg, #004870, #023047);}50%{background:#8b0000;border-color:#ff0000;}}
-.deckInner{position:relative;width:100%;height:100%;transition:transform 0.6s;transform-style:preserve-3d;}
+.deckInner{position:relative;width:100%;height:100%;transition:transform 0.6s;transform-style:preserve-3d;z-index:1;}
 #deck.flipped .deckInner{transform:rotateY(180deg);}
 .deckFront,.deckBack{position:absolute;width:100%;height:100%;backface-visibility:hidden;display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:14px;padding:8px;overflow:hidden;}
-.deckFront img,.deckBack img{display:block;max-width:158px;max-height:158px;object-fit:contain;}
+.deckFront img,.deckBack img{display:block;width:158px;height:188px;max-width:none;max-height:none;object-fit:contain;image-rendering:auto;image-rendering:-webkit-optimize-contrast;backface-visibility:hidden;}
 .deckBack{transform:rotateY(180deg);}
 
 /* Card Arrangement Overlay - appears at game start */
