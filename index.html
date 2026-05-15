@@ -560,6 +560,7 @@ const COUNTDOWN_DURATION_MS=4000;
 let localMovementStartedFor=null;
 let localReadySubmitted=false;
 const OVERLAY_CARD_LIMIT=5;
+let opponentRenderToken=0;
 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a}
 
@@ -675,6 +676,7 @@ updateReadyPanel(latestRoomData);
 }
 
 async function renderOpponent(opponentHand){
+const renderToken = ++opponentRenderToken;
 // Clear existing cards from ALL opponent piles
 const allOpponentCards = document.querySelectorAll('#opponentPiles .cardInPile');
 allOpponentCards.forEach(card => card.remove());
@@ -707,6 +709,8 @@ pileOrganization = orgSnap.val() || {};
 } catch(e){
 console.log("No pile organization for opponent yet");
 }
+
+if(renderToken !== opponentRenderToken) return;
 
 // Create a map of cards by ID for easy lookup
 const cardMap = {};
@@ -1565,7 +1569,6 @@ playersDiv.innerHTML="Connected:<br>";
 for(const p in data.players){ playersDiv.innerHTML+=data.players[p].name+"<br>"; }
 }
 allPlayersReady = data.state === "playing" && areAllPlayersReady(data);
-startCountdownIfNeeded(data);
 renderCountdown(data);
 setChainBrokenVisual(data.chainBroken);
 
@@ -1756,12 +1759,10 @@ function isRoundPlayable(roomData){
 return roomData && roomData.state === "playing" && hasCountdownFinished(roomData);
 }
 
-async function startCountdownIfNeeded(roomData){
-if(!roomId || !roomData || roomData.state !== "playing") return null;
-if(!areAllPlayersReady(roomData) || roomData.countdownStartedAt) return Number((roomData && roomData.countdownStartedAt) || 0) || null;
-const startedAt = Date.now();
-await set(ref(db, `rooms/${roomId}/countdownStartedAt`), startedAt);
-return startedAt;
+function willAllPlayersBeReady(roomData, ready){
+const players = (roomData && roomData.players) || {};
+const playerIds = Object.keys(players);
+return playerIds.length >= 2 && playerIds.every(id => ready[id] === true);
 }
 
 function renderCountdown(roomData){
@@ -1843,19 +1844,19 @@ updateReadyPanel(latestRoomData);
 return;
 }
 localReadySubmitted = true;
-await set(ref(db, `rooms/${roomId}/organizationReady/${playerId}`), true);
 document.getElementById("readyBtn").disabled = true;
 document.getElementById("readyStatus").textContent = "Waiting for the other player";
 document.getElementById("readyPanel").style.display = "none";
 const roomSnap = await get(ref(db,"rooms/"+roomId));
 const roomData = roomSnap.val();
 if(roomData){
-latestRoomData = roomData;
-roomData.organizationReady = roomData.organizationReady || {};
-roomData.organizationReady[playerId] = true;
-const startedAt = await startCountdownIfNeeded(roomData);
-if(startedAt && !roomData.countdownStartedAt) roomData.countdownStartedAt = startedAt;
-renderCountdown(roomData);
+const ready = Object.assign({}, roomData.organizationReady || {});
+ready[playerId] = true;
+const updates = { organizationReady: ready };
+if(roomData.state === "playing" && !roomData.countdownStartedAt && willAllPlayersBeReady(roomData, ready)){
+updates.countdownStartedAt = Date.now();
+}
+await update(ref(db,"rooms/"+roomId), updates);
 }
 }
 
