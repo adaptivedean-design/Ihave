@@ -559,7 +559,6 @@ let currentRoundStartedAt=null;
 let latestRoomData=null;
 let countdownRenderInterval=null;
 const COUNTDOWN_DURATION_MS=4000;
-let lastAnimatedChainKey=null;
 let localMovementStartedFor=null;
 let localReadySubmitted=false;
 const OVERLAY_CARD_LIMIT=5;
@@ -746,7 +745,7 @@ img.style.cursor = "default";
 img.style.opacity = "0.9";
 
 pile.appendChild(img);
-placedCards.add(cardId);
+placedCards.add(String(cardId));
 }
 });
 }
@@ -975,6 +974,9 @@ clone.style.transform = "translate3d(0,0,0) scale(1)";
 clone.style.background = "transparent";
 clone.style.border = "none";
 clone.style.boxShadow = "none";
+clone.style.outline = "none";
+clone.style.padding = "0";
+clone.style.filter = "none";
 document.body.appendChild(clone);
 
 const dx = targetRect.left + targetRect.width / 2 - (sourceRect.left + sourceRect.width / 2);
@@ -989,18 +991,6 @@ clone.style.opacity = "0.9";
 setTimeout(() => {
 clone.remove();
 }, 640);
-}
-
-function animateChainIfNeeded(chain){
-if(!chain || chain.cardId === undefined || chain.cardId === null) return;
-const key = `${chain.playedBy || ""}-${chain.cardId}-${chain.playedAt || chain.iHave || ""}`;
-if(key === lastAnimatedChainKey) return;
-lastAnimatedChainKey = key;
-if(chain.playedBy === playerId && String(localMovementStartedFor) === String(chain.cardId)){
-localMovementStartedFor = null;
-return;
-}
-animateCardToCenter({ id: chain.cardId, iHave: chain.iHave }, chain.playedBy);
 }
 
 function triggerBattleImpact(){
@@ -1082,7 +1072,6 @@ return; // ABORT - don't remove a card that's not there
 console.log("âœ… Card exists in hand, proceeding to remove it...");
 
 const playedAt = Date.now();
-lastAnimatedChainKey = `${playerId}-${card.id}-${playedAt}`;
 if(String(localMovementStartedFor) !== String(card.id)){
 animateCardToCenter(card, playerId);
 }
@@ -1170,9 +1159,6 @@ document.querySelectorAll('.pendingPlay').forEach(el => el.classList.remove('pen
 localMovementStartedFor = null;
 battleState = battle;
 battleClicks = 0;
-if(battle.card1) animateCardToCenter(battle.card1, battle.player1);
-if(battle.card2) animateCardToCenter(battle.card2, battle.player2);
-localMovementStartedFor = null;
 triggerBattleImpact();
 
 // Show battle UI
@@ -1486,7 +1472,6 @@ myHand = [];
 currentChain = null;
 allPlayersReady = false;
 latestRoomData = null;
-lastAnimatedChainKey = null;
 localMovementStartedFor = null;
 localReadySubmitted = false;
 if(countdownRenderInterval){
@@ -1576,7 +1561,6 @@ allPlayersReady = data.state === "playing" && areAllPlayersReady(data);
 startCountdownIfNeeded(data);
 renderCountdown(data);
 setChainBrokenVisual(data.chainBroken);
-animateChainIfNeeded(data.chain);
 
 if(data.state==="playing"){
 lobby.style.display="none";
@@ -1757,7 +1741,6 @@ return playerIds.length >= 2 && playerIds.every(id => ready[id] === true || (id 
 }
 
 function hasCountdownFinished(roomData){
-if(!areAllPlayersReady(roomData)) return false;
 const startedAt = Number((roomData && roomData.countdownStartedAt) || 0);
 return startedAt > 0 && Date.now() - startedAt >= COUNTDOWN_DURATION_MS;
 }
@@ -1782,7 +1765,7 @@ clearInterval(countdownRenderInterval);
 countdownRenderInterval = null;
 }
 
-if(!roomData || roomData.state !== "playing" || !areAllPlayersReady(roomData) || !roomData.countdownStartedAt || roomData.winner){
+if(!roomData || roomData.state !== "playing" || !roomData.countdownStartedAt || roomData.winner){
 overlay.style.display = "none";
 return;
 }
@@ -1861,6 +1844,8 @@ const roomSnap = await get(ref(db,"rooms/"+roomId));
 const roomData = roomSnap.val();
 if(roomData){
 latestRoomData = roomData;
+roomData.organizationReady = roomData.organizationReady || {};
+roomData.organizationReady[playerId] = true;
 const startedAt = await startCountdownIfNeeded(roomData);
 if(startedAt && !roomData.countdownStartedAt) roomData.countdownStartedAt = startedAt;
 renderCountdown(roomData);
