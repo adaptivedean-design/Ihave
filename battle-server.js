@@ -19,6 +19,7 @@ const rooms = {};
 
 const BATTLE_WINDOW_MS = 900; // Forgiving battle detection window
 const AUTO_PLAY_DELAY_MS = BATTLE_WINDOW_MS + 100; // Give edge-of-window plays time to arrive
+const BATTLE_INTRO_MS = 5000; // Dramatic card collision before clicking starts
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
@@ -124,7 +125,8 @@ io.on('connection', (socket) => {
         card2: card,
         clicks1: 0,
         clicks2: 0,
-        startTime: now,
+        startTime: now + BATTLE_INTRO_MS,
+        introMs: BATTLE_INTRO_MS,
         studentBonus: hasStudentBonus,
         student: player1IsStudent ? battleOpponent.playerId : (player2IsStudent ? playerId : null)
       };
@@ -181,6 +183,7 @@ io.on('connection', (socket) => {
     if (!room || !room.activeBattle) return;
     
     const battle = room.activeBattle;
+    if (Date.now() < battle.startTime) return;
     
     if (battle.player1 === playerId) {
       battle.clicks1++;

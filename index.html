@@ -39,12 +39,10 @@ button:hover{background:#16b7a7;}
 #opponentPilesBottom{display:flex;justify-content:center;width:100%;}
 .opponentCard{background:#bdf6e0;height:45px;border-radius:6px;opacity:.95;border:2px solid #16b7a7;}
 #centerArea{display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;background:transparent;}
-#centerArea.battleImpact::after{content:"";position:absolute;width:210px;height:210px;border-radius:50%;background:radial-gradient(circle, rgba(228,224,154,.95), rgba(110,227,222,.48) 32%, transparent 68%);opacity:0;pointer-events:none;animation:battleImpactFlash .48s ease-out;}
-body.battleShake #app{animation:battleScreenShake .34s ease-out;}
+#centerArea.battleImpact::after{content:"";position:absolute;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle, rgba(228,224,154,.95), rgba(110,227,222,.55) 32%, transparent 70%);opacity:0;pointer-events:none;animation:battleImpactFlash 5s ease-out;}
+body.battleShake #app{animation:battleScreenShake 5s ease-in-out;}
 #deck{background:transparent;width:190px;height:190px;border-radius:0;display:flex;justify-content:center;align-items:center;text-align:center;padding:0;cursor:pointer;transition:transform .08s;position:relative;perspective:1000px;box-shadow:none;border:none;isolation:isolate;}
-#deck::after{content:"";position:absolute;inset:8px;border-radius:18px;pointer-events:none;opacity:0;box-shadow:0 0 0 2px rgba(110,227,222,0.48),0 0 24px rgba(110,227,222,0.72);transition:opacity .12s;z-index:0;}
 #deck:hover{transform:scale(1.02);}
-#deck.canFlip::after{opacity:1;}
 #chainText{display:none;}
 #scoreBoard{position:absolute;top:20px;right:20px;background:rgba(0,72,112,0.8);padding:12px 16px;border-radius:8px;font-size:14px;border:2px solid #16b7a7;line-height:1.6;}
 #restartBtn{position:absolute;top:20px;left:20px;}
@@ -99,8 +97,8 @@ body.battleShake #app{animation:battleScreenShake .34s ease-out;}
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
 @keyframes dropRailPulse{0%,100%{opacity:.38;transform:scaleX(.82);}50%{opacity:.95;transform:scaleX(1);}}
 @keyframes chainBreakPulse{0%,100%{background:rgba(228,224,154,0.3);}50%{background:rgba(228,224,154,0.7);}} /* Pulse yellow */
-@keyframes battleImpactFlash{0%{opacity:0;transform:scale(.35);}28%{opacity:1;transform:scale(1);}100%{opacity:0;transform:scale(1.55);}}
-@keyframes battleScreenShake{0%,100%{transform:translateX(0);}20%{transform:translateX(-7px);}42%{transform:translateX(6px);}64%{transform:translateX(-4px);}82%{transform:translateX(3px);}}
+@keyframes battleImpactFlash{0%{opacity:0;transform:scale(.35);}10%{opacity:1;transform:scale(.95);}55%{opacity:.75;transform:scale(1.18);}100%{opacity:0;transform:scale(1.7);}}
+@keyframes battleScreenShake{0%,100%{transform:translateX(0);}8%{transform:translateX(-7px);}16%{transform:translateX(6px);}24%{transform:translateX(-4px);}32%{transform:translateX(3px);}40%,100%{transform:translateX(0);}}
 .chainBroken{animation:chainBreakPulse 1s infinite;}
 .cardInPile.chainBroken{box-shadow:0 0 18px rgba(228,224,154,0.9),0 0 0 2px rgba(228,224,154,0.62);border-radius:8px;}
 .wrongCard{animation:shake 0.4s,flashRed 0.4s;}
@@ -1163,9 +1161,8 @@ triggerBattleImpact();
 
 // Show battle UI
 const battleScreen = document.getElementById("battleScreen");
-battleScreen.style.display = "flex";
+battleScreen.style.display = "none";
 battleScreen.classList.remove("battlePress", "visible");
-setTimeout(() => requestAnimationFrame(() => battleScreen.classList.add("visible")), 260);
 document.body.style.overflow = "hidden";
 
 // Reset all UI elements to default state
@@ -1234,10 +1231,15 @@ document.getElementById("rightName").textContent = studentName;
 console.log(`Battle UI: ${hostName} (left) vs ${studentName} (right)`);
 });
 
-// Start countdown timer
-let elapsed = 0;
+const introDelay = Math.max(0, battle.startTime - Date.now());
+setTimeout(() => {
+if(!battleState) return;
+battleScreen.style.display = "flex";
+requestAnimationFrame(() => battleScreen.classList.add("visible"));
+
+// Start countdown timer after the collision intro.
 battleTimerInterval = setInterval(() => {
-elapsed = Date.now() - battle.startTime;
+const elapsed = Date.now() - battle.startTime;
 const remaining = Math.max(0, 5 - Math.floor(elapsed / 1000));
 document.getElementById("battleTimer").textContent = remaining;
 
@@ -1248,6 +1250,7 @@ battleTimerInterval = null;
 socket.emit('battle_end', { roomId });
 }
 }, 100);
+}, introDelay);
 
 // Set up click handler
 const battleButton = document.getElementById("battleButton");
@@ -1523,6 +1526,12 @@ if(!deckFront || !deckBack) return;
 const iHaveImg = CARD_IMAGES.ihave[chain.iHave];
 const whoHasImg = CARD_IMAGES.whas[chain.whoHas];
 
+if(chain.flipped){
+deck.classList.add("flipped");
+} else {
+deck.classList.remove("flipped");
+}
+
 deckFront.innerHTML = iHaveImg ?
 `<img src="${iHaveImg}" alt="${chain.iHave}">` :
 `<b>I HAVE</b><br>${chain.iHave}`;
@@ -1532,11 +1541,9 @@ deckBack.innerHTML = whoHasImg ?
 `<b>WHO HAS</b><br>${chain.whoHas}?`;
 
 if(chain.flipped){
-deck.classList.add("flipped");
 deck.classList.remove("canFlip");
 chainText.innerHTML="Find and play your card!";
 } else {
-deck.classList.remove("flipped");
 if(chain.playedBy===playerId){
 deck.classList.add("canFlip");
 chainText.innerHTML="Click the center card to flip it!";
@@ -1750,7 +1757,7 @@ return roomData && roomData.state === "playing" && hasCountdownFinished(roomData
 }
 
 async function startCountdownIfNeeded(roomData){
-if(!isHost || !roomId || !roomData || roomData.state !== "playing") return null;
+if(!roomId || !roomData || roomData.state !== "playing") return null;
 if(!areAllPlayersReady(roomData) || roomData.countdownStartedAt) return Number((roomData && roomData.countdownStartedAt) || 0) || null;
 const startedAt = Date.now();
 await set(ref(db, `rooms/${roomId}/countdownStartedAt`), startedAt);
