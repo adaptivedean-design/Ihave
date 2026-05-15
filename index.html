@@ -20,6 +20,7 @@ body.in-game #gameSidebar{display:flex;}
 #home{text-align:center;max-width:400px;margin:0 auto;}
 #home input{width:100%;max-width:300px;margin:10px auto;display:block;}
 #home button{width:100%;max-width:300px;margin:10px auto;display:block;}
+#loginStatus{min-height:20px;margin-top:8px;font-size:13px;font-weight:650;color:#23879f;}
 #lobby{text-align:center;}
 h1{margin:20px 0 30px 0;color:#004870;text-align:center;font-size:28px;font-weight:700;}
 #headerBar{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding:0 20px;}
@@ -353,6 +354,7 @@ body.battleShake #app{animation:battleScreenShake .34s ease-out;}
 Enter your name<br>
 <input id="nameInput" placeholder="name"><br>
 <button id="enterBtn">Enter</button>
+<div id="loginStatus"></div>
 </div>
 
 <div id="lobby">
@@ -915,8 +917,10 @@ return true;
 }
 
 function setChainBrokenVisual(isBroken){
-document.getElementById("playerArea")?.classList.remove("chainBroken");
-document.getElementById("opponentArea")?.classList.remove("chainBroken");
+const playerArea = document.getElementById("playerArea");
+const opponentArea = document.getElementById("opponentArea");
+if(playerArea) playerArea.classList.remove("chainBroken");
+if(opponentArea) opponentArea.classList.remove("chainBroken");
 document.querySelectorAll('.cardInPile.chainBroken').forEach(card => card.classList.remove('chainBroken'));
 if(!isBroken) return;
 document.querySelectorAll('#playerPiles .cardInPile').forEach(card => card.classList.add('chainBroken'));
@@ -1001,13 +1005,13 @@ animateCardToCenter({ id: chain.cardId, iHave: chain.iHave }, chain.playedBy);
 
 function triggerBattleImpact(){
 const centerArea = document.getElementById("centerArea");
-centerArea?.classList.remove("battleImpact");
+if(centerArea) centerArea.classList.remove("battleImpact");
 document.body.classList.remove("battleShake");
-void centerArea?.offsetWidth;
-centerArea?.classList.add("battleImpact");
+if(centerArea) void centerArea.offsetWidth;
+if(centerArea) centerArea.classList.add("battleImpact");
 document.body.classList.add("battleShake");
 setTimeout(() => {
-centerArea?.classList.remove("battleImpact");
+if(centerArea) centerArea.classList.remove("battleImpact");
 document.body.classList.remove("battleShake");
 }, 520);
 }
@@ -1234,8 +1238,8 @@ console.log(`Determined hostPlayerId: ${hostPlayerId}`);
 console.log(`Determined studentPlayerId: ${studentPlayerId}`);
 console.log(`==================`);
 
-const hostName = players[hostPlayerId]?.name || "Host";
-const studentName = players[studentPlayerId]?.name || "Student";
+const hostName = (players[hostPlayerId] && players[hostPlayerId].name) || "Host";
+const studentName = (players[studentPlayerId] && players[studentPlayerId].name) || "Student";
 
 // Always show host on left, student on right
 document.getElementById("leftName").textContent = hostName;
@@ -1595,7 +1599,7 @@ document.getElementById("restartBtn").style.display="none";
 // Check winner status BEFORE rendering hands
 if(data.winner){
 winner=data.winner;
-const winnerName = data.players[winner]?.name || "Someone";
+const winnerName = (data.players[winner] && data.players[winner].name) || "Someone";
 chainText.innerHTML=(winner===playerId)?`YOU WIN`:`${winnerName} wins!`;
 
 // Show announcement for loser too
@@ -1746,25 +1750,25 @@ return myHand.every(card => landedIds.has(String(card.id)));
 }
 
 function areAllPlayersReady(roomData){
-const players = roomData?.players || {};
-const ready = roomData?.organizationReady || {};
+const players = (roomData && roomData.players) || {};
+const ready = (roomData && roomData.organizationReady) || {};
 const playerIds = Object.keys(players);
 return playerIds.length >= 2 && playerIds.every(id => ready[id] === true || (id === playerId && localReadySubmitted));
 }
 
 function hasCountdownFinished(roomData){
 if(!areAllPlayersReady(roomData)) return false;
-const startedAt = Number(roomData?.countdownStartedAt || 0);
+const startedAt = Number((roomData && roomData.countdownStartedAt) || 0);
 return startedAt > 0 && Date.now() - startedAt >= COUNTDOWN_DURATION_MS;
 }
 
 function isRoundPlayable(roomData){
-return roomData?.state === "playing" && hasCountdownFinished(roomData);
+return roomData && roomData.state === "playing" && hasCountdownFinished(roomData);
 }
 
 async function startCountdownIfNeeded(roomData){
-if(!isHost || !roomId || roomData?.state !== "playing") return null;
-if(!areAllPlayersReady(roomData) || roomData?.countdownStartedAt) return Number(roomData?.countdownStartedAt || 0) || null;
+if(!isHost || !roomId || !roomData || roomData.state !== "playing") return null;
+if(!areAllPlayersReady(roomData) || roomData.countdownStartedAt) return Number((roomData && roomData.countdownStartedAt) || 0) || null;
 const startedAt = Date.now();
 await set(ref(db, `rooms/${roomId}/countdownStartedAt`), startedAt);
 return startedAt;
@@ -1778,7 +1782,7 @@ clearInterval(countdownRenderInterval);
 countdownRenderInterval = null;
 }
 
-if(roomData?.state !== "playing" || !areAllPlayersReady(roomData) || !roomData.countdownStartedAt || roomData.winner){
+if(!roomData || roomData.state !== "playing" || !areAllPlayersReady(roomData) || !roomData.countdownStartedAt || roomData.winner){
 overlay.style.display = "none";
 return;
 }
@@ -1994,6 +1998,12 @@ easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)'
 }
 
 async function enterGame(){
+const enterBtn = document.getElementById("enterBtn");
+const loginStatus = document.getElementById("loginStatus");
+enterBtn.disabled = true;
+enterBtn.textContent = "Entering...";
+loginStatus.textContent = "Joining room...";
+try{
 myName=document.getElementById("nameInput").value||"player";
 let params=new URLSearchParams(location.search);
 roomId=params.get("room");
@@ -2003,7 +2013,14 @@ roomId="room"+Math.floor(Math.random()*999999);
 await set(ref(db,"rooms/"+roomId),{state:"waiting",players:{}});
 isHost=true;
 startBtn.style.display="inline-block";
-}else{isHost=false;startBtn.style.display="none";}
+}else{
+const existingRoomSnap = await get(ref(db,"rooms/"+roomId));
+if(!existingRoomSnap.exists()){
+throw new Error("Room not found. Ask the host for a fresh link.");
+}
+isHost=false;
+startBtn.style.display="none";
+}
 
 const link=location.origin+location.pathname+"?room="+roomId;
 if(isHost){
@@ -2015,6 +2032,7 @@ document.getElementById("share").innerHTML=""; // Student doesn't see link
 await update(ref(db,"rooms/"+roomId+"/players/"+playerId),{name:myName});
 home.style.display="none";
 lobby.style.display="block";
+loginStatus.textContent = "";
 listenRoom();
 // listenPendingPlay(); // REMOVED - now using WebSocket server for battles
 
@@ -2075,6 +2093,12 @@ pendingCardId = null;
 localMovementStartedFor = null;
 document.querySelectorAll('.pendingPlay').forEach(el => el.classList.remove('pendingPlay'));
 });
+}catch(error){
+console.error("Unable to enter game:", error);
+loginStatus.textContent = error && error.message ? error.message : "Could not join. Please try again.";
+enterBtn.disabled = false;
+enterBtn.textContent = "Enter";
+}
 }
 
 async function startGame(){
