@@ -63,9 +63,18 @@ io.on('connection', (socket) => {
     const now = Date.now();
     console.log(`Received at: ${now}`);
 
+    const rejectPlay = (reason) => {
+      console.log(`Rejecting play from ${playerId}: ${reason}`);
+      socket.emit('play_rejected', { reason });
+    };
+
     if (room.awaitingFlip) {
-      console.log(`Rejecting play from ${playerId}: chain is awaiting flip`);
-      socket.emit('play_rejected', { reason: 'awaiting_flip' });
+      rejectPlay('awaiting_flip');
+      return;
+    }
+
+    if (room.activeBattle) {
+      rejectPlay('battle_active');
       return;
     }
 
@@ -102,7 +111,7 @@ io.on('connection', (socket) => {
       }
     }
 
-    if (battleOpponent && !room.activeBattle) {
+    if (battleOpponent) {
       // BATTLE!
       console.log(`🎮 BATTLE triggered between ${playerId} and ${battleOpponent.playerId}`);
       
@@ -138,7 +147,7 @@ io.on('connection', (socket) => {
       console.log(`📢 Emitting battle_start to room ${roomId}`);
       io.to(roomId).emit('battle_start', room.activeBattle);
       
-    } else if (!room.activeBattle) {
+    } else {
       // No battle - add to pending
       console.log(`No battle opponent found, adding to pending plays`);
       
@@ -153,11 +162,12 @@ io.on('connection', (socket) => {
             io.to(player.socketId).emit('play_card_now', { card: card });
           }
           delete room.pendingPlays[playerId];
-        } else if (room.pendingPlays[playerId] && room.awaitingFlip) {
-          console.log(`Rejecting pending play for ${playerId}: chain started before timeout`);
+        } else if (room.pendingPlays[playerId]) {
+          const reason = room.activeBattle ? 'battle_active' : 'awaiting_flip';
+          console.log(`Rejecting pending play for ${playerId}: ${reason}`);
           const player = room.players[playerId];
           if (player && player.socketId) {
-            io.to(player.socketId).emit('play_rejected', { reason: 'awaiting_flip' });
+            io.to(player.socketId).emit('play_rejected', { reason });
           }
           delete room.pendingPlays[playerId];
         }
@@ -171,8 +181,6 @@ io.on('connection', (socket) => {
       };
       
       console.log(`⏳ Pending play registered, will auto-play in ${BATTLE_WINDOW_MS}ms if no battle. Pending count: ${Object.keys(room.pendingPlays).length}`);
-    } else {
-      console.log(`⚠️ Battle already active, ignoring card play`);
     }
     console.log(`================================\n`);
   });

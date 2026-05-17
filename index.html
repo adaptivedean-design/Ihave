@@ -2108,6 +2108,7 @@ console.warn('Card play rejected by server:', reason);
 pendingCardId = null;
 localMovementStartedFor = null;
 document.querySelectorAll('.pendingPlay').forEach(el => el.classList.remove('pendingPlay'));
+renderHand();
 });
 }catch(error){
 console.error("Unable to enter game:", error);
