@@ -579,6 +579,7 @@ CENTER_WAITING_FLIP: "center_waiting_flip"
 };
 let flowPhase = FLOW_PHASES.ARRANGING;
 const activeMovementKeys = new Set();
+let cardImagesPreloaded = false;
 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a}
 
@@ -588,6 +589,8 @@ function makeDeck(){
 }
 
 function preloadCardImages(){
+if(cardImagesPreloaded) return;
+cardImagesPreloaded = true;
 const urls = new Set([
 ...Object.values(CARD_IMAGES.ihave),
 ...Object.values(CARD_IMAGES.whas)
@@ -599,7 +602,14 @@ img.src = src;
 });
 }
 
-preloadCardImages();
+function scheduleCardImagePreload(delay=1200){
+const preload = () => preloadCardImages();
+if("requestIdleCallback" in window){
+setTimeout(() => window.requestIdleCallback(preload, {timeout: 3000}), delay);
+} else {
+setTimeout(preload, delay);
+}
+}
 
 function setFlowPhase(nextPhase){
 if(flowPhase !== nextPhase){
@@ -2244,6 +2254,7 @@ home.style.display="none";
 lobby.style.display="block";
 loginStatus.textContent = "";
 listenRoom();
+scheduleCardImagePreload();
 
 // Connect to WebSocket server for battles
 console.log("Connecting to battle server:", BATTLE_SERVER);
@@ -2329,6 +2340,7 @@ enterBtn.textContent = "Enter";
 
 async function startGame(){
 if(!isHost) return;
+preloadCardImages();
 
 // Hide overlay if visible (game restart)
 const overlay = document.getElementById("cardOverlay");
