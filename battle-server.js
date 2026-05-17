@@ -18,8 +18,16 @@ const io = new Server(server, {
 const rooms = {};
 
 const BATTLE_WINDOW_MS = 900; // Forgiving battle detection window
-const AUTO_PLAY_DELAY_MS = BATTLE_WINDOW_MS + 100; // Give edge-of-window plays time to arrive
+const AUTO_PLAY_DELAY_MS = BATTLE_WINDOW_MS + 20; // Give edge-of-window plays time to arrive
 const BATTLE_INTRO_MS = 3000; // Dramatic card collision before clicking starts
+
+function emitBlockedPlay(roomId, playerId, card, reason) {
+  io.to(roomId).emit('card_play_blocked', {
+    playerId,
+    card,
+    reason
+  });
+}
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
@@ -63,26 +71,23 @@ io.on('connection', (socket) => {
     const now = Date.now();
     console.log(`Received at: ${now}`);
 
-    const rejectPlay = (reason) => {
+    const rejectPlay = (reason, broadcastBlock = false) => {
       console.log(`Rejecting play from ${playerId}: ${reason}`);
       socket.emit('play_rejected', { reason });
+      if (broadcastBlock) {
+        emitBlockedPlay(roomId, playerId, card, reason);
+      }
     };
 
     if (room.awaitingFlip) {
-      rejectPlay('awaiting_flip');
+      rejectPlay('awaiting_flip', true);
       return;
     }
 
     if (room.activeBattle) {
-      rejectPlay('battle_active');
+      rejectPlay('battle_active', true);
       return;
     }
-
-    io.to(roomId).emit('card_play_intent', {
-      playerId,
-      card,
-      timestamp: now
-    });
     
     console.log(`Current pending plays:`, Object.keys(room.pendingPlays).map(pid => ({
       playerId: pid,
@@ -91,6 +96,7 @@ io.on('connection', (socket) => {
     
     // Check if another player has a pending play within battle window
     let battleOpponent = null;
+    let blockedByPending = null;
     for (const [pid, pending] of Object.entries(room.pendingPlays)) {
       const age = now - pending.timestamp;
       console.log(`Checking pending play from ${pid}, age: ${age}ms`);
@@ -103,11 +109,12 @@ io.on('connection', (socket) => {
           battleOpponent = { playerId: pid, card: pending.card, isHost: pending.isHost };
           break;
         } else {
-          // Same player - testing mode (allow battle with self)
-          console.log('🧪 TESTING MODE: same player triggering battle');
-          battleOpponent = { playerId: pid + '_clone', card: pending.card, isHost: pending.isHost };
+          console.log('Same player already has a pending play; blocking duplicate');
+          blockedByPending = { playerId: pid, age };
           break;
         }
+      } else {
+        blockedByPending = { playerId: pid, age };
       }
     }
 
@@ -116,7 +123,7 @@ io.on('connection', (socket) => {
       console.log(`🎮 BATTLE triggered between ${playerId} and ${battleOpponent.playerId}`);
       
       // **FIX: Clear the timeout for the opponent's pending play**
-      const opponentPending = room.pendingPlays[battleOpponent.playerId.replace('_clone', '')];
+      const opponentPending = room.pendingPlays[battleOpponent.playerId];
       if (opponentPending && opponentPending.timeout) {
         console.log(`🔧 Clearing timeout for ${battleOpponent.playerId}'s pending play`);
         clearTimeout(opponentPending.timeout);
@@ -128,7 +135,7 @@ io.on('connection', (socket) => {
       const hasStudentBonus = Math.random() < 0.333;
       
       room.activeBattle = {
-        player1: battleOpponent.playerId.replace('_clone', ''), // Remove clone suffix
+        player1: battleOpponent.playerId,
         player2: playerId,
         card1: battleOpponent.card,
         card2: card,
@@ -147,9 +154,18 @@ io.on('connection', (socket) => {
       console.log(`📢 Emitting battle_start to room ${roomId}`);
       io.to(roomId).emit('battle_start', room.activeBattle);
       
+    } else if (blockedByPending) {
+      console.log(`Near click blocked for ${playerId}; ${blockedByPending.playerId} reserved center ${blockedByPending.age}ms ago`);
+      emitBlockedPlay(roomId, playerId, card, 'center_reserved');
+      socket.emit('play_rejected', { reason: 'center_reserved' });
     } else {
       // No battle - add to pending
       console.log(`No battle opponent found, adding to pending plays`);
+      io.to(roomId).emit('card_play_intent', {
+        playerId,
+        card,
+        timestamp: now
+      });
       
       // Set timeout to auto-play just after the battle window if no battle occurs
       const timeoutId = setTimeout(() => {
