@@ -93,7 +93,7 @@ body.battleShake #app{animation:battleScreenShake 3s ease-in-out;}
 .playerCard:hover{box-shadow:0 0 16px rgba(35,135,159,0.62);} /* Glow effect instead of border */
 .playerCard.pendingPlay{filter:brightness(1.08);}
 .playerCard.wrong,.playerCard.wrongCard{animation:shake 0.4s;box-shadow:0 0 20px rgba(255,107,107,0.9) !important;} /* Red glow for wrong card */
-.cardFlyClone{position:fixed;z-index:930;pointer-events:none;object-fit:contain;border-radius:8px;background:transparent !important;border:none !important;box-shadow:none !important;filter:none !important;will-change:transform,opacity;transition:transform .76s cubic-bezier(.18,.88,.2,1),opacity .18s ease;}
+.cardFlyClone{position:fixed;z-index:930;pointer-events:none;object-fit:contain;border-radius:8px;background:transparent !important;border:none !important;box-shadow:none !important;filter:none !important;will-change:transform,opacity;transition:transform .76s cubic-bezier(.18,.88,.2,1);}
 .cardFlyClone.blockedClone{filter:drop-shadow(0 0 16px rgba(255,107,107,0.85)) !important;}
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
 @keyframes dropRailPulse{0%,100%{opacity:.38;transform:scaleX(.82);}50%{opacity:.95;transform:scaleX(1);}}
@@ -1044,8 +1044,10 @@ return;
 }
 
 if(currentChain && currentChain.flipped){
+const deckFront=document.querySelector(".deckFront");
 deck.classList.add("centerReplacing");
-centerRevealAt = Date.now() + CARD_TRAVEL_MS + 100;
+if(deckFront) deckFront.innerHTML = "";
+centerRevealAt = Date.now() + CARD_TRAVEL_MS - 40;
 }
 
 const sourceRect = source.getBoundingClientRect();
@@ -1079,17 +1081,13 @@ const scale = Math.min(1.18, Math.max(0.72, targetRect.height / sourceRect.heigh
 
 requestAnimationFrame(() => requestAnimationFrame(() => {
 clone.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(${scale})`;
-clone.style.opacity = "0.9";
+clone.style.opacity = "1";
 }));
-
-setTimeout(() => {
-clone.style.opacity = "0";
-}, CARD_TRAVEL_MS);
 
 setTimeout(() => {
 clone.remove();
 activeMovementKeys.delete(key);
-}, CARD_TRAVEL_MS + 160);
+}, CARD_TRAVEL_MS + 80);
 }
 
 function animateBlockedCardToCenter(card, playedBy){
@@ -1745,9 +1743,11 @@ deck.classList.remove("canFlip");
 deck.classList.remove("centerReplacing");
 chainText.innerHTML="Find and play your card!";
 } else {
-deck.classList.remove("instantFaceReset");
 deck.classList.remove("centerReplacing");
 centerRevealAt = 0;
+requestAnimationFrame(() => {
+deck.classList.remove("instantFaceReset");
+});
 if(chain.playedBy===playerId){
 deck.classList.add("canFlip");
 chainText.innerHTML="Click the center card to flip it!";
