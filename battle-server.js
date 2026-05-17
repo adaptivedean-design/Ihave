@@ -19,7 +19,7 @@ const rooms = {};
 
 const BATTLE_WINDOW_MS = 900; // Forgiving battle detection window
 const AUTO_PLAY_DELAY_MS = BATTLE_WINDOW_MS + 100; // Give edge-of-window plays time to arrive
-const BATTLE_INTRO_MS = 5000; // Dramatic card collision before clicking starts
+const BATTLE_INTRO_MS = 3000; // Dramatic card collision before clicking starts
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
