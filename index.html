@@ -95,6 +95,9 @@ body.battleShake #app{animation:battleScreenShake 3s ease-in-out;}
 .playerCard.wrong,.playerCard.wrongCard{animation:shake 0.4s;box-shadow:0 0 20px rgba(255,107,107,0.9) !important;} /* Red glow for wrong card */
 .cardFlyClone{position:fixed;z-index:930;pointer-events:none;object-fit:contain;border-radius:8px;background:transparent !important;border:none !important;box-shadow:none !important;filter:none !important;will-change:transform,opacity;transition:transform .76s cubic-bezier(.18,.88,.2,1);}
 .cardFlyClone.blockedClone{filter:drop-shadow(0 0 16px rgba(255,107,107,0.85)) !important;}
+.centerCardSurface{position:absolute;inset:0;z-index:3;width:100%;height:100%;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:1;transition:opacity .18s ease,transform .18s ease;}
+.centerCardSurface img{display:block;width:172px;height:172px;object-fit:contain;image-rendering:auto;image-rendering:-webkit-optimize-contrast;}
+.centerCardSurface.decaying{opacity:0;transform:scale(.96);}
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
 @keyframes dropRailPulse{0%,100%{opacity:.38;transform:scaleX(.82);}50%{opacity:.95;transform:scaleX(1);}}
 @keyframes chainBreakPulse{0%,100%{background:rgba(228,224,154,0.3);}50%{background:rgba(228,224,154,0.7);}} /* Pulse yellow */
@@ -579,6 +582,7 @@ CENTER_WAITING_FLIP: "center_waiting_flip"
 };
 let flowPhase = FLOW_PHASES.ARRANGING;
 const activeMovementKeys = new Set();
+const canceledMovementKeys = new Set();
 let cardImagesPreloaded = false;
 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a}
@@ -628,10 +632,33 @@ function movementKey(card, playedBy){
 return `${playedBy || "unknown"}:${card && card.id}`;
 }
 
+function cancelMovement(cardId, playedBy){
+if(cardId === undefined || cardId === null) return;
+canceledMovementKeys.add(movementKey({id: cardId}, playedBy));
+}
+
 function clearPendingPlayVisuals(){
 pendingCardId = null;
 localMovementStartedFor = null;
 document.querySelectorAll('.pendingPlay').forEach(el => el.classList.remove('pendingPlay'));
+}
+
+function getCenterSurface(){
+return deck.querySelector(".centerCardSurface");
+}
+
+function removeCenterSurface(){
+const surface = getCenterSurface();
+if(surface) surface.remove();
+}
+
+function decayCenterSurface(){
+const surface = getCenterSurface();
+if(!surface) return;
+surface.classList.add("decaying");
+setTimeout(() => {
+if(surface.parentNode) surface.remove();
+}, 220);
 }
 
 function createPlayerCardImage(card, inOverlay=false){
@@ -1058,6 +1085,7 @@ const deckFront=document.querySelector(".deckFront");
 deck.classList.add("centerReplacing");
 if(deckFront) deckFront.innerHTML = "";
 centerRevealAt = Date.now() + CARD_TRAVEL_MS - 40;
+removeCenterSurface();
 }
 
 const sourceRect = source.getBoundingClientRect();
@@ -1095,7 +1123,26 @@ clone.style.opacity = "1";
 }));
 
 setTimeout(() => {
+if(canceledMovementKeys.has(key)){
+canceledMovementKeys.delete(key);
 clone.remove();
+} else if(flowPhase === FLOW_PHASES.BATTLE_INTRO || flowPhase === FLOW_PHASES.BATTLE_ACTIVE){
+clone.remove();
+} else {
+const surface = document.createElement("div");
+const surfaceImg = clone.cloneNode(false);
+surface.className = "centerCardSurface";
+surface.dataset.cardId = card.id;
+surface.dataset.playedBy = playedBy || "";
+surfaceImg.className = "";
+surfaceImg.removeAttribute("style");
+surfaceImg.src = CARD_IMAGES.ihave[card.iHave] || surfaceImg.src;
+surfaceImg.alt = card.iHave;
+removeCenterSurface();
+surface.appendChild(surfaceImg);
+deck.appendChild(surface);
+clone.remove();
+}
 activeMovementKeys.delete(key);
 }, CARD_TRAVEL_MS + 80);
 }
@@ -1670,6 +1717,7 @@ battleTimerInterval = null;
 battleState = null;
 battleClicks = 0;
 activeMovementKeys.clear();
+canceledMovementKeys.clear();
 setFlowPhase(FLOW_PHASES.ARRANGING);
 
 document.getElementById("battleScreen").style.display = "none";
@@ -1698,6 +1746,7 @@ deck.classList.remove("flipped");
 deck.classList.remove("canFlip");
 deck.classList.remove("instantFaceReset");
 deck.classList.remove("centerReplacing");
+removeCenterSurface();
 document.querySelector(".deckFront").innerHTML="";
 document.querySelector(".deckBack").innerHTML="";
 chainText.innerHTML="";
@@ -1734,15 +1783,18 @@ return;
 }
 
 if(chain.flipped){
+decayCenterSurface();
 deck.classList.add("flipped");
 } else {
 deck.classList.add("instantFaceReset");
 deck.classList.remove("flipped");
 }
 
-deckFront.innerHTML = iHaveImg ?
+const centerSurface = getCenterSurface();
+const centerSurfaceMatches = centerSurface && String(centerSurface.dataset.cardId) === String(chain.cardId);
+deckFront.innerHTML = centerSurfaceMatches ? "" : (iHaveImg ?
 `<img src="${iHaveImg}" alt="${chain.iHave}">` :
-`<b>I HAVE</b><br>${chain.iHave}`;
+`<b>I HAVE</b><br>${chain.iHave}`);
 
 deckBack.innerHTML = chain.flipped && whoHasImg ?
 `<img src="${whoHasImg}" alt="${chain.whoHas}">` :
@@ -1866,6 +1918,7 @@ deck.classList.remove("flipped");
 deck.classList.remove("canFlip");
 deck.classList.remove("instantFaceReset");
 deck.classList.remove("centerReplacing");
+removeCenterSurface();
 document.querySelector(".deckFront").innerHTML="";
 document.querySelector(".deckBack").innerHTML="";
 chainText.innerHTML="";
@@ -2304,6 +2357,7 @@ socket.on('card_play_blocked', ({ playerId: blockedPlayerId, card }) => {
 if(!card) return;
 setFlowPhase(FLOW_PHASES.NEAR_BLOCK);
 if(blockedPlayerId === playerId){
+cancelMovement(pendingCardId || card.id, playerId);
 clearPendingPlayVisuals();
 }
 animateBlockedCardToCenter(card, blockedPlayerId);
@@ -2324,6 +2378,7 @@ console.log('   My hand after:', myHand.map(c => c.iHave));
 
 socket.on('play_rejected', ({ reason }) => {
 console.warn('Card play rejected by server:', reason);
+cancelMovement(pendingCardId, playerId);
 clearPendingPlayVisuals();
 renderHand();
 if(!battleState){
