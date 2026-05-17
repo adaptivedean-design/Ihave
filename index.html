@@ -348,7 +348,7 @@ body.battleShake #app{animation:battleScreenShake 3s ease-in-out;}
 </div>
 
 <div id="app">
-<img id="logo" src="https://i.ibb.co/C3KcP9cZ/Adaptivelogotrans.png" alt="Logo">
+<img id="logo" src="assets/ui/adaptive-logo.png" alt="Logo">
 <h1>I Have / Who Has</h1>
 
 <div id="home">
@@ -486,24 +486,24 @@ let allPlayersReady=false;
 // Image URL mapping for cards
 const CARD_IMAGES = {
   ihave: {
-    'Alligator': 'https://i.ibb.co/3mjbrnJW/ihave-alligator.png',
-    'Cat': 'https://i.ibb.co/DfT10yp1/ihave-cat.png',
-    'Dog': 'https://i.ibb.co/xKMLpw80/ihave-dog.png',
-    'Elephant': 'https://i.ibb.co/xSv1PZhs/ihave-elephant.png',
-    'Horse': 'https://i.ibb.co/tw5wQ0Df/ihave-horse.png',
-    'Lion': 'https://i.ibb.co/21hNcm3v/ihave-lion.png',
-    'Shark': 'https://i.ibb.co/gFySV2bw/ihave-shark.png',
-    'Snake': 'https://i.ibb.co/C5Hc6C7k/ihave-snake.png'
+    'Alligator': 'assets/cards/ihave-alligator.webp',
+    'Cat': 'assets/cards/ihave-cat.webp',
+    'Dog': 'assets/cards/ihave-dog.webp',
+    'Elephant': 'assets/cards/ihave-elephant.webp',
+    'Horse': 'assets/cards/ihave-horse.webp',
+    'Lion': 'assets/cards/ihave-lion.webp',
+    'Shark': 'assets/cards/ihave-shark.webp',
+    'Snake': 'assets/cards/ihave-snake.webp'
   },
   whas: {
-    'Alligator': 'https://i.ibb.co/k2zPZ8KB/whas-alligator.png',
-    'Cat': 'https://i.ibb.co/nNqCt7Mq/whas-cat.png',
-    'Dog': 'https://i.ibb.co/ZpFY12Zy/whas-dog.png',
-    'Elephant': 'https://i.ibb.co/XkZ65HGv/whas-elephant.png',
-    'Horse': 'https://i.ibb.co/G4px7ZMH/whas-horse.png',
-    'Lion': 'https://i.ibb.co/5Ww2X61d/whas-lion.png',
-    'Shark': 'https://i.ibb.co/TBXDspBs/whas-shark.png',
-    'Snake': 'https://i.ibb.co/ds2kK7Px/whas-snake.png'
+    'Alligator': 'assets/cards/whas-alligator.webp',
+    'Cat': 'assets/cards/whas-cat.webp',
+    'Dog': 'assets/cards/whas-dog.webp',
+    'Elephant': 'assets/cards/whas-elephant.webp',
+    'Horse': 'assets/cards/whas-horse.webp',
+    'Lion': 'assets/cards/whas-lion.webp',
+    'Shark': 'assets/cards/whas-shark.webp',
+    'Snake': 'assets/cards/whas-snake.webp'
   }
 };
 
@@ -586,6 +586,20 @@ function makeDeck(){
   // Return a shuffled copy of the predefined deck
   return shuffle([...DECK_THEME.cards]);
 }
+
+function preloadCardImages(){
+const urls = new Set([
+...Object.values(CARD_IMAGES.ihave),
+...Object.values(CARD_IMAGES.whas)
+]);
+urls.forEach(src => {
+const img = new Image();
+img.decoding = "async";
+img.src = src;
+});
+}
+
+preloadCardImages();
 
 function setFlowPhase(nextPhase){
 if(flowPhase !== nextPhase){
