@@ -20,6 +20,7 @@ const rooms = {};
 const BATTLE_WINDOW_MS = 900; // Forgiving battle detection window
 const AUTO_PLAY_DELAY_MS = BATTLE_WINDOW_MS + 20; // Give edge-of-window plays time to arrive
 const BATTLE_INTRO_MS = 3000; // Dramatic card collision before clicking starts
+let battleSequence = 0;
 
 function emitBlockedPlay(roomId, playerId, card, reason) {
   io.to(roomId).emit('card_play_blocked', {
@@ -134,7 +135,9 @@ io.on('connection', (socket) => {
       const player2IsStudent = !isHost;
       const hasStudentBonus = Math.random() < 0.333;
       
+      const battleId = `${Date.now()}-${++battleSequence}`;
       room.activeBattle = {
+        id: battleId,
         player1: battleOpponent.playerId,
         player2: playerId,
         card1: battleOpponent.card,
@@ -148,6 +151,9 @@ io.on('connection', (socket) => {
       };
       
       // Clear pending plays
+      for (const pending of Object.values(room.pendingPlays)) {
+        if (pending.timeout) clearTimeout(pending.timeout);
+      }
       room.pendingPlays = {};
       
       // Notify both players battle started
@@ -202,11 +208,12 @@ io.on('connection', (socket) => {
   });
 
   // Battle click
-  socket.on('battle_click', ({ roomId, playerId }) => {
+  socket.on('battle_click', ({ roomId, playerId, battleId }) => {
     const room = rooms[roomId];
     if (!room || !room.activeBattle) return;
     
     const battle = room.activeBattle;
+    if (battleId && battle.id && battleId !== battle.id) return;
     if (Date.now() < battle.startTime) return;
     
     if (battle.player1 === playerId) {
@@ -249,11 +256,14 @@ io.on('connection', (socket) => {
   });
 
   // Battle ended (time's up)
-  socket.on('battle_end', ({ roomId }) => {
+  socket.on('battle_end', ({ roomId, battleId }) => {
     const room = rooms[roomId];
     if (!room || !room.activeBattle) return;
     
     const battle = room.activeBattle;
+    if (battleId && battle.id && battleId !== battle.id) return;
+    if (battle.resolved) return;
+    battle.resolved = true;
     
     // Apply student bonus (1.2x multiplier)
     let effectiveClicks1 = battle.clicks1;
@@ -275,6 +285,7 @@ io.on('connection', (socket) => {
     
     // Notify both players
     io.to(roomId).emit('battle_result', {
+      battleId: battle.id,
       winner: winner,
       winnerCard: winnerCard,
       clicks1: battle.clicks1,

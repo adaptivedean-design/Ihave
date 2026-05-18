@@ -39,7 +39,7 @@ button:hover{background:#16b7a7;}
 #opponentPilesBottom{display:flex;justify-content:center;width:100%;}
 .opponentCard{background:#bdf6e0;height:45px;border-radius:6px;opacity:.95;border:2px solid #16b7a7;}
 #centerArea{display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;background:transparent;}
-#centerArea.battleImpact::after{content:"";position:absolute;width:260px;height:260px;border-radius:50%;background:radial-gradient(circle, rgba(228,224,154,.95), rgba(110,227,222,.55) 32%, transparent 70%);opacity:0;pointer-events:none;animation:battleImpactFlash 3s ease-out;}
+#centerArea.battleImpact::after{content:"";position:absolute;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle, rgba(255,107,107,.75), rgba(228,224,154,.45) 34%, rgba(110,227,222,.28) 52%, transparent 72%);opacity:0;pointer-events:none;animation:battleImpactFlash 3s ease-out;}
 body.battleShake #app{animation:battleScreenShake 3s ease-in-out;}
 #deck{background:transparent;width:190px;height:190px;border-radius:0;display:flex;justify-content:center;align-items:center;text-align:center;padding:0;cursor:pointer;transition:transform .08s;position:relative;perspective:1000px;box-shadow:none;border:none;isolation:isolate;}
 #deck:hover{transform:scale(1.02);}
@@ -98,11 +98,13 @@ body.battleShake #app{animation:battleScreenShake 3s ease-in-out;}
 .centerCardSurface{position:absolute;inset:0;z-index:3;width:100%;height:100%;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:1;transition:opacity .18s ease,transform .18s ease;}
 .centerCardSurface img{display:block;width:172px;height:172px;object-fit:contain;image-rendering:auto;image-rendering:-webkit-optimize-contrast;}
 .centerCardSurface.decaying{opacity:0;transform:scale(.96);}
+.centerCardSurface.locking{animation:centerLockPulse .34s ease-out;}
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
 @keyframes dropRailPulse{0%,100%{opacity:.38;transform:scaleX(.82);}50%{opacity:.95;transform:scaleX(1);}}
 @keyframes chainBreakPulse{0%,100%{background:rgba(228,224,154,0.3);}50%{background:rgba(228,224,154,0.7);}} /* Pulse yellow */
-@keyframes battleImpactFlash{0%{opacity:0;transform:scale(.35);}10%{opacity:1;transform:scale(.95);}55%{opacity:.75;transform:scale(1.18);}100%{opacity:0;transform:scale(1.7);}}
-@keyframes battleScreenShake{0%,100%{transform:translateX(0);}8%{transform:translateX(-7px);}16%{transform:translateX(6px);}24%{transform:translateX(-4px);}32%{transform:translateX(3px);}40%,100%{transform:translateX(0);}}
+@keyframes centerLockPulse{0%{transform:scale(1);filter:drop-shadow(0 0 0 rgba(110,227,222,0));}42%{transform:scale(1.08);filter:drop-shadow(0 0 22px rgba(110,227,222,.75));}100%{transform:scale(1);filter:drop-shadow(0 0 4px rgba(110,227,222,.15));}}
+@keyframes battleImpactFlash{0%,100%{opacity:0;transform:scale(.8);}12%{opacity:.95;transform:scale(1);}32%{opacity:.45;transform:scale(1.1);}52%{opacity:.85;transform:scale(1.02);}72%{opacity:.42;transform:scale(1.18);}}
+@keyframes battleScreenShake{0%,100%{transform:translate(0,0) rotate(0deg);}8%{transform:translate(-7px,2px) rotate(-.35deg);}16%{transform:translate(6px,-2px) rotate(.3deg);}24%{transform:translate(-5px,1px) rotate(-.25deg);}32%{transform:translate(5px,-1px) rotate(.22deg);}40%{transform:translate(-4px,2px) rotate(-.18deg);}48%{transform:translate(3px,-1px) rotate(.16deg);}56%{transform:translate(-3px,1px) rotate(-.12deg);}64%{transform:translate(2px,-1px) rotate(.1deg);}72%{transform:translate(-2px,1px) rotate(-.08deg);}80%{transform:translate(1px,0) rotate(.05deg);}}
 .chainBroken{animation:chainBreakPulse 1s infinite;}
 .cardInPile.chainBroken{box-shadow:0 0 18px rgba(228,224,154,0.9),0 0 0 2px rgba(228,224,154,0.62);border-radius:8px;}
 .wrongCard{animation:shake 0.4s,flashRed 0.4s;}
@@ -1082,9 +1084,8 @@ return;
 
 if(currentChain && currentChain.flipped){
 const deckFront=document.querySelector(".deckFront");
-deck.classList.add("centerReplacing");
 if(deckFront) deckFront.innerHTML = "";
-centerRevealAt = Date.now() + CARD_TRAVEL_MS - 40;
+centerRevealAt = Date.now() + CARD_TRAVEL_MS + 90;
 removeCenterSurface();
 }
 
@@ -1141,10 +1142,62 @@ surfaceImg.alt = card.iHave;
 removeCenterSurface();
 surface.appendChild(surfaceImg);
 deck.appendChild(surface);
+surface.classList.add("locking");
+setTimeout(() => surface.classList.remove("locking"), 380);
 clone.remove();
 }
 activeMovementKeys.delete(key);
 }, CARD_TRAVEL_MS + 80);
+}
+
+function animateBattleCardCollision(card, playedBy, durationMs){
+const source = findVisibleCardElement(card.id, playedBy);
+const target = deck;
+if(!source || !target) return;
+
+const sourceRect = source.getBoundingClientRect();
+const targetRect = target.getBoundingClientRect();
+if(!sourceRect.width || !sourceRect.height || !targetRect.width || !targetRect.height) return;
+
+const clone = source.cloneNode(true);
+clone.classList.add("cardFlyClone", "blockedClone");
+clone.classList.remove("pendingPlay", "wrong", "wrongCard", "dragging");
+clone.style.left = `${sourceRect.left}px`;
+clone.style.top = `${sourceRect.top}px`;
+clone.style.width = `${sourceRect.width}px`;
+clone.style.height = `${sourceRect.height}px`;
+clone.style.margin = "0";
+clone.style.opacity = "1";
+clone.style.transform = "translate3d(0,0,0) scale(1)";
+clone.style.background = "transparent";
+clone.style.border = "none";
+clone.style.boxShadow = "none";
+clone.style.outline = "none";
+clone.style.padding = "0";
+clone.style.filter = "drop-shadow(0 0 14px rgba(255,107,107,.78))";
+document.body.appendChild(clone);
+
+const dx = targetRect.left + targetRect.width / 2 - (sourceRect.left + sourceRect.width / 2);
+const dy = targetRect.top + targetRect.height / 2 - (sourceRect.top + sourceRect.height / 2);
+const scale = Math.min(1.12, Math.max(0.76, targetRect.height / sourceRect.height));
+const wallDx = dx * 0.82;
+const wallDy = dy * 0.82;
+const wobble = playedBy === playerId ? -10 : 10;
+
+clone.animate([
+{ transform: "translate3d(0,0,0) scale(1)", opacity: 1, offset: 0 },
+{ transform: `translate3d(${wallDx}px, ${wallDy}px, 0) scale(${scale}) rotate(${wobble * .2}deg)`, opacity: 1, offset: .28 },
+{ transform: `translate3d(${wallDx - wobble}px, ${wallDy + 2}px, 0) scale(${scale}) rotate(${-wobble * .35}deg)`, opacity: 1, offset: .42 },
+{ transform: `translate3d(${wallDx + wobble * .7}px, ${wallDy - 2}px, 0) scale(${scale}) rotate(${wobble * .28}deg)`, opacity: 1, offset: .58 },
+{ transform: `translate3d(${wallDx - wobble * .45}px, ${wallDy + 1}px, 0) scale(${scale}) rotate(${-wobble * .18}deg)`, opacity: 1, offset: .76 },
+{ transform: `translate3d(${wallDx}px, ${wallDy}px, 0) scale(${scale}) rotate(0deg)`, opacity: .94, offset: 1 }
+], {
+duration: Math.max(900, durationMs),
+easing: "cubic-bezier(.2,.8,.2,1)",
+fill: "forwards"
+});
+
+setTimeout(() => clone.remove(), Math.max(900, durationMs) + 260);
 }
 
 function animateBlockedCardToCenter(card, playedBy){
@@ -1201,7 +1254,7 @@ clone.remove();
 }, CARD_TRAVEL_MS + 260);
 }
 
-function triggerBattleImpact(){
+function triggerBattleImpact(durationMs=3000){
 const centerArea = document.getElementById("centerArea");
 if(centerArea) centerArea.classList.remove("battleImpact");
 document.body.classList.remove("battleShake");
@@ -1211,7 +1264,7 @@ document.body.classList.add("battleShake");
 setTimeout(() => {
 if(centerArea) centerArea.classList.remove("battleImpact");
 document.body.classList.remove("battleShake");
-}, 3000);
+}, Math.max(900, durationMs));
 }
 
 async function flipCard(){
@@ -1364,12 +1417,17 @@ battleTimerInterval = null;
 pendingCardId = null;
 document.querySelectorAll('.pendingPlay').forEach(el => el.classList.remove('pendingPlay'));
 localMovementStartedFor = null;
+document.querySelectorAll('.cardFlyClone').forEach(el => el.remove());
+activeMovementKeys.clear();
+canceledMovementKeys.clear();
 battleState = battle;
 battleClicks = 0;
 setFlowPhase(FLOW_PHASES.BATTLE_INTRO);
-if(battle.card1) animateCardToCenter(battle.card1, battle.player1);
-if(battle.card2) animateCardToCenter(battle.card2, battle.player2);
-triggerBattleImpact();
+removeCenterSurface();
+const introDelay = Math.max(0, battle.startTime - Date.now());
+if(battle.card1) animateBattleCardCollision(battle.card1, battle.player1, introDelay);
+if(battle.card2) animateBattleCardCollision(battle.card2, battle.player2, introDelay);
+triggerBattleImpact(introDelay);
 
 // Show battle UI
 const battleScreen = document.getElementById("battleScreen");
@@ -1443,7 +1501,6 @@ document.getElementById("rightName").textContent = studentName;
 console.log(`Battle UI: ${hostName} (left) vs ${studentName} (right)`);
 });
 
-const introDelay = Math.max(0, battle.startTime - Date.now());
 setTimeout(() => {
 if(!battleState) return;
 setFlowPhase(FLOW_PHASES.BATTLE_ACTIVE);
@@ -1460,7 +1517,7 @@ if(remaining === 0 && battleTimerInterval){
 clearInterval(battleTimerInterval);
 battleTimerInterval = null;
 // Tell server battle ended
-socket.emit('battle_end', { roomId });
+socket.emit('battle_end', { roomId, battleId: battleState && battleState.id });
 }
 }, 100);
 }, introDelay);
@@ -1479,7 +1536,7 @@ battleScreen.classList.add("battlePress");
 setTimeout(() => battleScreen.classList.remove("battlePress"), 90);
 
 // Send click to server
-socket.emit('battle_click', { roomId, playerId });
+socket.emit('battle_click', { roomId, playerId, battleId: battleState.id });
 };
 }
 
@@ -1515,6 +1572,14 @@ scaleBeam.style.transform = `rotate(${tiltAngle}deg)`;
 
 // WebSocket handler: Battle result
 async function handleBattleResult(result){
+if(!battleState){
+console.warn("Ignoring battle result with no active battle state");
+return;
+}
+if(result.battleId && battleState.id && result.battleId !== battleState.id){
+console.warn("Ignoring stale battle result:", result.battleId, "current:", battleState.id);
+return;
+}
 console.log("ðŸ† handleBattleResult", result);
 console.log("ðŸ” Debug info:");
 console.log("  - I am:", playerId, "isHost:", isHost);
@@ -1767,12 +1832,9 @@ delayedCenterRenderTimer = null;
 }
 
 if(waitingForIncomingCard){
-deck.classList.add("centerReplacing");
 deck.classList.add("instantFaceReset");
-deck.classList.remove("flipped");
 deck.classList.remove("canFlip");
 deckFront.innerHTML = "";
-deckBack.innerHTML = "";
 chainText.innerHTML = "";
 delayedCenterRenderTimer = setTimeout(() => {
 delayedCenterRenderTimer = null;
