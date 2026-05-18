@@ -141,7 +141,7 @@ io.on('connection', (socket) => {
       // BATTLE!
       console.log(`🎮 BATTLE triggered between ${playerId} and ${battleOpponent.playerId}`);
       
-      // **FIX: Clear the timeout for the opponent's pending play**
+      // Clear the timeout for the opponent pending play.
       const opponentPending = room.pendingPlays[battleOpponent.playerId];
       if (opponentPending && opponentPending.timeout) {
         console.log(`🔧 Clearing timeout for ${battleOpponent.playerId}'s pending play`);
@@ -198,7 +198,7 @@ io.on('connection', (socket) => {
             room.awaitingFlip = true;
             io.to(player.socketId).emit('play_card_now', { card: card });
           }
-          delete room.pendingPlays[playerId];
+          clearPendingPlay(room, playerId);
         } else if (room.pendingPlays[playerId]) {
           const reason = room.activeBattle ? 'battle_active' : 'awaiting_flip';
           console.log(`Rejecting pending play for ${playerId}: ${reason}`);
@@ -209,7 +209,7 @@ io.on('connection', (socket) => {
           if (reason === 'battle_active') {
             emitBlockedPlay(roomId, playerId, card, reason);
           }
-          delete room.pendingPlays[playerId];
+          clearPendingPlay(room, playerId);
         }
       }, AUTO_PLAY_DELAY_MS);
       
@@ -217,7 +217,7 @@ io.on('connection', (socket) => {
         card: card,
         timestamp: now,
         isHost: isHost,
-        timeout: timeoutId  // **FIX: Store timeout ID so we can clear it**
+        timeout: timeoutId
       };
       
       console.log(`⏳ Pending play registered, will auto-play in ${BATTLE_WINDOW_MS}ms if no battle. Pending count: ${Object.keys(room.pendingPlays).length}`);
@@ -327,7 +327,7 @@ io.on('connection', (socket) => {
           delete rooms[roomId].players[playerId];
         }
       }
-      // **FIX: Also clear any pending timeouts for this player**
+      // Clear any pending timeout for this player.
       for (const playerId of disconnectedPlayers) {
         if (rooms[roomId].pendingPlays[playerId]) {
           const pending = rooms[roomId].pendingPlays[playerId];

@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>I Have / Who Has</title>
 <style>
-body{margin:0;font-family:system-ui;background:#0f172a;color:#004870;display:flex;justify-content:center;align-items:center;min-height:100vh;}
-#app{width:min(1240px, calc(100vw - 40px));background:#dafbe9;padding:20px;border-radius:12px;box-shadow:0 10px 40px rgba(0,0,0,.5);position:relative;}
+body{margin:0;font-family:system-ui;background:radial-gradient(circle at 50% 18%, #174c63 0%, #0f3043 42%, #0f172a 100%);color:#004870;display:flex;justify-content:center;align-items:center;min-height:100vh;}
+#app{width:min(1240px, calc(100vw - 40px));background:linear-gradient(180deg,#dafbe9 0%,#c4f7e5 100%);padding:20px;border-radius:12px;box-shadow:0 18px 55px rgba(0,0,0,.42);position:relative;}
 #logo{width:180px;height:180px;object-fit:contain;background:white;border-radius:50%;padding:20px;box-shadow:0 8px 24px rgba(0,72,112,0.3);margin:0 auto;display:block;transition:all 0.3s;image-rendering:auto;image-rendering:-webkit-optimize-contrast;backface-visibility:hidden;}
 body.in-game #logo{width:80px;height:80px;padding:10px;position:fixed;left:20px;top:25px;z-index:100;margin:0;transform:none;}
 body.in-game h1{display:none;}
@@ -31,9 +31,8 @@ button:hover{background:#16b7a7;}
 #lobby,#game{display:none}
 #game{position:relative;}
 #players{font-size:14px;margin-top:10px;color:#004870;}
-#board{display:grid;grid-template-rows:200px 170px 1fr;height:650px;background:#c4f7e5;border-radius:12px;padding:10px;}
+#board{display:grid;grid-template-rows:200px 170px 1fr;height:650px;background:linear-gradient(180deg,rgba(239,248,215,.26),rgba(196,247,229,.86));border-radius:12px;padding:10px;box-shadow:inset 0 0 0 1px rgba(0,72,112,.08),inset 0 18px 38px rgba(255,255,255,.18);}
 #opponentArea{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;position:relative;padding:10px 0;}
-#opponentGrid{display:grid;grid-template-columns:repeat(8,1fr);gap:6px;width:90%;display:none;} /* Hide old grid */
 #opponentPiles{width:90%;display:flex;flex-direction:column-reverse;gap:15px;align-items:center;} /* column-reverse so bottom pile appears at top visually */
 #opponentPilesTop{display:flex;gap:8px;width:100%;justify-content:space-between;}
 #opponentPilesBottom{display:flex;justify-content:center;width:100%;}
@@ -47,7 +46,6 @@ body.battleShake #app{animation:battleScreenShake 3s ease-in-out;}
 #scoreBoard{position:absolute;top:20px;right:20px;background:rgba(0,72,112,0.8);padding:12px 16px;border-radius:8px;font-size:14px;border:2px solid #16b7a7;line-height:1.6;}
 #restartBtn{position:absolute;top:20px;left:20px;}
 #playerArea{display:flex;flex-direction:column;justify-content:flex-start;align-items:center;position:relative;padding:10px 0;}
-#playerGrid{display:grid;grid-template-columns:repeat(8,1fr);gap:10px;width:90%;display:none;} /* Hide old grid */
 #playerPiles{width:100%;height:100%;display:flex;flex-direction:column;position:relative;}
 #playerPilesTop{display:flex;gap:0;justify-content:center;width:100%;margin:0 auto;position:relative;height:230px;transform:translateY(-28px);} /* Bottom half of ellipse - 8 piles */
 #playerPilesTop .pile:nth-child(1){transform:translateX(-540px) translateY(0px);}
@@ -90,9 +88,9 @@ body.battleShake #app{animation:battleScreenShake 3s ease-in-out;}
 .playerCard{border-radius:8px;cursor:pointer;transition:transform .04s,box-shadow .06s;border:none;display:block;object-fit:contain;image-rendering:auto;image-rendering:-webkit-optimize-contrast;backface-visibility:hidden;} /* No borders - images stand alone */
 .pile .playerCard{width:142px !important;height:142px !important;}
 #opponentPilesTop .pile .playerCard{width:104px !important;height:104px !important;}
-.playerCard:hover{box-shadow:0 0 16px rgba(35,135,159,0.62);} /* Glow effect instead of border */
+.playerCard:hover{transform:translateY(-2px);box-shadow:0 0 18px rgba(35,135,159,0.54),0 8px 18px rgba(0,72,112,.16);} /* Glow effect instead of border */
 .playerCard.pendingPlay{filter:brightness(1.08);}
-.playerCard.wrong,.playerCard.wrongCard{animation:shake 0.4s;box-shadow:0 0 20px rgba(255,107,107,0.9) !important;} /* Red glow for wrong card */
+.playerCard.wrong,.playerCard.wrongCard{animation:shake 0.4s,flashRed 0.4s;box-shadow:0 0 20px rgba(255,107,107,0.9) !important;} /* Red glow for wrong card */
 .cardFlyClone{position:fixed;z-index:930;pointer-events:none;object-fit:contain;border-radius:8px;background:transparent !important;border:none !important;box-shadow:none !important;filter:none !important;will-change:transform,opacity;transition:transform .76s cubic-bezier(.18,.88,.2,1);}
 .cardFlyClone.blockedClone{filter:drop-shadow(0 0 16px rgba(255,107,107,0.85)) !important;}
 .centerCardSurface{position:absolute;inset:0;z-index:3;width:100%;height:100%;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:1;transition:opacity .18s ease,transform .18s ease;}
@@ -107,8 +105,6 @@ body.battleShake #app{animation:battleScreenShake 3s ease-in-out;}
 @keyframes battleScreenShake{0%,100%{transform:translate(0,0) rotate(0deg);}8%{transform:translate(-7px,2px) rotate(-.35deg);}16%{transform:translate(6px,-2px) rotate(.3deg);}24%{transform:translate(-5px,1px) rotate(-.25deg);}32%{transform:translate(5px,-1px) rotate(.22deg);}40%{transform:translate(-4px,2px) rotate(-.18deg);}48%{transform:translate(3px,-1px) rotate(.16deg);}56%{transform:translate(-3px,1px) rotate(-.12deg);}64%{transform:translate(2px,-1px) rotate(.1deg);}72%{transform:translate(-2px,1px) rotate(-.08deg);}80%{transform:translate(1px,0) rotate(.05deg);}}
 .chainBroken{animation:chainBreakPulse 1s infinite;}
 .cardInPile.chainBroken{box-shadow:0 0 18px rgba(228,224,154,0.9),0 0 0 2px rgba(228,224,154,0.62);border-radius:8px;}
-.wrongCard{animation:shake 0.4s,flashRed 0.4s;}
-@keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-10px);}75%{transform:translateX(10px);}}
 @keyframes flashRed{0%,100%{background:linear-gradient(135deg, #004870, #023047);}50%{background:#8b0000;border-color:#ff0000;}}
 .deckInner{position:relative;width:100%;height:100%;transition:transform 0.6s;transform-style:preserve-3d;z-index:1;}
 #deck.instantFaceReset .deckInner{transition:none !important;}
@@ -373,7 +369,6 @@ Enter your name<br>
 <div id="game">
 <div id="board">
 <div id="opponentArea">
-<div id="opponentGrid"></div>
 <div id="opponentPiles">
 <div id="opponentPilesTop"></div>
 <div id="opponentPilesBottom"></div>
@@ -389,7 +384,6 @@ Enter your name<br>
 <div id="chainText"></div>
 </div>
 <div id="playerArea">
-<div id="playerGrid"></div>
 <div id="playerPiles">
 <div id="playerPilesTop"></div>
 <div id="playerPilesBottom"></div>
@@ -973,7 +967,7 @@ console.log("====== tryPlay END (must flip) ======");
 return;
 }
 
-console.log("âœ… Card validated, proceeding to play...");
+console.log("Card validated, proceeding to play...");
 pendingCardId = card.id;
 if(cardElement){
 cardElement.classList.add('pendingPlay');
@@ -989,14 +983,14 @@ localMovementStartedFor = null;
 
 // Check if socket is connected
 if(!socket || !socket.connected){
-console.error("âŒ Socket not connected! Falling back to immediate play");
+console.error("Socket not connected; falling back to immediate play");
 playCardNow(card);
 console.log("====== tryPlay END (socket fallback) ======");
 return;
 }
 
 // Send card play to WebSocket server for battle detection
-console.log("ðŸ“¤ Sending card_played to server:", {roomId, playerId, card: card.iHave, isHost});
+console.log("Sending card_played to server:", {roomId, playerId, card: card.iHave, isHost});
 socket.emit('card_played', {
 roomId: roomId,
 playerId: playerId,
@@ -1004,7 +998,7 @@ card: card,
 isHost: isHost
 });
 
-console.log("âœ… card_played event sent, waiting for server response...");
+console.log("card_played event sent, waiting for server response...");
 console.log("====== tryPlay END (waiting for server) ======");
 // Note: Server will either trigger battle_start or play_card_now
 // Don't play the card here - wait for server response
@@ -1048,22 +1042,6 @@ if(opponentArea) opponentArea.classList.remove("chainBroken");
 document.querySelectorAll('.cardInPile.chainBroken').forEach(card => card.classList.remove('chainBroken'));
 if(!isBroken) return;
 document.querySelectorAll('#playerPiles .cardInPile').forEach(card => card.classList.add('chainBroken'));
-}
-
-function showRoundResult(type, title, subtext){
-const overlay = document.getElementById("roundWinnerOverlay");
-const winnerText = document.getElementById("roundWinnerText");
-const winnerSubtext = document.getElementById("roundWinnerSubtext");
-
-overlay.classList.remove("win", "loss");
-overlay.classList.add(type);
-winnerText.textContent = title;
-winnerSubtext.textContent = subtext;
-overlay.style.display = "block";
-
-setTimeout(() => {
-overlay.style.display = "none";
-}, 3000);
 }
 
 function findVisibleCardElement(cardId, playedBy){
@@ -1319,13 +1297,13 @@ console.log("Shared chain break pulse started");
 // WebSocket handler: Play card immediately (no battle)
 async function playCardNow(card){
 console.log("========== playCardNow START ==========");
-console.log("âš ï¸ playCardNow called with card:", card.iHave, "ID:", card.id);
+console.log("playCardNow called with card:", card.iHave, "ID:", card.id);
 console.log("   Current hand:", myHand.map(c => `${c.iHave}(${c.id})`).join(', '));
 
 // CHECK: Does this card exist in my hand?
 const cardExists = myHand.some(c => String(c.id) === String(card.id));
 if(!cardExists){
-console.error("âŒ CRITICAL: Card not in hand! This card was already played.");
+console.error("CRITICAL: Card not in hand. This card was already played.");
 console.log("   Requested card ID:", card.id);
 console.log("   Current hand IDs:", myHand.map(c => c.id));
 console.log("========== playCardNow END (card not found) ==========");
@@ -1334,7 +1312,7 @@ renderHand();
 return; // ABORT - don't remove a card that's not there
 }
 
-console.log("âœ… Card exists in hand, proceeding to remove it...");
+console.log("Card exists in hand, proceeding to remove it...");
 
 const playedAt = Date.now();
 if(String(localMovementStartedFor) !== String(card.id)){
@@ -1587,8 +1565,8 @@ if(result.battleId && battleState.id && result.battleId !== battleState.id){
 console.warn("Ignoring stale battle result:", result.battleId, "current:", battleState.id);
 return;
 }
-console.log("ðŸ† handleBattleResult", result);
-console.log("ðŸ” Debug info:");
+console.log("handleBattleResult", result);
+console.log("Battle debug info:");
 console.log("  - I am:", playerId, "isHost:", isHost);
 console.log("  - Battle winner:", result.winner);
 console.log("  - battleState.hostPlayerId:", battleState.hostPlayerId);
@@ -1631,15 +1609,6 @@ await new Promise(resolve => setTimeout(resolve, 800));
 const winnerAnnouncement = document.getElementById("winnerAnnouncement");
 
 if(iWon){
-// I WON! ðŸŽ‰
-console.log("  - Showing: YOU WON!");
-winnerAnnouncement.innerHTML = `
-<div style="text-align:center;">
-<div style="font-size:80px;margin-bottom:20px;">ðŸŽ‰</div>
-<div style="font-size:64px;font-weight:900;">YOU WON!</div>
-<div style="font-size:40px;margin-top:10px;">âœ¨ ðŸŽŠ âœ¨</div>
-</div>
-`;
 winnerAnnouncement.style.color = "#eff8d7";
 winnerAnnouncement.innerHTML = `
 <div style="text-align:center;">
@@ -1653,14 +1622,6 @@ winnerAnnouncement.innerHTML = `
 createConfetti();
 } else {
 const winnerDisplayName = document.getElementById(winnerIsHost ? "leftName" : "rightName").textContent;
-console.log("  - Showing: YOU LOST");
-winnerAnnouncement.innerHTML = `
-<div style="text-align:center;">
-<div style="font-size:80px;margin-bottom:20px;">ðŸ˜¢</div>
-<div style="font-size:64px;font-weight:900;">YOU LOST</div>
-<div style="font-size:28px;margin-top:10px;">${winnerDisplayName} wins this battle</div>
-</div>
-`;
 winnerAnnouncement.style.color = "#dbe7f0";
 winnerAnnouncement.innerHTML = `
 <div style="text-align:center;">
@@ -2386,32 +2347,32 @@ reconnection: true
 });
 
 socket.on('connect', () => {
-console.log('âœ… Connected to battle server, socket ID:', socket.id);
+console.log('Connected to battle server, socket ID:', socket.id);
 socket.emit('join_room', { roomId, playerId, isHost });
 console.log('Sent join_room:', { roomId, playerId, isHost });
 });
 
 socket.on('connect_error', (error) => {
-console.error('âŒ Connection error:', error);
+console.error('Connection error:', error);
 });
 
 socket.on('disconnect', (reason) => {
-console.warn('âš ï¸ Disconnected from battle server:', reason);
+console.warn('Disconnected from battle server:', reason);
 });
 
 socket.on('battle_start', (battle) => {
-console.log('ðŸŽ® Battle started!', battle);
+console.log('Battle started:', battle);
 clearPendingPlayVisuals();
 handleBattleStart(battle);
 });
 
 socket.on('battle_update', ({ clicks1, clicks2 }) => {
-console.log('ðŸ”„ Battle update:', clicks1, 'vs', clicks2);
+console.log('Battle update:', clicks1, 'vs', clicks2);
 updateBattleClicks(clicks1, clicks2);
 });
 
 socket.on('battle_result', (result) => {
-console.log('ðŸ† Battle result:', result);
+console.log('Battle result:', result);
 handleBattleResult(result);
 });
 
@@ -2438,7 +2399,7 @@ setFlowPhase(FLOW_PHASES.HAND_READY);
 });
 
 socket.on('play_card_now', ({ card }) => {
-console.log('â–¶ï¸ SERVER SAYS: Play card now (no battle)');
+console.log('SERVER SAYS: Play card now (no battle)');
 console.log('   Card:', card.iHave);
 console.log('   My hand before:', myHand.map(c => c.iHave));
 playCardNow(card);
