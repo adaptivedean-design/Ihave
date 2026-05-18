@@ -88,9 +88,9 @@ io.on('connection', (socket) => {
 
     const rejectPlay = (reason, broadcastBlock = false) => {
       console.log(`Rejecting play from ${playerId}: ${reason}`);
-      socket.emit('play_rejected', { reason });
+      socket.emit('play_rejected', { reason, blockedByPlayerId: playerId });
       if (broadcastBlock) {
-        emitBlockedPlay(roomId, playerId, card, reason);
+        emitBlockedPlay(roomId, playerId, card, reason, playerId);
       }
     };
 
@@ -217,10 +217,10 @@ io.on('connection', (socket) => {
           console.log(`Rejecting pending play for ${playerId}: ${reason}`);
           const player = room.players[playerId];
           if (player && player.socketId) {
-            io.to(player.socketId).emit('play_rejected', { reason });
+            io.to(player.socketId).emit('play_rejected', { reason, blockedByPlayerId: playerId });
           }
           if (reason === 'battle_active') {
-            emitBlockedPlay(roomId, playerId, card, reason);
+            emitBlockedPlay(roomId, playerId, card, reason, playerId);
           }
           clearPendingPlay(room, playerId);
         }

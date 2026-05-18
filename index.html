@@ -936,7 +936,7 @@ FLOW_PHASES.BATTLE_ACTIVE
 if(phaseBlocksLocalClick){
 console.log("Cards are not accepting plays in phase:", flowPhase);
 if(cardElement){
-animateBlockedCardToCenter(card, playerId);
+animateBlockedCardToCenter(card, playerId, `local_phase_${flowPhase}`);
 cardElement.classList.add('wrongCard');
 setTimeout(() => cardElement.classList.remove('wrongCard'), 400);
 }
@@ -991,7 +991,7 @@ console.log("Chain broken! Target animal depleted, allowing any card to restart 
 if(currentChain && !currentChain.flipped) {
 console.log("Chain not flipped yet, must flip first");
 if(cardElement){
-animateBlockedCardToCenter(card, playerId);
+animateBlockedCardToCenter(card, playerId, "local_must_flip");
 cardElement.classList.add('wrongCard');
 setTimeout(() => cardElement.classList.remove('wrongCard'), 400);
 }
@@ -1272,7 +1272,16 @@ activeMovementClones.delete(key);
 }, clashDuration + 260);
 }
 
-function animateBlockedCardToCenter(card, playedBy){
+function animateBlockedCardToCenter(card, playedBy, reason="local_block"){
+console.warn("animateBlockedCardToCenter", {
+reason,
+playedBy,
+cardId: card && card.id,
+pendingCardId,
+localMovementStartedFor,
+flowPhase,
+currentChainFlipped: currentChain ? currentChain.flipped : null
+});
 const source = findVisibleCardElement(card.id, playedBy);
 const target = deck;
 if(!source || !target) return;
@@ -2476,7 +2485,7 @@ activeMovementClones.has(blockedKey) ||
 String(pendingCardId) === String(card.id) ||
 String(localMovementStartedFor) === String(card.id)
 );
-if(isOwnActiveCard && (!blockedByPlayerId || blockedByPlayerId === playerId)){
+if(isOwnActiveCard && (!blockedByPlayerId || blockedByPlayerId === playerId || ["awaiting_flip", "battle_active", "pending_play"].includes(reason))){
 console.warn("Ignoring self-block for active moving card:", reason || "unknown", blockedByPlayerId || "unknown blocker");
 return;
 }
@@ -2485,7 +2494,7 @@ if(blockedPlayerId === playerId){
 cancelMovement(pendingCardId || card.id, playerId);
 clearPendingPlayVisuals();
 }
-animateBlockedCardToCenter(card, blockedPlayerId);
+animateBlockedCardToCenter(card, blockedPlayerId, `server_${reason || "blocked"}_by_${blockedByPlayerId || "unknown"}`);
 setTimeout(() => {
 if(!battleState && (!currentChain || currentChain.flipped)){
 setFlowPhase(FLOW_PHASES.HAND_READY);
@@ -2507,7 +2516,7 @@ const rejectedCardIsMoving = pendingCardId !== null && (
 activeMovementClones.has(movementKey({id: pendingCardId}, playerId)) ||
 String(localMovementStartedFor) === String(pendingCardId)
 );
-if(rejectedCardIsMoving && (blockedByPlayerId === playerId || (!blockedByPlayerId && reason === "center_reserved"))){
+if(rejectedCardIsMoving && (blockedByPlayerId === playerId || (!blockedByPlayerId && ["center_reserved", "awaiting_flip", "battle_active", "pending_play"].includes(reason)))){
 console.warn("Ignoring late self-rejection for active moving card");
 return;
 }
