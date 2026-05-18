@@ -191,6 +191,9 @@ io.on('connection', (socket) => {
           if (player && player.socketId) {
             io.to(player.socketId).emit('play_rejected', { reason });
           }
+          if (reason === 'battle_active') {
+            emitBlockedPlay(roomId, playerId, card, reason);
+          }
           delete room.pendingPlays[playerId];
         }
       }, AUTO_PLAY_DELAY_MS);
