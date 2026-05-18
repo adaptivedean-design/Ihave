@@ -102,6 +102,22 @@ io.on('connection', (socket) => {
       rejectPlay('battle_active', true);
       return;
     }
+
+    const ownPending = room.pendingPlays[playerId];
+    if (ownPending) {
+      const ownPendingAge = now - ownPending.timestamp;
+      const sameCard = ownPending.card && card && String(ownPending.card.id) === String(card.id);
+      if (ownPendingAge > PENDING_STALE_MS) {
+        console.log(`Clearing stale pending play from same player ${playerId}, age: ${ownPendingAge}ms`);
+        clearPendingPlay(room, playerId);
+      } else {
+        console.log(`Ignoring ${sameCard ? 'duplicate' : 'extra'} pending play from ${playerId}, age: ${ownPendingAge}ms`);
+        if (!sameCard) {
+          socket.emit('play_rejected', { reason: 'pending_play' });
+        }
+        return;
+      }
+    }
     
     console.log(`Current pending plays:`, Object.keys(room.pendingPlays).map(pid => ({
       playerId: pid,
