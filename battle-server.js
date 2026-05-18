@@ -20,6 +20,7 @@ const rooms = {};
 const BATTLE_WINDOW_MS = 900; // Forgiving battle detection window
 const AUTO_PLAY_DELAY_MS = BATTLE_WINDOW_MS + 20; // Give edge-of-window plays time to arrive
 const BATTLE_INTRO_MS = 3000; // Dramatic card collision before clicking starts
+const PENDING_STALE_MS = AUTO_PLAY_DELAY_MS + 500;
 let battleSequence = 0;
 
 function emitBlockedPlay(roomId, playerId, card, reason) {
@@ -28,6 +29,18 @@ function emitBlockedPlay(roomId, playerId, card, reason) {
     card,
     reason
   });
+}
+
+function clearPendingPlay(room, playerId) {
+  const pending = room.pendingPlays[playerId];
+  if (pending && pending.timeout) clearTimeout(pending.timeout);
+  delete room.pendingPlays[playerId];
+}
+
+function clearPendingPlays(room) {
+  for (const playerId of Object.keys(room.pendingPlays)) {
+    clearPendingPlay(room, playerId);
+  }
 }
 
 io.on('connection', (socket) => {
@@ -115,6 +128,11 @@ io.on('connection', (socket) => {
           break;
         }
       } else {
+        if (age > PENDING_STALE_MS) {
+          console.log(`Clearing stale pending play from ${pid}, age: ${age}ms`);
+          clearPendingPlay(room, pid);
+          continue;
+        }
         blockedByPending = { playerId: pid, age };
       }
     }
@@ -151,10 +169,7 @@ io.on('connection', (socket) => {
       };
       
       // Clear pending plays
-      for (const pending of Object.values(room.pendingPlays)) {
-        if (pending.timeout) clearTimeout(pending.timeout);
-      }
-      room.pendingPlays = {};
+      clearPendingPlays(room);
       
       // Notify both players battle started
       console.log(`📢 Emitting battle_start to room ${roomId}`);
@@ -235,6 +250,7 @@ io.on('connection', (socket) => {
   socket.on('chain_played', ({ roomId, playerId }) => {
     const room = rooms[roomId];
     if (!room) return;
+    clearPendingPlays(room);
     room.awaitingFlip = true;
     console.log(`Chain played by ${playerId}; room ${roomId} is awaiting flip`);
   });
@@ -242,6 +258,7 @@ io.on('connection', (socket) => {
   socket.on('chain_flipped', ({ roomId, playerId }) => {
     const room = rooms[roomId];
     if (!room) return;
+    clearPendingPlays(room);
     room.awaitingFlip = false;
     console.log(`Chain flipped by ${playerId}; room ${roomId} is accepting plays`);
   });
@@ -249,10 +266,7 @@ io.on('connection', (socket) => {
   socket.on('game_reset', ({ roomId, playerId }) => {
     const room = rooms[roomId];
     if (!room) return;
-    for (const pending of Object.values(room.pendingPlays)) {
-      if (pending.timeout) clearTimeout(pending.timeout);
-    }
-    room.pendingPlays = {};
+    clearPendingPlays(room);
     room.activeBattle = null;
     room.awaitingFlip = false;
     console.log(`Game reset by ${playerId}; room ${roomId} is accepting plays`);
