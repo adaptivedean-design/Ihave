@@ -38,8 +38,8 @@ button:hover{background:#16b7a7;}
 #opponentPilesBottom{display:flex;justify-content:center;width:100%;}
 .opponentCard{background:#bdf6e0;height:45px;border-radius:6px;opacity:.95;border:2px solid #16b7a7;}
 #centerArea{display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;background:transparent;}
-#centerArea.battleImpact::after{content:"";position:absolute;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle, rgba(255,107,107,.75), rgba(228,224,154,.45) 34%, rgba(110,227,222,.28) 52%, transparent 72%);opacity:0;pointer-events:none;animation:battleImpactFlash 3s ease-out;}
-body.battleShake #app{animation:battleScreenShake 3s ease-in-out;}
+#centerArea.battleImpact::after{content:"";position:absolute;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle, rgba(255,107,107,.75), rgba(228,224,154,.45) 34%, rgba(110,227,222,.28) 52%, transparent 72%);opacity:0;pointer-events:none;animation:battleImpactFlash 1.5s ease-out;}
+body.battleShake #app{animation:battleScreenShake 1.5s ease-in-out;}
 #deck{background:transparent;width:190px;height:190px;border-radius:0;display:flex;justify-content:center;align-items:center;text-align:center;padding:0;cursor:pointer;transition:transform .08s;position:relative;perspective:1000px;box-shadow:none;border:none;isolation:isolate;}
 #deck:hover{transform:scale(1.02);}
 #chainText{display:none;}
@@ -104,8 +104,8 @@ body.battleShake #app{animation:battleScreenShake 3s ease-in-out;}
 @keyframes chainBreakPulse{0%,100%{background:rgba(228,224,154,0.3);}50%{background:rgba(228,224,154,0.7);}} /* Pulse yellow */
 @keyframes centerLockPulse{0%{transform:scale(1);filter:drop-shadow(0 0 0 rgba(110,227,222,0));}42%{transform:scale(1.08);filter:drop-shadow(0 0 22px rgba(110,227,222,.75));}100%{transform:scale(1);filter:drop-shadow(0 0 4px rgba(110,227,222,.15));}}
 @keyframes centerSurfaceSettle{0%{transform:scale(1.22);filter:drop-shadow(0 0 18px rgba(110,227,222,.38));}55%{transform:scale(1.06);filter:drop-shadow(0 0 24px rgba(110,227,222,.52));}100%{transform:scale(1);filter:drop-shadow(0 0 4px rgba(110,227,222,.15));}}
-@keyframes battleImpactFlash{0%,100%{opacity:0;transform:scale(.8);}12%{opacity:.95;transform:scale(1);}32%{opacity:.45;transform:scale(1.1);}52%{opacity:.85;transform:scale(1.02);}72%{opacity:.42;transform:scale(1.18);}}
-@keyframes battleScreenShake{0%,100%{transform:translate(0,0) rotate(0deg);}8%{transform:translate(-7px,2px) rotate(-.35deg);}16%{transform:translate(6px,-2px) rotate(.3deg);}24%{transform:translate(-5px,1px) rotate(-.25deg);}32%{transform:translate(5px,-1px) rotate(.22deg);}40%{transform:translate(-4px,2px) rotate(-.18deg);}48%{transform:translate(3px,-1px) rotate(.16deg);}56%{transform:translate(-3px,1px) rotate(-.12deg);}64%{transform:translate(2px,-1px) rotate(.1deg);}72%{transform:translate(-2px,1px) rotate(-.08deg);}80%{transform:translate(1px,0) rotate(.05deg);}}
+@keyframes battleImpactFlash{0%,100%{opacity:0;transform:scale(.74);}18%{opacity:.95;transform:scale(1);}32%{opacity:.18;transform:scale(.9);}48%{opacity:.9;transform:scale(1.08);}62%{opacity:.2;transform:scale(.94);}76%{opacity:.88;transform:scale(1.16);}90%{opacity:.24;transform:scale(1.04);}}
+@keyframes battleScreenShake{0%,100%{transform:translate(0,0) rotate(0deg);}16%{transform:translate(-8px,3px) rotate(-.45deg);}24%{transform:translate(6px,-2px) rotate(.34deg);}44%{transform:translate(8px,-3px) rotate(.42deg);}52%{transform:translate(-6px,2px) rotate(-.32deg);}72%{transform:translate(-7px,2px) rotate(-.36deg);}80%{transform:translate(5px,-1px) rotate(.25deg);}92%{transform:translate(-2px,1px) rotate(-.1deg);}}
 .chainBroken{animation:chainBreakPulse 1s infinite;}
 .cardInPile.chainBroken{box-shadow:0 0 18px rgba(228,224,154,0.9),0 0 0 2px rgba(228,224,154,0.62);border-radius:8px;}
 @keyframes flashRed{0%,100%{background:linear-gradient(135deg, #004870, #023047);}50%{background:#8b0000;border-color:#ff0000;}}
@@ -1223,34 +1223,36 @@ activeMovementClones.set(key, clone);
 }
 
 clone.classList.add("blockedClone");
-clone.style.filter = "drop-shadow(0 0 14px rgba(255,107,107,.78))";
+clone.style.filter = "drop-shadow(0 0 18px rgba(255,107,107,.9))";
 
 const dx = targetRect.left + targetRect.width / 2 - (sourceRect.left + sourceRect.width / 2);
 const dy = targetRect.top + targetRect.height / 2 - (sourceRect.top + sourceRect.height / 2);
 const scale = getCenterCardScale(sourceRect);
-const wallDx = dx * 0.82;
-const wallDy = dy * 0.82;
-const wobble = playedBy === playerId ? -10 : 10;
+const hitDx = dx * 0.96;
+const hitDy = dy * 0.96;
+const recoilDx = dx * 0.68;
+const recoilDy = dy * 0.68;
+const wobble = playedBy === playerId ? -22 : 22;
 
 clone.animate([
 { transform: "translate3d(0,0,0) scale(1)", opacity: 1, offset: 0 },
-{ transform: `translate3d(${wallDx}px, ${wallDy}px, 0) scale(${scale}) rotate(${wobble * .2}deg)`, opacity: 1, offset: .22 },
-{ transform: `translate3d(${wallDx * .9 - wobble}px, ${wallDy * .9 + 2}px, 0) scale(${scale * .96}) rotate(${-wobble * .35}deg)`, opacity: 1, offset: .34 },
-{ transform: `translate3d(${wallDx}px, ${wallDy}px, 0) scale(${scale}) rotate(${wobble * .24}deg)`, opacity: 1, offset: .48 },
-{ transform: `translate3d(${wallDx * .92 + wobble * .7}px, ${wallDy * .92 - 2}px, 0) scale(${scale * .97}) rotate(${wobble * .28}deg)`, opacity: 1, offset: .62 },
-{ transform: `translate3d(${wallDx}px, ${wallDy}px, 0) scale(${scale}) rotate(${-wobble * .2}deg)`, opacity: 1, offset: .78 },
-{ transform: `translate3d(${wallDx * .95 - wobble * .45}px, ${wallDy * .95 + 1}px, 0) scale(${scale * .98}) rotate(${-wobble * .18}deg)`, opacity: 1, offset: .9 },
-{ transform: `translate3d(${wallDx}px, ${wallDy}px, 0) scale(${scale}) rotate(0deg)`, opacity: .94, offset: 1 }
+{ transform: `translate3d(${hitDx}px, ${hitDy}px, 0) scale(${scale * 1.04}) rotate(${wobble * .25}deg)`, filter: "drop-shadow(0 0 30px rgba(255,107,107,1))", opacity: 1, offset: .2 },
+{ transform: `translate3d(${recoilDx - wobble}px, ${recoilDy + 6}px, 0) scale(${scale * .88}) rotate(${-wobble * .55}deg)`, filter: "drop-shadow(0 0 12px rgba(255,107,107,.65))", opacity: 1, offset: .32 },
+{ transform: `translate3d(${hitDx + wobble * .28}px, ${hitDy - 4}px, 0) scale(${scale * 1.06}) rotate(${wobble * .34}deg)`, filter: "drop-shadow(0 0 34px rgba(255,107,107,1))", opacity: 1, offset: .48 },
+{ transform: `translate3d(${recoilDx + wobble * .65}px, ${recoilDy - 7}px, 0) scale(${scale * .9}) rotate(${-wobble * .42}deg)`, filter: "drop-shadow(0 0 14px rgba(255,107,107,.7))", opacity: 1, offset: .6 },
+{ transform: `translate3d(${hitDx - wobble * .18}px, ${hitDy + 3}px, 0) scale(${scale * 1.07}) rotate(${-wobble * .25}deg)`, filter: "drop-shadow(0 0 38px rgba(255,107,107,1))", opacity: 1, offset: .76 },
+{ transform: `translate3d(${recoilDx * .92}px, ${recoilDy * .92}px, 0) scale(${scale * .94}) rotate(${wobble * .18}deg)`, filter: "drop-shadow(0 0 18px rgba(255,107,107,.8))", opacity: .98, offset: .88 },
+{ transform: `translate3d(${hitDx}px, ${hitDy}px, 0) scale(${scale * 1.02}) rotate(0deg)`, filter: "drop-shadow(0 0 30px rgba(255,107,107,.95))", opacity: .94, offset: 1 }
 ], {
-duration: Math.max(1000, durationMs),
-easing: "cubic-bezier(.2,.8,.2,1)",
+duration: Math.max(1500, durationMs),
+easing: "cubic-bezier(.18,.88,.2,1)",
 fill: "forwards"
 });
 
 setTimeout(() => {
 clone.remove();
 activeMovementClones.delete(key);
-}, Math.max(1000, durationMs) + 260);
+}, Math.max(1500, durationMs) + 260);
 }
 
 function animateBlockedCardToCenter(card, playedBy){
