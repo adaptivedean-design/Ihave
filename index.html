@@ -95,12 +95,15 @@ body.battleShake #app{animation:battleScreenShake 3s ease-in-out;}
 .cardFlyClone.blockedClone{filter:drop-shadow(0 0 16px rgba(255,107,107,0.85)) !important;}
 .centerCardSurface{position:absolute;inset:0;z-index:3;width:100%;height:100%;display:flex;align-items:center;justify-content:center;pointer-events:none;opacity:1;transition:opacity .18s ease,transform .18s ease;}
 .centerCardSurface img{display:block;width:172px;height:172px;object-fit:contain;image-rendering:auto;image-rendering:-webkit-optimize-contrast;}
+.centerCardSurface.covering{transform:scale(1.22);}
+.centerCardSurface.settling{animation:centerSurfaceSettle .32s cubic-bezier(.18,.88,.2,1) forwards;}
 .centerCardSurface.decaying{opacity:0;transform:scale(.96);}
 .centerCardSurface.locking{animation:centerLockPulse .34s ease-out;}
 @keyframes shake{0%,100%{transform:translateX(0);}25%{transform:translateX(-8px);}75%{transform:translateX(8px);}}
 @keyframes dropRailPulse{0%,100%{opacity:.38;transform:scaleX(.82);}50%{opacity:.95;transform:scaleX(1);}}
 @keyframes chainBreakPulse{0%,100%{background:rgba(228,224,154,0.3);}50%{background:rgba(228,224,154,0.7);}} /* Pulse yellow */
 @keyframes centerLockPulse{0%{transform:scale(1);filter:drop-shadow(0 0 0 rgba(110,227,222,0));}42%{transform:scale(1.08);filter:drop-shadow(0 0 22px rgba(110,227,222,.75));}100%{transform:scale(1);filter:drop-shadow(0 0 4px rgba(110,227,222,.15));}}
+@keyframes centerSurfaceSettle{0%{transform:scale(1.22);filter:drop-shadow(0 0 18px rgba(110,227,222,.38));}55%{transform:scale(1.06);filter:drop-shadow(0 0 24px rgba(110,227,222,.52));}100%{transform:scale(1);filter:drop-shadow(0 0 4px rgba(110,227,222,.15));}}
 @keyframes battleImpactFlash{0%,100%{opacity:0;transform:scale(.8);}12%{opacity:.95;transform:scale(1);}32%{opacity:.45;transform:scale(1.1);}52%{opacity:.85;transform:scale(1.02);}72%{opacity:.42;transform:scale(1.18);}}
 @keyframes battleScreenShake{0%,100%{transform:translate(0,0) rotate(0deg);}8%{transform:translate(-7px,2px) rotate(-.35deg);}16%{transform:translate(6px,-2px) rotate(.3deg);}24%{transform:translate(-5px,1px) rotate(-.25deg);}32%{transform:translate(5px,-1px) rotate(.22deg);}40%{transform:translate(-4px,2px) rotate(-.18deg);}48%{transform:translate(3px,-1px) rotate(.16deg);}56%{transform:translate(-3px,1px) rotate(-.12deg);}64%{transform:translate(2px,-1px) rotate(.1deg);}72%{transform:translate(-2px,1px) rotate(-.08deg);}80%{transform:translate(1px,0) rotate(.05deg);}}
 .chainBroken{animation:chainBreakPulse 1s infinite;}
@@ -564,6 +567,7 @@ let localReadySubmitted=false;
 const OVERLAY_CARD_LIMIT=5;
 let opponentRenderToken=0;
 const CARD_TRAVEL_MS=960;
+const CENTER_CARD_COVER_SIZE=210;
 let centerRevealAt=0;
 let delayedCenterRenderTimer=null;
 const FLOW_PHASES = {
@@ -1052,10 +1056,9 @@ return scope ? scope.querySelector(selector) : null;
 }
 
 function getCenterCardScale(sourceRect){
-const centerImageSize = 172;
 const sourceSize = Math.max(sourceRect.width, sourceRect.height);
 if(!sourceSize) return 1;
-return Math.min(1.9, Math.max(0.72, centerImageSize / sourceSize));
+return Math.min(2.25, Math.max(0.72, CENTER_CARD_COVER_SIZE / sourceSize));
 }
 
 function animateCardToCenter(card, playedBy){
@@ -1101,10 +1104,10 @@ document.body.appendChild(clone);
 
 const dx = targetRect.left + targetRect.width / 2 - (sourceRect.left + sourceRect.width / 2);
 const dy = targetRect.top + targetRect.height / 2 - (sourceRect.top + sourceRect.height / 2);
-const scale = getCenterCardScale(sourceRect);
+const coverScale = getCenterCardScale(sourceRect);
 
 requestAnimationFrame(() => requestAnimationFrame(() => {
-clone.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(${scale})`;
+clone.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(${coverScale})`;
 clone.style.opacity = "1";
 }));
 
@@ -1117,7 +1120,7 @@ clone.remove();
 } else {
 const surface = document.createElement("div");
 const surfaceImg = clone.cloneNode(false);
-surface.className = "centerCardSurface";
+surface.className = "centerCardSurface covering";
 surface.dataset.cardId = card.id;
 surface.dataset.playedBy = playedBy || "";
 surfaceImg.className = "";
@@ -1127,8 +1130,15 @@ surfaceImg.alt = card.iHave;
 removeCenterSurface();
 surface.appendChild(surfaceImg);
 deck.appendChild(surface);
-surface.classList.add("locking");
-setTimeout(() => surface.classList.remove("locking"), 380);
+const deckBack = document.querySelector(".deckBack");
+if(deckBack) deckBack.innerHTML = "";
+deck.classList.add("instantFaceReset");
+deck.classList.remove("flipped");
+requestAnimationFrame(() => {
+surface.classList.remove("covering");
+surface.classList.add("settling");
+});
+setTimeout(() => surface.classList.remove("settling"), 360);
 clone.remove();
 }
 activeMovementKeys.delete(key);
