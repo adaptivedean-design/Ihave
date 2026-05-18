@@ -557,6 +557,7 @@ const restartBtn=document.getElementById("restartBtn");
 const chainText=document.getElementById("chainText");
 const deck=document.getElementById("deck");
 let pendingCardId=null;
+let playValidationInProgress=false;
 let roundWinnerShownFor=null;
 let currentRoundStartedAt=null;
 let latestRoomData=null;
@@ -643,6 +644,7 @@ activeMovementClones.delete(key);
 function clearPendingPlayVisuals(){
 pendingCardId = null;
 localMovementStartedFor = null;
+playValidationInProgress = false;
 document.querySelectorAll('.pendingPlay').forEach(el => el.classList.remove('pendingPlay'));
 }
 
@@ -891,6 +893,12 @@ console.log("A card play is already pending:", pendingCardId);
 console.log("====== tryPlay END (pending card) ======");
 return;
 }
+if(playValidationInProgress){
+console.log("A card play is already being validated");
+console.log("====== tryPlay END (validation in progress) ======");
+return;
+}
+playValidationInProgress = true;
 
 const roomSnap = await get(ref(db,"rooms/"+roomId));
 const roomData = roomSnap.val() || {};
@@ -901,6 +909,7 @@ cardElement.classList.add('wrongCard');
 setTimeout(() => cardElement.classList.remove('wrongCard'), 400);
 }
 console.log("====== tryPlay END (waiting for ready countdown) ======");
+playValidationInProgress = false;
 return;
 }
 
@@ -919,6 +928,7 @@ cardElement.classList.add('wrongCard');
 setTimeout(() => cardElement.classList.remove('wrongCard'), 400);
 }
 console.log("====== tryPlay END (phase blocked) ======");
+playValidationInProgress = false;
 return;
 }
 
@@ -954,6 +964,7 @@ setTimeout(() => cardElement.classList.remove('wrongCard'), 400);
 }
 
 console.log("====== tryPlay END (wrong card) ======");
+playValidationInProgress = false;
 return; // Wrong card, can't play
 } else {
 console.log("Chain broken! Target animal depleted, allowing any card to restart chain");
@@ -972,11 +983,13 @@ cardElement.classList.add('wrongCard');
 setTimeout(() => cardElement.classList.remove('wrongCard'), 400);
 }
 console.log("====== tryPlay END (must flip) ======");
+playValidationInProgress = false;
 return;
 }
 
 console.log("Card validated, proceeding to play...");
 pendingCardId = card.id;
+playValidationInProgress = false;
 if(cardElement){
 cardElement.classList.add('pendingPlay');
 }
@@ -2435,11 +2448,16 @@ setFlowPhase(FLOW_PHASES.CARD_MOVING);
 animateCardToCenter(card, intentPlayerId);
 });
 
-socket.on('card_play_blocked', ({ playerId: blockedPlayerId, card, reason }) => {
+socket.on('card_play_blocked', ({ playerId: blockedPlayerId, card, reason, blockedByPlayerId }) => {
 if(!card) return;
 const blockedKey = movementKey(card, blockedPlayerId);
-if(blockedPlayerId === playerId && activeMovementClones.has(blockedKey)){
-console.warn("Ignoring self-block for active moving card:", reason || "unknown");
+const isOwnActiveCard = blockedPlayerId === playerId && (
+activeMovementClones.has(blockedKey) ||
+String(pendingCardId) === String(card.id) ||
+String(localMovementStartedFor) === String(card.id)
+);
+if(isOwnActiveCard && (!blockedByPlayerId || blockedByPlayerId === playerId)){
+console.warn("Ignoring self-block for active moving card:", reason || "unknown", blockedByPlayerId || "unknown blocker");
 return;
 }
 setFlowPhase(FLOW_PHASES.NEAR_BLOCK);
@@ -2463,10 +2481,14 @@ playCardNow(card);
 console.log('   My hand after:', myHand.map(c => c.iHave));
 });
 
-socket.on('play_rejected', ({ reason }) => {
+socket.on('play_rejected', ({ reason, blockedByPlayerId }) => {
 console.warn('Card play rejected by server:', reason);
-if(reason === "awaiting_flip" && pendingCardId !== null && activeMovementClones.has(movementKey({id: pendingCardId}, playerId))){
-console.warn("Ignoring late awaiting_flip rejection for active moving card");
+const rejectedCardIsMoving = pendingCardId !== null && (
+activeMovementClones.has(movementKey({id: pendingCardId}, playerId)) ||
+String(localMovementStartedFor) === String(pendingCardId)
+);
+if(rejectedCardIsMoving && (blockedByPlayerId === playerId || (!blockedByPlayerId && reason === "center_reserved"))){
+console.warn("Ignoring late self-rejection for active moving card");
 return;
 }
 cancelMovement(pendingCardId, playerId);

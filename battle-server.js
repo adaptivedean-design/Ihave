@@ -23,11 +23,12 @@ const BATTLE_INTRO_MS = 1000; // Brief collision beat before clicking starts
 const PENDING_STALE_MS = AUTO_PLAY_DELAY_MS + 500;
 let battleSequence = 0;
 
-function emitBlockedPlay(roomId, playerId, card, reason) {
+function emitBlockedPlay(roomId, playerId, card, reason, blockedByPlayerId = null) {
   io.to(roomId).emit('card_play_blocked', {
     playerId,
     card,
-    reason
+    reason,
+    blockedByPlayerId
   });
 }
 
@@ -138,10 +139,6 @@ io.on('connection', (socket) => {
           console.log(`✅ DIFFERENT PLAYER - Battle triggered!`);
           battleOpponent = { playerId: pid, card: pending.card, isHost: pending.isHost };
           break;
-        } else {
-          console.log('Same player already has a pending play; blocking duplicate');
-          blockedByPending = { playerId: pid, age };
-          break;
         }
       } else {
         if (age > PENDING_STALE_MS) {
@@ -193,8 +190,8 @@ io.on('connection', (socket) => {
       
     } else if (blockedByPending) {
       console.log(`Near click blocked for ${playerId}; ${blockedByPending.playerId} reserved center ${blockedByPending.age}ms ago`);
-      emitBlockedPlay(roomId, playerId, card, 'center_reserved');
-      socket.emit('play_rejected', { reason: 'center_reserved' });
+      emitBlockedPlay(roomId, playerId, card, 'center_reserved', blockedByPending.playerId);
+      socket.emit('play_rejected', { reason: 'center_reserved', blockedByPlayerId: blockedByPending.playerId });
     } else {
       // No battle - add to pending
       console.log(`No battle opponent found, adding to pending plays`);
