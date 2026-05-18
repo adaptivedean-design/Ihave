@@ -651,16 +651,17 @@ return deck.querySelector(".centerCardSurface");
 }
 
 function removeCenterSurface(){
-const surface = getCenterSurface();
-if(surface) surface.remove();
+deck.querySelectorAll(".centerCardSurface").forEach(surface => surface.remove());
 }
 
 function decayCenterSurface(){
-const surface = getCenterSurface();
-if(!surface) return;
-surface.classList.add("decaying");
+const surfaces = deck.querySelectorAll(".centerCardSurface");
+if(!surfaces.length) return;
+surfaces.forEach(surface => surface.classList.add("decaying"));
 setTimeout(() => {
+surfaces.forEach(surface => {
 if(surface.parentNode) surface.remove();
+});
 }, 220);
 }
 
@@ -1220,13 +1221,15 @@ const wobble = playedBy === playerId ? -10 : 10;
 
 clone.animate([
 { transform: "translate3d(0,0,0) scale(1)", opacity: 1, offset: 0 },
-{ transform: `translate3d(${wallDx}px, ${wallDy}px, 0) scale(${scale}) rotate(${wobble * .2}deg)`, opacity: 1, offset: .28 },
-{ transform: `translate3d(${wallDx - wobble}px, ${wallDy + 2}px, 0) scale(${scale}) rotate(${-wobble * .35}deg)`, opacity: 1, offset: .42 },
-{ transform: `translate3d(${wallDx + wobble * .7}px, ${wallDy - 2}px, 0) scale(${scale}) rotate(${wobble * .28}deg)`, opacity: 1, offset: .58 },
-{ transform: `translate3d(${wallDx - wobble * .45}px, ${wallDy + 1}px, 0) scale(${scale}) rotate(${-wobble * .18}deg)`, opacity: 1, offset: .76 },
+{ transform: `translate3d(${wallDx}px, ${wallDy}px, 0) scale(${scale}) rotate(${wobble * .2}deg)`, opacity: 1, offset: .22 },
+{ transform: `translate3d(${wallDx * .9 - wobble}px, ${wallDy * .9 + 2}px, 0) scale(${scale * .96}) rotate(${-wobble * .35}deg)`, opacity: 1, offset: .34 },
+{ transform: `translate3d(${wallDx}px, ${wallDy}px, 0) scale(${scale}) rotate(${wobble * .24}deg)`, opacity: 1, offset: .48 },
+{ transform: `translate3d(${wallDx * .92 + wobble * .7}px, ${wallDy * .92 - 2}px, 0) scale(${scale * .97}) rotate(${wobble * .28}deg)`, opacity: 1, offset: .62 },
+{ transform: `translate3d(${wallDx}px, ${wallDy}px, 0) scale(${scale}) rotate(${-wobble * .2}deg)`, opacity: 1, offset: .78 },
+{ transform: `translate3d(${wallDx * .95 - wobble * .45}px, ${wallDy * .95 + 1}px, 0) scale(${scale * .98}) rotate(${-wobble * .18}deg)`, opacity: 1, offset: .9 },
 { transform: `translate3d(${wallDx}px, ${wallDy}px, 0) scale(${scale}) rotate(0deg)`, opacity: .94, offset: 1 }
 ], {
-duration: Math.max(900, durationMs),
+duration: Math.max(1000, durationMs),
 easing: "cubic-bezier(.2,.8,.2,1)",
 fill: "forwards"
 });
@@ -1234,7 +1237,7 @@ fill: "forwards"
 setTimeout(() => {
 clone.remove();
 activeMovementClones.delete(key);
-}, Math.max(900, durationMs) + 260);
+}, Math.max(1000, durationMs) + 260);
 }
 
 function animateBlockedCardToCenter(card, playedBy){
@@ -1864,14 +1867,6 @@ renderChainDisplay(chain);
 return;
 }
 
-if(chain.flipped){
-decayCenterSurface();
-deck.classList.add("flipped");
-} else {
-deck.classList.add("instantFaceReset");
-deck.classList.remove("flipped");
-}
-
 const centerSurface = getCenterSurface();
 const centerSurfaceMatches = centerSurface && String(centerSurface.dataset.cardId) === String(chain.cardId);
 deckFront.innerHTML = centerSurfaceMatches ? "" : (iHaveImg ?
@@ -1883,11 +1878,16 @@ deckBack.innerHTML = chain.flipped && whoHasImg ?
 (chain.flipped ? `<b>WHO HAS</b><br>${chain.whoHas}?` : "");
 
 if(chain.flipped){
+decayCenterSurface();
+deck.classList.remove("instantFaceReset");
+deck.classList.add("flipped");
 deck.classList.remove("canFlip");
 deck.classList.remove("centerReplacing");
 chainText.innerHTML="Find and play your card!";
 } else {
 deck.classList.remove("centerReplacing");
+deck.classList.add("instantFaceReset");
+deck.classList.remove("flipped");
 centerRevealAt = 0;
 requestAnimationFrame(() => {
 deck.classList.remove("instantFaceReset");
@@ -2435,8 +2435,13 @@ setFlowPhase(FLOW_PHASES.CARD_MOVING);
 animateCardToCenter(card, intentPlayerId);
 });
 
-socket.on('card_play_blocked', ({ playerId: blockedPlayerId, card }) => {
+socket.on('card_play_blocked', ({ playerId: blockedPlayerId, card, reason }) => {
 if(!card) return;
+const blockedKey = movementKey(card, blockedPlayerId);
+if(blockedPlayerId === playerId && activeMovementClones.has(blockedKey)){
+console.warn("Ignoring self-block for active moving card:", reason || "unknown");
+return;
+}
 setFlowPhase(FLOW_PHASES.NEAR_BLOCK);
 if(blockedPlayerId === playerId){
 cancelMovement(pendingCardId || card.id, playerId);
@@ -2460,6 +2465,10 @@ console.log('   My hand after:', myHand.map(c => c.iHave));
 
 socket.on('play_rejected', ({ reason }) => {
 console.warn('Card play rejected by server:', reason);
+if(reason === "awaiting_flip" && pendingCardId !== null && activeMovementClones.has(movementKey({id: pendingCardId}, playerId))){
+console.warn("Ignoring late awaiting_flip rejection for active moving card");
+return;
+}
 cancelMovement(pendingCardId, playerId);
 clearPendingPlayVisuals();
 renderHand();
