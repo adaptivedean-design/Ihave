@@ -1073,6 +1073,13 @@ const scope = playedBy === playerId ? document : document.getElementById("oppone
 return scope ? scope.querySelector(selector) : null;
 }
 
+function getCenterCardScale(sourceRect){
+const centerImageSize = 172;
+const sourceSize = Math.max(sourceRect.width, sourceRect.height);
+if(!sourceSize) return 1;
+return Math.min(1.9, Math.max(0.72, centerImageSize / sourceSize));
+}
+
 function animateCardToCenter(card, playedBy){
 const key = movementKey(card, playedBy);
 if(activeMovementKeys.has(key)) return;
@@ -1116,7 +1123,7 @@ document.body.appendChild(clone);
 
 const dx = targetRect.left + targetRect.width / 2 - (sourceRect.left + sourceRect.width / 2);
 const dy = targetRect.top + targetRect.height / 2 - (sourceRect.top + sourceRect.height / 2);
-const scale = Math.min(1.18, Math.max(0.72, targetRect.height / sourceRect.height));
+const scale = getCenterCardScale(sourceRect);
 
 requestAnimationFrame(() => requestAnimationFrame(() => {
 clone.style.transform = `translate3d(${dx}px, ${dy}px, 0) scale(${scale})`;
@@ -1179,7 +1186,7 @@ document.body.appendChild(clone);
 
 const dx = targetRect.left + targetRect.width / 2 - (sourceRect.left + sourceRect.width / 2);
 const dy = targetRect.top + targetRect.height / 2 - (sourceRect.top + sourceRect.height / 2);
-const scale = Math.min(1.12, Math.max(0.76, targetRect.height / sourceRect.height));
+const scale = getCenterCardScale(sourceRect);
 const wallDx = dx * 0.82;
 const wallDy = dy * 0.82;
 const wobble = playedBy === playerId ? -10 : 10;
@@ -1229,7 +1236,7 @@ document.body.appendChild(clone);
 
 const dx = targetRect.left + targetRect.width / 2 - (sourceRect.left + sourceRect.width / 2);
 const dy = targetRect.top + targetRect.height / 2 - (sourceRect.top + sourceRect.height / 2);
-const scale = Math.min(1.12, Math.max(0.76, targetRect.height / sourceRect.height));
+const scale = getCenterCardScale(sourceRect);
 const wallDx = dx * 0.78;
 const wallDy = dy * 0.78;
 
