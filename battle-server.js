@@ -17,9 +17,9 @@ const io = new Server(server, {
 // Store active rooms and their state
 const rooms = {};
 
-const BATTLE_WINDOW_MS = 900; // Forgiving battle detection window
+const BATTLE_WINDOW_MS = 600; // Race-click window for battle interception
 const AUTO_PLAY_DELAY_MS = BATTLE_WINDOW_MS + 20; // Give edge-of-window plays time to arrive
-const BATTLE_INTRO_MS = 3000; // Dramatic card collision before clicking starts
+const BATTLE_INTRO_MS = 1000; // Brief collision beat before clicking starts
 const PENDING_STALE_MS = AUTO_PLAY_DELAY_MS + 500;
 let battleSequence = 0;
 

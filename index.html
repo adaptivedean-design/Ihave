@@ -583,6 +583,7 @@ CENTER_WAITING_FLIP: "center_waiting_flip"
 let flowPhase = FLOW_PHASES.ARRANGING;
 const activeMovementKeys = new Set();
 const canceledMovementKeys = new Set();
+const activeMovementClones = new Map();
 let cardImagesPreloaded = false;
 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a}
@@ -634,7 +635,9 @@ return `${playedBy || "unknown"}:${card && card.id}`;
 
 function cancelMovement(cardId, playedBy){
 if(cardId === undefined || cardId === null) return;
-canceledMovementKeys.add(movementKey({id: cardId}, playedBy));
+const key = movementKey({id: cardId}, playedBy);
+canceledMovementKeys.add(key);
+activeMovementClones.delete(key);
 }
 
 function clearPendingPlayVisuals(){
@@ -1087,6 +1090,8 @@ activeMovementKeys.add(key);
 const clone = source.cloneNode(true);
 clone.classList.add("cardFlyClone");
 clone.classList.remove("pendingPlay", "wrong", "wrongCard", "dragging");
+clone.dataset.cardId = card.id;
+clone.dataset.playedBy = playedBy || "";
 clone.style.left = `${sourceRect.left}px`;
 clone.style.top = `${sourceRect.top}px`;
 clone.style.width = `${sourceRect.width}px`;
@@ -1101,6 +1106,7 @@ clone.style.outline = "none";
 clone.style.padding = "0";
 clone.style.filter = "none";
 document.body.appendChild(clone);
+activeMovementClones.set(key, clone);
 
 const dx = targetRect.left + targetRect.width / 2 - (sourceRect.left + sourceRect.width / 2);
 const dy = targetRect.top + targetRect.height / 2 - (sourceRect.top + sourceRect.height / 2);
@@ -1115,8 +1121,12 @@ setTimeout(() => {
 if(canceledMovementKeys.has(key)){
 canceledMovementKeys.delete(key);
 clone.remove();
+activeMovementClones.delete(key);
 } else if(flowPhase === FLOW_PHASES.BATTLE_INTRO || flowPhase === FLOW_PHASES.BATTLE_ACTIVE){
+if(clone.dataset.battleClone !== "true"){
 clone.remove();
+activeMovementClones.delete(key);
+}
 } else {
 const surface = document.createElement("div");
 const surfaceImg = clone.cloneNode(false);
@@ -1140,6 +1150,7 @@ surface.classList.add("settling");
 });
 setTimeout(() => surface.classList.remove("settling"), 360);
 clone.remove();
+activeMovementClones.delete(key);
 }
 activeMovementKeys.delete(key);
 }, CARD_TRAVEL_MS + 80);
@@ -1148,15 +1159,39 @@ activeMovementKeys.delete(key);
 function animateBattleCardCollision(card, playedBy, durationMs){
 const source = findVisibleCardElement(card.id, playedBy);
 const target = deck;
-if(!source || !target) return;
+if(!target) return;
 
-const sourceRect = source.getBoundingClientRect();
 const targetRect = target.getBoundingClientRect();
-if(!sourceRect.width || !sourceRect.height || !targetRect.width || !targetRect.height) return;
+if(!targetRect.width || !targetRect.height) return;
 
-const clone = source.cloneNode(true);
-clone.classList.add("cardFlyClone", "blockedClone");
+const key = movementKey(card, playedBy);
+let clone = activeMovementClones.get(key);
+if(clone && !document.body.contains(clone)){
+activeMovementClones.delete(key);
+clone = null;
+}
+
+let sourceRect;
+if(clone){
+sourceRect = clone.getBoundingClientRect();
+clone.getAnimations().forEach(animation => animation.cancel());
+clone.style.transition = "none";
+clone.style.left = `${sourceRect.left}px`;
+clone.style.top = `${sourceRect.top}px`;
+clone.style.width = `${sourceRect.width}px`;
+clone.style.height = `${sourceRect.height}px`;
+clone.style.transform = "translate3d(0,0,0) scale(1)";
+clone.dataset.battleClone = "true";
+} else {
+if(!source) return;
+sourceRect = source.getBoundingClientRect();
+if(!sourceRect.width || !sourceRect.height) return;
+clone = source.cloneNode(true);
+clone.classList.add("cardFlyClone");
 clone.classList.remove("pendingPlay", "wrong", "wrongCard", "dragging");
+clone.dataset.cardId = card.id;
+clone.dataset.playedBy = playedBy || "";
+clone.dataset.battleClone = "true";
 clone.style.left = `${sourceRect.left}px`;
 clone.style.top = `${sourceRect.top}px`;
 clone.style.width = `${sourceRect.width}px`;
@@ -1169,8 +1204,12 @@ clone.style.border = "none";
 clone.style.boxShadow = "none";
 clone.style.outline = "none";
 clone.style.padding = "0";
-clone.style.filter = "drop-shadow(0 0 14px rgba(255,107,107,.78))";
 document.body.appendChild(clone);
+activeMovementClones.set(key, clone);
+}
+
+clone.classList.add("blockedClone");
+clone.style.filter = "drop-shadow(0 0 14px rgba(255,107,107,.78))";
 
 const dx = targetRect.left + targetRect.width / 2 - (sourceRect.left + sourceRect.width / 2);
 const dy = targetRect.top + targetRect.height / 2 - (sourceRect.top + sourceRect.height / 2);
@@ -1192,7 +1231,10 @@ easing: "cubic-bezier(.2,.8,.2,1)",
 fill: "forwards"
 });
 
-setTimeout(() => clone.remove(), Math.max(900, durationMs) + 260);
+setTimeout(() => {
+clone.remove();
+activeMovementClones.delete(key);
+}, Math.max(900, durationMs) + 260);
 }
 
 function animateBlockedCardToCenter(card, playedBy){
@@ -1412,8 +1454,6 @@ battleTimerInterval = null;
 pendingCardId = null;
 document.querySelectorAll('.pendingPlay').forEach(el => el.classList.remove('pendingPlay'));
 localMovementStartedFor = null;
-document.querySelectorAll('.cardFlyClone').forEach(el => el.remove());
-activeMovementKeys.clear();
 canceledMovementKeys.clear();
 battleState = battle;
 battleClicks = 0;
@@ -1759,8 +1799,10 @@ battleTimerInterval = null;
 }
 battleState = null;
 battleClicks = 0;
+document.querySelectorAll('.cardFlyClone').forEach(el => el.remove());
 activeMovementKeys.clear();
 canceledMovementKeys.clear();
+activeMovementClones.clear();
 setFlowPhase(FLOW_PHASES.ARRANGING);
 
 document.getElementById("battleScreen").style.display = "none";
