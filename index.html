@@ -2533,6 +2533,10 @@ if(playId && playId !== activePlayId){
 console.warn("Ignoring stale play rejection:", playId, "current:", activePlayId);
 return;
 }
+if(reason === "center_reserved" && blockedByPlayerId && blockedByPlayerId !== playerId){
+console.warn("Center reserved by opponent; waiting for block animation event");
+return;
+}
 const rejectedCardIsMoving = pendingCardId !== null && (
 activeMovementClones.has(movementKey({id: pendingCardId}, playerId)) ||
 String(localMovementStartedFor) === String(pendingCardId)
