@@ -23,12 +23,13 @@ const BATTLE_INTRO_MS = 1500; // Clear multi-hit collision beat before clicking 
 const PENDING_STALE_MS = AUTO_PLAY_DELAY_MS + 500;
 let battleSequence = 0;
 
-function emitBlockedPlay(roomId, playerId, card, reason, blockedByPlayerId = null) {
+function emitBlockedPlay(roomId, playerId, card, reason, blockedByPlayerId = null, playId = null) {
   io.to(roomId).emit('card_play_blocked', {
     playerId,
     card,
     reason,
-    blockedByPlayerId
+    blockedByPlayerId,
+    playId
   });
 }
 
@@ -70,12 +71,13 @@ io.on('connection', (socket) => {
   });
 
   // Card played - check for battle
-  socket.on('card_played', ({ roomId, playerId, card, isHost }) => {
+  socket.on('card_played', ({ roomId, playerId, card, isHost, playId }) => {
     console.log(`\n========== CARD PLAYED ==========`);
     console.log(`Player: ${playerId}`);
     console.log(`Room: ${roomId}`);
     console.log(`Card: ${card.iHave}`);
     console.log(`IsHost: ${isHost}`);
+    console.log(`PlayId: ${playId || 'none'}`);
     
     const room = rooms[roomId];
     if (!room) {
@@ -88,9 +90,9 @@ io.on('connection', (socket) => {
 
     const rejectPlay = (reason, broadcastBlock = false) => {
       console.log(`Rejecting play from ${playerId}: ${reason}`);
-      socket.emit('play_rejected', { reason, blockedByPlayerId: playerId });
+      socket.emit('play_rejected', { reason, blockedByPlayerId: playerId, playId });
       if (broadcastBlock) {
-        emitBlockedPlay(roomId, playerId, card, reason, playerId);
+        emitBlockedPlay(roomId, playerId, card, reason, playerId, playId);
       }
     };
 
@@ -114,7 +116,7 @@ io.on('connection', (socket) => {
       } else {
         console.log(`Ignoring ${sameCard ? 'duplicate' : 'extra'} pending play from ${playerId}, age: ${ownPendingAge}ms`);
         if (!sameCard) {
-          socket.emit('play_rejected', { reason: 'pending_play' });
+          socket.emit('play_rejected', { reason: 'pending_play', blockedByPlayerId: playerId, playId });
         }
         return;
       }
@@ -137,7 +139,7 @@ io.on('connection', (socket) => {
         if (pid !== playerId) {
           // Different player - normal battle
           console.log(`✅ DIFFERENT PLAYER - Battle triggered!`);
-          battleOpponent = { playerId: pid, card: pending.card, isHost: pending.isHost };
+          battleOpponent = { playerId: pid, card: pending.card, isHost: pending.isHost, playId: pending.playId };
           break;
         }
       } else {
@@ -173,6 +175,8 @@ io.on('connection', (socket) => {
         player2: playerId,
         card1: battleOpponent.card,
         card2: card,
+        play1Id: battleOpponent.playId,
+        play2Id: playId,
         clicks1: 0,
         clicks2: 0,
         startTime: now + BATTLE_INTRO_MS,
@@ -190,14 +194,15 @@ io.on('connection', (socket) => {
       
     } else if (blockedByPending) {
       console.log(`Near click blocked for ${playerId}; ${blockedByPending.playerId} reserved center ${blockedByPending.age}ms ago`);
-      emitBlockedPlay(roomId, playerId, card, 'center_reserved', blockedByPending.playerId);
-      socket.emit('play_rejected', { reason: 'center_reserved', blockedByPlayerId: blockedByPending.playerId });
+      emitBlockedPlay(roomId, playerId, card, 'center_reserved', blockedByPending.playerId, playId);
+      socket.emit('play_rejected', { reason: 'center_reserved', blockedByPlayerId: blockedByPending.playerId, playId });
     } else {
       // No battle - add to pending
       console.log(`No battle opponent found, adding to pending plays`);
       io.to(roomId).emit('card_play_intent', {
         playerId,
         card,
+        playId,
         timestamp: now
       });
       
@@ -209,7 +214,7 @@ io.on('connection', (socket) => {
           const player = room.players[playerId];
           if (player && player.socketId) {
             room.awaitingFlip = true;
-            io.to(player.socketId).emit('play_card_now', { card: card });
+            io.to(player.socketId).emit('play_card_now', { card: card, playId });
           }
           clearPendingPlay(room, playerId);
         } else if (room.pendingPlays[playerId]) {
@@ -217,10 +222,10 @@ io.on('connection', (socket) => {
           console.log(`Rejecting pending play for ${playerId}: ${reason}`);
           const player = room.players[playerId];
           if (player && player.socketId) {
-            io.to(player.socketId).emit('play_rejected', { reason, blockedByPlayerId: playerId });
+            io.to(player.socketId).emit('play_rejected', { reason, blockedByPlayerId: playerId, playId });
           }
           if (reason === 'battle_active') {
-            emitBlockedPlay(roomId, playerId, card, reason, playerId);
+            emitBlockedPlay(roomId, playerId, card, reason, playerId, playId);
           }
           clearPendingPlay(room, playerId);
         }
@@ -230,6 +235,7 @@ io.on('connection', (socket) => {
         card: card,
         timestamp: now,
         isHost: isHost,
+        playId,
         timeout: timeoutId
       };
       

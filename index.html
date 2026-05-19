@@ -561,6 +561,8 @@ const chainText=document.getElementById("chainText");
 const deck=document.getElementById("deck");
 let pendingCardId=null;
 let playValidationInProgress=false;
+let activePlayId=null;
+let playSequence=0;
 let roundWinnerShownFor=null;
 let currentRoundStartedAt=null;
 let latestRoomData=null;
@@ -647,6 +649,7 @@ activeMovementClones.delete(key);
 function clearPendingPlayVisuals(){
 pendingCardId = null;
 localMovementStartedFor = null;
+activePlayId = null;
 playValidationInProgress = false;
 document.querySelectorAll('.pendingPlay').forEach(el => el.classList.remove('pendingPlay'));
 }
@@ -1002,6 +1005,7 @@ return;
 
 console.log("Card validated, proceeding to play...");
 pendingCardId = card.id;
+activePlayId = `${playerId}-${Date.now()}-${++playSequence}`;
 playValidationInProgress = false;
 if(cardElement){
 cardElement.classList.add('pendingPlay');
@@ -1024,12 +1028,13 @@ return;
 }
 
 // Send card play to WebSocket server for battle detection
-console.log("Sending card_played to server:", {roomId, playerId, card: card.iHave, isHost});
+console.log("Sending card_played to server:", {roomId, playerId, card: card.iHave, isHost, activePlayId});
 socket.emit('card_played', {
 roomId: roomId,
 playerId: playerId,
 card: card,
-isHost: isHost
+isHost: isHost,
+playId: activePlayId
 });
 
 console.log("card_played event sent, waiting for server response...");
@@ -1844,6 +1849,7 @@ battleTimerInterval = null;
 }
 battleState = null;
 battleClicks = 0;
+activePlayId = null;
 document.querySelectorAll('.cardFlyClone').forEach(el => el.remove());
 activeMovementKeys.clear();
 canceledMovementKeys.clear();
@@ -2470,15 +2476,22 @@ console.log('Battle result:', result);
 handleBattleResult(result);
 });
 
-socket.on('card_play_intent', ({ playerId: intentPlayerId, card }) => {
+socket.on('card_play_intent', ({ playerId: intentPlayerId, card, playId }) => {
 if(!card) return;
-if(intentPlayerId === playerId && String(localMovementStartedFor) === String(card.id)) return;
+if(intentPlayerId === playerId){
+if(playId && playId !== activePlayId) return;
+if(String(localMovementStartedFor) === String(card.id)) return;
+}
 setFlowPhase(FLOW_PHASES.CARD_MOVING);
 animateCardToCenter(card, intentPlayerId);
 });
 
-socket.on('card_play_blocked', ({ playerId: blockedPlayerId, card, reason, blockedByPlayerId }) => {
+socket.on('card_play_blocked', ({ playerId: blockedPlayerId, card, reason, blockedByPlayerId, playId }) => {
 if(!card) return;
+if(blockedPlayerId === playerId && playId && playId !== activePlayId){
+console.warn("Ignoring stale block for previous play:", playId, "current:", activePlayId);
+return;
+}
 const blockedKey = movementKey(card, blockedPlayerId);
 const isOwnActiveCard = blockedPlayerId === playerId && (
 activeMovementClones.has(blockedKey) ||
@@ -2502,7 +2515,11 @@ setFlowPhase(FLOW_PHASES.HAND_READY);
 }, CARD_TRAVEL_MS + 320);
 });
 
-socket.on('play_card_now', ({ card }) => {
+socket.on('play_card_now', ({ card, playId }) => {
+if(playId && playId !== activePlayId){
+console.warn("Ignoring stale play_card_now:", playId, "current:", activePlayId);
+return;
+}
 console.log('SERVER SAYS: Play card now (no battle)');
 console.log('   Card:', card.iHave);
 console.log('   My hand before:', myHand.map(c => c.iHave));
@@ -2510,8 +2527,12 @@ playCardNow(card);
 console.log('   My hand after:', myHand.map(c => c.iHave));
 });
 
-socket.on('play_rejected', ({ reason, blockedByPlayerId }) => {
+socket.on('play_rejected', ({ reason, blockedByPlayerId, playId }) => {
 console.warn('Card play rejected by server:', reason);
+if(playId && playId !== activePlayId){
+console.warn("Ignoring stale play rejection:", playId, "current:", activePlayId);
+return;
+}
 const rejectedCardIsMoving = pendingCardId !== null && (
 activeMovementClones.has(movementKey({id: pendingCardId}, playerId)) ||
 String(localMovementStartedFor) === String(pendingCardId)
