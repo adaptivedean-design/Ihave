@@ -1746,6 +1746,17 @@ setFlowPhase(FLOW_PHASES.CARD_MOVING);
 animateCardToCenter(result.winnerCard, result.winner);
 await new Promise(resolve => setTimeout(resolve, CARD_TRAVEL_MS));
 
+const battleChainPreview = {
+iHave: result.winnerCard.iHave,
+whoHas: result.winnerCard.whoHas,
+flipped: false,
+phase: FLOW_PHASES.CENTER_WAITING_FLIP,
+face: "iHave",
+playedBy: result.winner,
+cardId: result.winnerCard.id,
+playedAt: Date.now()
+};
+
 // Winner plays card
 if(result.winner === playerId){
 let newHand = myHand.filter(c => String(c.id) !== String(result.winnerCard.id));
@@ -1764,16 +1775,12 @@ el.remove();
 });
 
 await update(ref(db,"rooms/"+roomId+"/chain"),{
-iHave: result.winnerCard.iHave,
-whoHas: result.winnerCard.whoHas,
-flipped: false,
-phase: FLOW_PHASES.CENTER_WAITING_FLIP,
-face: "iHave",
-playedBy: result.winner,
-cardId: result.winnerCard.id,
+...battleChainPreview,
 playedAt: Date.now()
 });
 await update(ref(db,"rooms/"+roomId),{chainBroken:false});
+currentChain = battleChainPreview;
+renderChainDisplay(battleChainPreview);
 setFlowPhase(FLOW_PHASES.CENTER_WAITING_FLIP);
 if(socket && socket.connected){
 socket.emit('chain_played', { roomId, playerId });
@@ -1811,6 +1818,9 @@ overlay.style.display = "none";
 } else {
 // Loser - card stays in hand, no need to re-render
 console.log("Lost battle, keeping card");
+currentChain = battleChainPreview;
+renderChainDisplay(battleChainPreview);
+setFlowPhase(FLOW_PHASES.CENTER_WAITING_FLIP);
 renderHand();
 }
 
@@ -2259,13 +2269,12 @@ document.getElementById("readyPanel").style.display = "none";
 const roomSnap = await get(ref(db,"rooms/"+roomId));
 const roomData = roomSnap.val();
 if(roomData){
-const ready = Object.assign({}, roomData.organizationReady || {});
-ready[playerId] = true;
-const updates = { organizationReady: ready };
-if(roomData.state === "playing" && !roomData.countdownStartedAt && willAllPlayersBeReady(roomData, ready)){
-updates.countdownStartedAt = Date.now();
+await update(ref(db,"rooms/"+roomId), {[`organizationReady/${playerId}`]: true});
+const freshSnap = await get(ref(db,"rooms/"+roomId));
+const freshRoomData = freshSnap.val();
+if(freshRoomData && freshRoomData.state === "playing" && !freshRoomData.countdownStartedAt && willAllPlayersBeReady(freshRoomData, freshRoomData.organizationReady || {})){
+await update(ref(db,"rooms/"+roomId), {countdownStartedAt: Date.now()});
 }
-await update(ref(db,"rooms/"+roomId), updates);
 }
 }
 
