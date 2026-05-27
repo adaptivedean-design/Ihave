@@ -590,6 +590,8 @@ let flowPhase = FLOW_PHASES.ARRANGING;
 const activeMovementKeys = new Set();
 const canceledMovementKeys = new Set();
 const activeMovementClones = new Map();
+let deckRejectTimers = [];
+let battleImpactTimer = null;
 let cardImagesPreloaded = false;
 
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a}
@@ -673,14 +675,26 @@ if(surface.parentNode) surface.remove();
 }, 220);
 }
 
+function clearDeckRejectRing(){
+deckRejectTimers.forEach(timer => clearTimeout(timer));
+deckRejectTimers = [];
+if(deck) deck.classList.remove("rejecting");
+}
+
 function flashDeckRejectRing(delay=0){
 if(!deck) return;
-setTimeout(() => {
+const timer = setTimeout(() => {
+deckRejectTimers = deckRejectTimers.filter(activeTimer => activeTimer !== timer);
 deck.classList.remove("rejecting");
 void deck.offsetWidth;
 deck.classList.add("rejecting");
-setTimeout(() => deck.classList.remove("rejecting"), 620);
+const clearTimer = setTimeout(() => {
+deckRejectTimers = deckRejectTimers.filter(activeTimer => activeTimer !== clearTimer);
+deck.classList.remove("rejecting");
+}, 620);
+deckRejectTimers.push(clearTimer);
 }, delay);
+deckRejectTimers.push(timer);
 }
 
 function createPlayerCardImage(card, inOverlay=false){
@@ -1342,15 +1356,42 @@ clone.remove();
 
 function triggerBattleImpact(durationMs=3000){
 const centerArea = document.getElementById("centerArea");
+if(battleImpactTimer){
+clearTimeout(battleImpactTimer);
+battleImpactTimer = null;
+}
 if(centerArea) centerArea.classList.remove("battleImpact");
 document.body.classList.remove("battleShake");
 if(centerArea) void centerArea.offsetWidth;
 if(centerArea) centerArea.classList.add("battleImpact");
 document.body.classList.add("battleShake");
-setTimeout(() => {
+battleImpactTimer = setTimeout(() => {
 if(centerArea) centerArea.classList.remove("battleImpact");
 document.body.classList.remove("battleShake");
+battleImpactTimer = null;
 }, Math.max(900, durationMs));
+}
+
+function clearBattleIntroEffects({keepKeys = new Set()} = {}){
+clearDeckRejectRing();
+if(battleImpactTimer){
+clearTimeout(battleImpactTimer);
+battleImpactTimer = null;
+}
+const centerArea = document.getElementById("centerArea");
+if(centerArea) centerArea.classList.remove("battleImpact");
+document.body.classList.remove("battleShake");
+for(const [key, clone] of activeMovementClones.entries()){
+if(keepKeys.has(key)) continue;
+if(clone && clone.parentNode) clone.remove();
+activeMovementClones.delete(key);
+activeMovementKeys.delete(key);
+}
+document.querySelectorAll(".cardFlyClone").forEach(clone => {
+const key = movementKey({id: clone.dataset.cardId}, clone.dataset.playedBy);
+if(keepKeys.has(key)) return;
+clone.remove();
+});
 }
 
 async function flipCard(){
@@ -1500,6 +1541,10 @@ if(battleTimerInterval){
 clearInterval(battleTimerInterval);
 battleTimerInterval = null;
 }
+const battleMovementKeys = new Set();
+if(battle.card1) battleMovementKeys.add(movementKey(battle.card1, battle.player1));
+if(battle.card2) battleMovementKeys.add(movementKey(battle.card2, battle.player2));
+clearBattleIntroEffects({keepKeys: battleMovementKeys});
 pendingCardId = null;
 document.querySelectorAll('.pendingPlay').forEach(el => el.classList.remove('pendingPlay'));
 localMovementStartedFor = null;
@@ -1742,11 +1787,15 @@ const battleScreen = document.getElementById("battleScreen");
 battleScreen.classList.remove("visible");
 await new Promise(resolve => setTimeout(resolve, 300));
 
+clearBattleIntroEffects();
 setFlowPhase(FLOW_PHASES.CARD_MOVING);
 animateCardToCenter(result.winnerCard, result.winner);
 await new Promise(resolve => setTimeout(resolve, CARD_TRAVEL_MS));
 
-const battleChainPreview = {
+const latestBattleChain = latestRoomData && latestRoomData.chain && String(latestRoomData.chain.cardId) === String(result.winnerCard.id)
+? latestRoomData.chain
+: null;
+const battleChainPreview = latestBattleChain && latestBattleChain.flipped ? latestBattleChain : {
 iHave: result.winnerCard.iHave,
 whoHas: result.winnerCard.whoHas,
 flipped: false,
@@ -1781,7 +1830,7 @@ playedAt: Date.now()
 await update(ref(db,"rooms/"+roomId),{chainBroken:false});
 currentChain = battleChainPreview;
 renderChainDisplay(battleChainPreview);
-setFlowPhase(FLOW_PHASES.CENTER_WAITING_FLIP);
+setFlowPhase(battleChainPreview.flipped ? FLOW_PHASES.HAND_READY : FLOW_PHASES.CENTER_WAITING_FLIP);
 if(socket && socket.connected){
 socket.emit('chain_played', { roomId, playerId });
 }
@@ -1820,7 +1869,7 @@ overlay.style.display = "none";
 console.log("Lost battle, keeping card");
 currentChain = battleChainPreview;
 renderChainDisplay(battleChainPreview);
-setFlowPhase(FLOW_PHASES.CENTER_WAITING_FLIP);
+setFlowPhase(battleChainPreview.flipped ? FLOW_PHASES.HAND_READY : FLOW_PHASES.CENTER_WAITING_FLIP);
 renderHand();
 }
 
@@ -1856,6 +1905,7 @@ if(battleTimerInterval){
 clearInterval(battleTimerInterval);
 battleTimerInterval = null;
 }
+clearBattleIntroEffects();
 battleState = null;
 battleClicks = 0;
 activePlayId = null;
