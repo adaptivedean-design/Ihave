@@ -39,7 +39,7 @@ button:hover{background:#16b7a7;}
 .opponentCard{background:#bdf6e0;height:45px;border-radius:6px;opacity:.95;border:2px solid #16b7a7;}
 #centerArea{display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;background:transparent;}
 #centerArea.battleImpact::after{content:"";position:absolute;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle, rgba(255,107,107,.75), rgba(228,224,154,.45) 34%, rgba(110,227,222,.28) 52%, transparent 72%);opacity:0;pointer-events:none;animation:battleImpactFlash 1.5s ease-out;}
-body.battleShake #app{animation:battleScreenShake 1.5s ease-in-out;}
+body.battleShake #board{animation:battleScreenShake 1.5s ease-in-out;}
 #deck{background:transparent;width:190px;height:190px;border-radius:0;display:flex;justify-content:center;align-items:center;text-align:center;padding:0;cursor:pointer;transition:transform .08s;position:relative;perspective:1000px;box-shadow:none;border:none;isolation:isolate;}
 #deck::after{content:"";position:absolute;inset:2px;border-radius:50%;border:4px solid rgba(255,107,107,0);box-shadow:0 0 0 rgba(255,107,107,0);pointer-events:none;z-index:8;transform:scale(.94);opacity:0;}
 #deck.rejecting::after{animation:deckRejectRing .58s ease-out;}
