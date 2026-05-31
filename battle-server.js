@@ -71,7 +71,7 @@ io.on('connection', (socket) => {
   });
 
   // Card played - check for battle
-  socket.on('card_played', ({ roomId, playerId, card, isHost, playId }) => {
+  socket.on('card_played', ({ roomId, playerId, card, isHost, playId, chainFlipped, chainCardId }) => {
     console.log(`\n========== CARD PLAYED ==========`);
     console.log(`Player: ${playerId}`);
     console.log(`Room: ${roomId}`);
@@ -95,6 +95,11 @@ io.on('connection', (socket) => {
         emitBlockedPlay(roomId, playerId, card, reason, playerId, playId);
       }
     };
+
+    if (room.awaitingFlip && chainFlipped) {
+      room.awaitingFlip = false;
+      console.log(`Client ${playerId} reports flipped chain (${chainCardId || 'unknown'}); accepting plays`);
+    }
 
     if (room.awaitingFlip) {
       rejectPlay('awaiting_flip', true);

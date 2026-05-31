@@ -576,6 +576,7 @@ const CARD_TRAVEL_MS=960;
 const CENTER_CARD_COVER_SIZE=242;
 let centerRevealAt=0;
 let delayedCenterRenderTimer=null;
+let lastSocketChainStateKey=null;
 const FLOW_PHASES = {
 ARRANGING: "arranging",
 COUNTDOWN: "countdown",
@@ -636,6 +637,40 @@ if(roomData && roomData.chainBroken) return "broken";
 if(currentChain && currentChain.flipped) return "revealed";
 return "none";
 }
+
+function syncSocketChainState(chain){
+if(!socket || !socket.connected || !roomId || !chain) return;
+const key = `${chain.cardId || chain.iHave}:${chain.flipped ? "flipped" : "waiting"}`;
+if(lastSocketChainStateKey === key) return;
+lastSocketChainStateKey = key;
+socket.emit(chain.flipped ? 'chain_flipped' : 'chain_played', { roomId, playerId });
+}
+
+window.getIHaveDebugState = () => ({
+roomId,
+playerId,
+isHost,
+flowPhase,
+pendingCardId,
+activePlayId,
+playValidationInProgress,
+localMovementStartedFor,
+socketConnected: Boolean(socket && socket.connected),
+battleState: battleState ? {
+id: battleState.id,
+player1: battleState.player1,
+player2: battleState.player2,
+startTime: battleState.startTime
+} : null,
+currentChain,
+latestChain: latestRoomData && latestRoomData.chain,
+chainBroken: latestRoomData && latestRoomData.chainBroken,
+winner,
+handIds: myHand.map(card => card.id),
+activeMovementKeys: Array.from(activeMovementKeys),
+activeMovementClones: Array.from(activeMovementClones.keys()),
+lastSocketChainStateKey
+});
 
 function movementKey(card, playedBy){
 return `${playedBy || "unknown"}:${card && card.id}`;
@@ -930,8 +965,7 @@ return;
 }
 playValidationInProgress = true;
 
-const roomSnap = await get(ref(db,"rooms/"+roomId));
-const roomData = roomSnap.val() || {};
+const roomData = latestRoomData || {};
 if(roomData.state === "playing" && !roomData.winner && !isRoundPlayable(roomData)){
 console.log("Cards are locked until both players are ready and the countdown finishes");
 if(cardElement){
@@ -1023,7 +1057,7 @@ playValidationInProgress = false;
 if(cardElement){
 cardElement.classList.add('pendingPlay');
 }
-const shouldOptimisticallyMove = flowPhase === FLOW_PHASES.HAND_READY;
+const shouldOptimisticallyMove = !battleState && (!currentChain || currentChain.flipped);
 setFlowPhase(FLOW_PHASES.CARD_MOVING);
 if(shouldOptimisticallyMove){
 localMovementStartedFor = card.id;
@@ -1047,7 +1081,9 @@ roomId: roomId,
 playerId: playerId,
 card: card,
 isHost: isHost,
-playId: activePlayId
+playId: activePlayId,
+chainFlipped: Boolean(currentChain && currentChain.flipped),
+chainCardId: currentChain && currentChain.cardId
 });
 
 console.log("card_played event sent, waiting for server response...");
@@ -1892,6 +1928,7 @@ allPlayersReady = false;
 latestRoomData = null;
 localMovementStartedFor = null;
 localReadySubmitted = false;
+lastSocketChainStateKey = null;
 if(countdownRenderInterval){
 clearInterval(countdownRenderInterval);
 countdownRenderInterval = null;
@@ -2100,9 +2137,11 @@ renderOpponent(opponentHand);
 if(data.chain){
 currentChain=data.chain;
 renderChainDisplay(data.chain);
+syncSocketChainState(data.chain);
 } else {
 // No chain yet - game just started
 currentChain=null;
+lastSocketChainStateKey=null;
 deck.classList.remove("flipped");
 deck.classList.remove("canFlip");
 deck.classList.remove("instantFaceReset");
