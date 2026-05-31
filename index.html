@@ -649,6 +649,16 @@ lastSocketChainStateKey = key;
 socket.emit(chain.flipped ? 'chain_flipped' : 'chain_played', { roomId, playerId });
 }
 
+function broadcastBlockedCard(card, reason){
+if(!socket || !socket.connected || !roomId || !card) return;
+socket.emit('local_card_blocked', {
+roomId,
+playerId,
+card,
+reason
+});
+}
+
 window.getIHaveDebugState = () => ({
 roomId,
 playerId,
@@ -1035,6 +1045,7 @@ if(phaseBlocksLocalClick){
 console.log("Cards are not accepting plays in phase:", flowPhase);
 if(cardElement){
 animateBlockedCardToCenter(card, playerId, `local_phase_${flowPhase}`);
+broadcastBlockedCard(card, `local_phase_${flowPhase}`);
 cardElement.classList.add('wrongCard');
 setTimeout(() => cardElement.classList.remove('wrongCard'), 400);
 }
@@ -1090,6 +1101,7 @@ if(currentChain && !currentChain.flipped) {
 console.log("Chain not flipped yet, must flip first");
 if(cardElement){
 animateBlockedCardToCenter(card, playerId, "local_must_flip");
+broadcastBlockedCard(card, "local_must_flip");
 cardElement.classList.add('wrongCard');
 setTimeout(() => cardElement.classList.remove('wrongCard'), 400);
 }
@@ -2724,6 +2736,19 @@ return;
 }
 if(reason === "center_reserved" && blockedByPlayerId && blockedByPlayerId !== playerId){
 console.warn("Center reserved by opponent; waiting for block animation event");
+const fallbackPendingCardId = pendingCardId;
+setTimeout(() => {
+if(pendingCardId === null || String(pendingCardId) !== String(fallbackPendingCardId)) return;
+const fallbackCard = myHand.find(c => String(c.id) === String(fallbackPendingCardId));
+if(!fallbackCard) return;
+console.warn("Block animation event fallback triggered for center_reserved");
+cancelMovement(fallbackPendingCardId, playerId);
+clearPendingPlayVisuals();
+animateBlockedCardToCenter(fallbackCard, playerId, `play_rejected_${reason}_fallback`);
+if(!battleState && (!currentChain || currentChain.flipped)){
+setFlowPhase(FLOW_PHASES.HAND_READY);
+}
+}, 120);
 return;
 }
 const rejectedCardIsMoving = pendingCardId !== null && (

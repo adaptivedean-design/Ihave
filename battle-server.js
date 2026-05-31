@@ -282,6 +282,19 @@ io.on('connection', (socket) => {
     console.log(`Chain flipped by ${playerId}; room ${roomId} is accepting plays`);
   });
 
+  socket.on('local_card_blocked', ({ roomId, playerId, card, reason }) => {
+    const room = rooms[roomId];
+    if (!room || !card) return;
+    console.log(`Relaying local blocked card from ${playerId}: ${reason || 'local_block'}`);
+    socket.to(roomId).emit('card_play_blocked', {
+      playerId,
+      card,
+      reason: reason || 'local_block',
+      blockedByPlayerId: playerId,
+      playId: null
+    });
+  });
+
   socket.on('game_reset', ({ roomId, playerId }) => {
     const room = rooms[roomId];
     if (!room) return;
