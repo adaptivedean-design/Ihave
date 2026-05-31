@@ -576,6 +576,7 @@ let opponentRenderToken=0;
 const CARD_TRAVEL_MS=960;
 const CENTER_CARD_COVER_SIZE=242;
 let centerRevealAt=0;
+let centerRevealCardId=null;
 let delayedCenterRenderTimer=null;
 let lastSocketChainStateKey=null;
 const FLOW_PHASES = {
@@ -666,6 +667,8 @@ startTime: battleState.startTime
 } : null,
 currentChain,
 latestChain: latestRoomData && latestRoomData.chain,
+centerRevealAt,
+centerRevealCardId,
 chainBroken: latestRoomData && latestRoomData.chainBroken,
 winner,
 handIds: myHand.map(card => card.id),
@@ -686,6 +689,10 @@ const clone = activeMovementClones.get(key);
 if(clone && clone.parentNode) clone.remove();
 activeMovementClones.delete(key);
 activeMovementKeys.delete(key);
+if(String(centerRevealCardId) === String(cardId)){
+centerRevealAt = 0;
+centerRevealCardId = null;
+}
 }
 
 function clearPendingPlayVisuals(){
@@ -1190,10 +1197,11 @@ hasTarget: Boolean(target)
 return false;
 }
 
-if(currentChain && currentChain.flipped){
 const deckFront=document.querySelector(".deckFront");
 if(deckFront) deckFront.innerHTML = "";
 centerRevealAt = Date.now() + CARD_TRAVEL_MS + 90;
+centerRevealCardId = card.id;
+if(currentChain && currentChain.flipped){
 removeCenterSurface();
 }
 
@@ -1263,7 +1271,9 @@ surfaceImg.alt = card.iHave;
 removeCenterSurface();
 surface.appendChild(surfaceImg);
 deck.appendChild(surface);
+const deckFront = document.querySelector(".deckFront");
 const deckBack = document.querySelector(".deckBack");
+if(deckFront) deckFront.innerHTML = "";
 if(deckBack) deckBack.innerHTML = "";
 deck.classList.add("instantFaceReset");
 deck.classList.remove("flipped");
@@ -1980,6 +1990,7 @@ if(delayedCenterRenderTimer){
 clearTimeout(delayedCenterRenderTimer);
 delayedCenterRenderTimer = null;
 }
+centerRevealCardId = null;
 
 if(battleTimerInterval){
 clearInterval(battleTimerInterval);
@@ -2034,7 +2045,7 @@ if(!deckFront || !deckBack) return;
 
 const iHaveImg = CARD_IMAGES.ihave[chain.iHave];
 const whoHasImg = CARD_IMAGES.whas[chain.whoHas];
-const waitingForIncomingCard = !chain.flipped && centerRevealAt && Date.now() < centerRevealAt;
+const waitingForIncomingCard = !chain.flipped && centerRevealAt && Date.now() < centerRevealAt && String(centerRevealCardId) === String(chain.cardId);
 
 if(delayedCenterRenderTimer){
 clearTimeout(delayedCenterRenderTimer);
@@ -2049,6 +2060,7 @@ chainText.innerHTML = "";
 delayedCenterRenderTimer = setTimeout(() => {
 delayedCenterRenderTimer = null;
 centerRevealAt = 0;
+centerRevealCardId = null;
 renderChainDisplay(chain);
 }, Math.max(0, centerRevealAt - Date.now()));
 return;
@@ -2076,6 +2088,7 @@ deck.classList.remove("centerReplacing");
 deck.classList.add("instantFaceReset");
 deck.classList.remove("flipped");
 centerRevealAt = 0;
+centerRevealCardId = null;
 requestAnimationFrame(() => {
 deck.classList.remove("instantFaceReset");
 });
@@ -2185,6 +2198,8 @@ syncSocketChainState(data.chain);
 // No chain yet - game just started
 currentChain=null;
 lastSocketChainStateKey=null;
+centerRevealAt=0;
+centerRevealCardId=null;
 deck.classList.remove("flipped");
 deck.classList.remove("canFlip");
 deck.classList.remove("instantFaceReset");
