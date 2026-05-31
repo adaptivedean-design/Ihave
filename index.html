@@ -574,6 +574,7 @@ let localReadySubmitted=false;
 const OVERLAY_CARD_LIMIT=5;
 let opponentRenderToken=0;
 const CARD_TRAVEL_MS=960;
+const CARD_SETTLE_MS=CARD_TRAVEL_MS+120;
 const CENTER_CARD_COVER_SIZE=242;
 let centerRevealAt=0;
 let centerRevealCardId=null;
@@ -709,6 +710,21 @@ if(currentChain && String(currentChain.cardId) !== String(cardId)){
 const deckFront = document.querySelector(".deckFront");
 if(deckFront && latestRoomData && latestRoomData.chain) renderChainDisplay(latestRoomData.chain);
 }
+if(String(centerRevealCardId) === String(cardId)){
+centerRevealAt = 0;
+centerRevealCardId = null;
+}
+}
+
+function markMovementBlocked(cardId, playedBy){
+if(cardId === undefined || cardId === null) return;
+const key = movementKey({id: cardId}, playedBy);
+canceledMovementKeys.add(key);
+blockedMovementKeys.add(key);
+activeMovementKeys.delete(key);
+deck.querySelectorAll(`.centerCardSurface[data-card-id="${cardId}"]`).forEach(surface => {
+if(!playedBy || surface.dataset.playedBy === playedBy) surface.remove();
+});
 if(String(centerRevealCardId) === String(cardId)){
 centerRevealAt = 0;
 centerRevealCardId = null;
@@ -1419,8 +1435,15 @@ if(!target) return;
 const targetRect = target.getBoundingClientRect();
 if(!targetRect.width || !targetRect.height) return;
 
-let sourceRect = source ? source.getBoundingClientRect() : null;
-let clone = source ? source.cloneNode(true) : null;
+const key = movementKey(card, playedBy);
+const movingClone = activeMovementClones.get(key);
+let sourceRect = movingClone && document.body.contains(movingClone) ? movingClone.getBoundingClientRect() : (source ? source.getBoundingClientRect() : null);
+let clone = movingClone && document.body.contains(movingClone) ? movingClone.cloneNode(true) : (source ? source.cloneNode(true) : null);
+if(movingClone && document.body.contains(movingClone)){
+movingClone.getAnimations().forEach(animation => animation.cancel());
+movingClone.remove();
+activeMovementClones.delete(key);
+}
 if(!sourceRect || !sourceRect.width || !sourceRect.height){
 const area = playedBy === playerId ? document.getElementById("playerArea") : document.getElementById("opponentArea");
 const areaRect = area ? area.getBoundingClientRect() : targetRect;
@@ -1485,6 +1508,7 @@ clone.style.opacity = "0.75";
 
 setTimeout(() => {
 clone.remove();
+activeMovementClones.delete(key);
 }, CARD_TRAVEL_MS + 260);
 }
 
@@ -1924,7 +1948,7 @@ await new Promise(resolve => setTimeout(resolve, 300));
 clearBattleIntroEffects();
 setFlowPhase(FLOW_PHASES.CARD_MOVING);
 animateCardToCenter(result.winnerCard, result.winner);
-await new Promise(resolve => setTimeout(resolve, CARD_TRAVEL_MS));
+await new Promise(resolve => setTimeout(resolve, CARD_SETTLE_MS));
 
 const latestBattleChain = latestRoomData && latestRoomData.chain && String(latestRoomData.chain.cardId) === String(result.winnerCard.id)
 ? latestRoomData.chain
@@ -2705,7 +2729,7 @@ return;
 }
 setFlowPhase(FLOW_PHASES.NEAR_BLOCK);
 if(blockedPlayerId === playerId){
-cancelMovement(pendingCardId || card.id, playerId);
+markMovementBlocked(pendingCardId || card.id, playerId);
 clearPendingPlayVisuals();
 }
 animateBlockedCardToCenter(card, blockedPlayerId, `server_${reason || "blocked"}_by_${blockedByPlayerId || "unknown"}`);
@@ -2742,7 +2766,7 @@ if(pendingCardId === null || String(pendingCardId) !== String(fallbackPendingCar
 const fallbackCard = myHand.find(c => String(c.id) === String(fallbackPendingCardId));
 if(!fallbackCard) return;
 console.warn("Block animation event fallback triggered for center_reserved");
-cancelMovement(fallbackPendingCardId, playerId);
+markMovementBlocked(fallbackPendingCardId, playerId);
 clearPendingPlayVisuals();
 animateBlockedCardToCenter(fallbackCard, playerId, `play_rejected_${reason}_fallback`);
 if(!battleState && (!currentChain || currentChain.flipped)){
