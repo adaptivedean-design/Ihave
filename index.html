@@ -563,6 +563,7 @@ let pendingCardId=null;
 let playValidationInProgress=false;
 let activePlayId=null;
 let playSequence=0;
+let pendingPlayWatchdog=null;
 let roundWinnerShownFor=null;
 let currentRoundStartedAt=null;
 let latestRoomData=null;
@@ -653,6 +654,7 @@ isHost,
 flowPhase,
 pendingCardId,
 activePlayId,
+pendingPlayWatchdogActive: Boolean(pendingPlayWatchdog),
 playValidationInProgress,
 localMovementStartedFor,
 socketConnected: Boolean(socket && socket.connected),
@@ -680,15 +682,44 @@ function cancelMovement(cardId, playedBy){
 if(cardId === undefined || cardId === null) return;
 const key = movementKey({id: cardId}, playedBy);
 canceledMovementKeys.add(key);
+const clone = activeMovementClones.get(key);
+if(clone && clone.parentNode) clone.remove();
 activeMovementClones.delete(key);
+activeMovementKeys.delete(key);
 }
 
 function clearPendingPlayVisuals(){
+if(pendingPlayWatchdog){
+clearTimeout(pendingPlayWatchdog);
+pendingPlayWatchdog = null;
+}
 pendingCardId = null;
 localMovementStartedFor = null;
 activePlayId = null;
 playValidationInProgress = false;
 document.querySelectorAll('.pendingPlay').forEach(el => el.classList.remove('pendingPlay'));
+}
+
+function schedulePendingPlayWatchdog(card, playId){
+if(pendingPlayWatchdog) clearTimeout(pendingPlayWatchdog);
+pendingPlayWatchdog = setTimeout(() => {
+if(activePlayId !== playId || !pendingCardId || battleState) return;
+console.warn("Pending play watchdog cleared a stuck play", {
+playId,
+pendingCardId,
+localMovementStartedFor,
+flowPhase,
+currentChain
+});
+cancelMovement(pendingCardId, playerId);
+clearPendingPlayVisuals();
+renderHand();
+if(!currentChain || currentChain.flipped){
+setFlowPhase(FLOW_PHASES.HAND_READY);
+} else {
+setFlowPhase(FLOW_PHASES.CENTER_WAITING_FLIP);
+}
+}, 2600);
 }
 
 function getCenterSurface(){
@@ -1060,8 +1091,7 @@ cardElement.classList.add('pendingPlay');
 const shouldOptimisticallyMove = !battleState && (!currentChain || currentChain.flipped);
 setFlowPhase(FLOW_PHASES.CARD_MOVING);
 if(shouldOptimisticallyMove){
-localMovementStartedFor = card.id;
-animateCardToCenter(card, playerId);
+localMovementStartedFor = animateCardToCenter(card, playerId) ? card.id : null;
 } else {
 localMovementStartedFor = null;
 }
@@ -1069,6 +1099,7 @@ localMovementStartedFor = null;
 // Check if socket is connected
 if(!socket || !socket.connected){
 console.error("Socket not connected; falling back to immediate play");
+clearPendingPlayVisuals();
 playCardNow(card);
 console.log("====== tryPlay END (socket fallback) ======");
 return;
@@ -1081,10 +1112,9 @@ roomId: roomId,
 playerId: playerId,
 card: card,
 isHost: isHost,
-playId: activePlayId,
-chainFlipped: Boolean(currentChain && currentChain.flipped),
-chainCardId: currentChain && currentChain.cardId
+playId: activePlayId
 });
+schedulePendingPlayWatchdog(card, activePlayId);
 
 console.log("card_played event sent, waiting for server response...");
 console.log("====== tryPlay END (waiting for server) ======");
@@ -1147,11 +1177,17 @@ return Math.min(2.25, Math.max(0.72, CENTER_CARD_COVER_SIZE / sourceSize));
 
 function animateCardToCenter(card, playedBy){
 const key = movementKey(card, playedBy);
-if(activeMovementKeys.has(key)) return;
+if(activeMovementKeys.has(key)) return true;
 const source = findVisibleCardElement(card.id, playedBy);
 const target = deck;
 if(!source || !target){
-return;
+console.warn("Cannot animate card to center; source or target missing", {
+cardId: card && card.id,
+playedBy,
+hasSource: Boolean(source),
+hasTarget: Boolean(target)
+});
+return false;
 }
 
 if(currentChain && currentChain.flipped){
@@ -1164,7 +1200,13 @@ removeCenterSurface();
 const sourceRect = source.getBoundingClientRect();
 const targetRect = target.getBoundingClientRect();
 if(!sourceRect.width || !sourceRect.height || !targetRect.width || !targetRect.height){
-return;
+console.warn("Cannot animate card to center; zero-size source or target", {
+cardId: card && card.id,
+playedBy,
+sourceRect,
+targetRect
+});
+return false;
 }
 activeMovementKeys.add(key);
 
@@ -1235,6 +1277,7 @@ activeMovementClones.delete(key);
 }
 activeMovementKeys.delete(key);
 }, CARD_TRAVEL_MS + 80);
+return true;
 }
 
 function animateBattleCardCollision(card, playedBy, durationMs){
