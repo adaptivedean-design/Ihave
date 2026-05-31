@@ -1391,15 +1391,37 @@ currentChainFlipped: currentChain ? currentChain.flipped : null
 });
 const source = findVisibleCardElement(card.id, playedBy);
 const target = deck;
-if(!source || !target) return;
+if(!target) return;
 
-const sourceRect = source.getBoundingClientRect();
 const targetRect = target.getBoundingClientRect();
-if(!sourceRect.width || !sourceRect.height || !targetRect.width || !targetRect.height) return;
+if(!targetRect.width || !targetRect.height) return;
 
-const clone = source.cloneNode(true);
+let sourceRect = source ? source.getBoundingClientRect() : null;
+let clone = source ? source.cloneNode(true) : null;
+if(!sourceRect || !sourceRect.width || !sourceRect.height){
+const area = playedBy === playerId ? document.getElementById("playerArea") : document.getElementById("opponentArea");
+const areaRect = area ? area.getBoundingClientRect() : targetRect;
+const fallbackSize = playedBy === playerId ? 142 : 104;
+sourceRect = {
+left: areaRect.left + areaRect.width / 2 - fallbackSize / 2,
+top: areaRect.top + areaRect.height / 2 - fallbackSize / 2,
+width: fallbackSize,
+height: fallbackSize
+};
+clone = document.createElement("img");
+clone.src = CARD_IMAGES.ihave[card.iHave] || "";
+clone.alt = card.iHave || "blocked card";
+console.warn("Blocked card source missing; using area fallback", {
+cardId: card && card.id,
+playedBy,
+reason
+});
+}
+
 clone.classList.add("cardFlyClone", "blockedClone");
 clone.classList.remove("pendingPlay", "wrong", "wrongCard", "dragging");
+clone.dataset.cardId = card.id;
+clone.dataset.playedBy = playedBy || "";
 clone.style.left = `${sourceRect.left}px`;
 clone.style.top = `${sourceRect.top}px`;
 clone.style.width = `${sourceRect.width}px`;
