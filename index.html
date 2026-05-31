@@ -579,6 +579,7 @@ let centerRevealAt=0;
 let centerRevealCardId=null;
 let delayedCenterRenderTimer=null;
 let lastSocketChainStateKey=null;
+const blockedMovementKeys = new Set();
 const FLOW_PHASES = {
 ARRANGING: "arranging",
 COUNTDOWN: "countdown",
@@ -674,6 +675,7 @@ winner,
 handIds: myHand.map(card => card.id),
 activeMovementKeys: Array.from(activeMovementKeys),
 activeMovementClones: Array.from(activeMovementClones.keys()),
+blockedMovementKeys: Array.from(blockedMovementKeys),
 lastSocketChainStateKey
 });
 
@@ -685,10 +687,18 @@ function cancelMovement(cardId, playedBy){
 if(cardId === undefined || cardId === null) return;
 const key = movementKey({id: cardId}, playedBy);
 canceledMovementKeys.add(key);
+blockedMovementKeys.add(key);
 const clone = activeMovementClones.get(key);
 if(clone && clone.parentNode) clone.remove();
 activeMovementClones.delete(key);
 activeMovementKeys.delete(key);
+deck.querySelectorAll(`.centerCardSurface[data-card-id="${cardId}"]`).forEach(surface => {
+if(!playedBy || surface.dataset.playedBy === playedBy) surface.remove();
+});
+if(currentChain && String(currentChain.cardId) !== String(cardId)){
+const deckFront = document.querySelector(".deckFront");
+if(deckFront && latestRoomData && latestRoomData.chain) renderChainDisplay(latestRoomData.chain);
+}
 if(String(centerRevealCardId) === String(cardId)){
 centerRevealAt = 0;
 centerRevealCardId = null;
@@ -1249,8 +1259,9 @@ clone.style.opacity = "1";
 }));
 
 setTimeout(() => {
-if(canceledMovementKeys.has(key)){
+if(canceledMovementKeys.has(key) || blockedMovementKeys.has(key)){
 canceledMovementKeys.delete(key);
+blockedMovementKeys.delete(key);
 clone.remove();
 activeMovementClones.delete(key);
 } else if(flowPhase === FLOW_PHASES.BATTLE_INTRO || flowPhase === FLOW_PHASES.BATTLE_ACTIVE){
@@ -2026,6 +2037,7 @@ document.querySelectorAll('.cardFlyClone').forEach(el => el.remove());
 activeMovementKeys.clear();
 canceledMovementKeys.clear();
 activeMovementClones.clear();
+blockedMovementKeys.clear();
 setFlowPhase(FLOW_PHASES.ARRANGING);
 
 document.getElementById("battleScreen").style.display = "none";
